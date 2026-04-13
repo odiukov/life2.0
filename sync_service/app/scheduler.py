@@ -21,10 +21,16 @@ def start_scheduler() -> None:
 
 
 async def _run_daily_sync() -> None:
-    from .sync import do_sync  # late import to avoid circular at module load
+    from .sync import do_sync, do_nutrition_sync  # late import to avoid circular at module load
 
     try:
         result = await do_sync()
-        logger.info(f"Daily sync complete: {result}")
+        logger.info(f"Daily Garmin sync complete: {result}")
     except Exception as e:
-        logger.error(f"Daily sync failed: {e}")
+        logger.error(f"Daily Garmin sync failed: {e}")
+
+    try:
+        result = await do_nutrition_sync()
+        logger.info(f"Daily Yazio sync complete: {result}")
+    except Exception as e:
+        logger.error(f"Daily Yazio sync failed: {e}")
