@@ -68,8 +68,21 @@ def _split_chunks(text: str, size: int = 5) -> list[str]:
 @app.post("/chat")
 async def chat(req: ChatRequest):
     agent_name = classify_intent(req.message)
-    agent_url = get_agent_url(agent_name)
 
+    if agent_name == "sync":
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post("http://sync-service:8080/sync")
+                resp.raise_for_status()
+                data = resp.json()
+                text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
+                if data.get("errors"):
+                    text += f" Errors: {'; '.join(data['errors'][:3])}"
+            return {"output": text}
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Sync service error: {str(e)}")
+
+    agent_url = get_agent_url(agent_name)
     if not agent_url:
         raise HTTPException(
             status_code=503,
@@ -98,7 +111,6 @@ async def chat(req: ChatRequest):
 
 @app.post("/chat/stream")
 async def chat_stream(req: StreamChatRequest):
-    # Extract last user message from CopilotKit message list
     user_messages = [m for m in req.messages if m.get("role") == "user"]
     if not user_messages:
         raise HTTPException(status_code=400, detail="No user message found")
@@ -109,6 +121,31 @@ async def chat_stream(req: StreamChatRequest):
     message_id = str(uuid.uuid4())
 
     agent_name = classify_intent(message)
+
+    if agent_name == "sync":
+        async def sync_stream():
+            yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
+            yield _sse({"type": "TextMessageStart", "messageId": message_id, "role": "assistant"})
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post("http://sync-service:8080/sync")
+                    resp.raise_for_status()
+                    data = resp.json()
+                    text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
+                    if data.get("errors"):
+                        text += f" Errors: {'; '.join(data['errors'][:3])}"
+            except Exception as e:
+                text = f"Sync failed: {str(e)}"
+            yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": text})
+            yield _sse({"type": "TextMessageEnd", "messageId": message_id})
+            yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
+
+        return StreamingResponse(
+            sync_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     agent_url = get_agent_url(agent_name)
 
     async def event_stream():

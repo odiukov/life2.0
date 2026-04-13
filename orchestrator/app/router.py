@@ -2,6 +2,7 @@ INTENT_KEYWORDS: dict[str, list[str]] = {
     "sleep": ["sleep", "спал", "сон", "засыпал", "проснул", "ночь"],
     "workout": ["workout", "трениров", "пробеж", "run", "exercise", "спорт", "фитнес"],
     "nutrition": ["nutrition", "еда", "ел", "питание", "meal", "food", "калори"],
+    "sync": ["sync", "синхронизир", "garmin", "гармин"],
 }
 
 

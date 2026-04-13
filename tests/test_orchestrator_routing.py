@@ -22,3 +22,10 @@ def test_classify_unknown_defaults_to_sleep():
     # Unknown intent defaults to first available agent
     result = classify_intent("random unrelated text xyz")
     assert result in ("sleep", "workout", "nutrition")
+
+
+def test_classify_sync_intent():
+    assert classify_intent("sync") == "sync"
+    assert classify_intent("синхронизировать гармин") == "sync"
+    assert classify_intent("garmin sync") == "sync"
+    assert classify_intent("гармин") == "sync"
