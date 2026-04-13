@@ -57,3 +57,39 @@ async def test_build_nutrition_prompt_includes_raw_text_in_params():
             result = await build_nutrition_prompt("log_meal", {"raw_text": "греческий йогурт"})
 
     assert "греческий йогурт" in result
+
+
+@pytest.mark.asyncio
+async def test_build_nutrition_prompt_formats_yazio_logs():
+    """Yazio logs show product names and macros, not raw JSON."""
+    from datetime import datetime, timezone
+
+    yazio_log = {
+        "type": "meal",
+        "source": "yazio",
+        "recorded_at": datetime(2026, 4, 12, 12, 0, 0, tzinfo=timezone.utc),
+        "data": {
+            "meal_type": "lunch",
+            "items": [
+                {"name": "Chicken breast", "amount_g": 200,
+                 "kcal": 220, "protein_g": 41.0, "carbs_g": 0.0, "fat_g": 4.8}
+            ],
+            "totals": {"kcal": 220, "protein_g": 41.0, "carbs_g": 0.0, "fat_g": 4.8},
+            "date": "2026-04-12",
+        },
+    }
+
+    with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
+        with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
+            mock_logs.side_effect = lambda agent, limit: (
+                [yazio_log] if agent == "nutrition" else []
+            )
+            mock_mem.return_value = []
+
+            from agents.nutrition.app.prompt import build_nutrition_prompt
+            result = await build_nutrition_prompt("analyze_nutrition", {})
+
+    assert "Chicken breast" in result
+    assert "220" in result   # kcal
+    assert "41" in result    # protein
+    assert "lunch" in result
