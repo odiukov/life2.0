@@ -45,6 +45,12 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   orchestrator:
     build: ./orchestrator
@@ -54,7 +60,8 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - agent-sleep
+      agent-sleep:
+        condition: service_healthy
 
 volumes:
   postgres_data:
