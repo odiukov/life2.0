@@ -1,48 +1,42 @@
+# tests/test_agent_card.py
 from agents.sleep.app.agent_card import AGENT_CARD
 from agents.workout.app.agent_card import AGENT_CARD as WORKOUT_CARD
 from agents.nutrition.app.agent_card import AGENT_CARD as NUTRITION_CARD
 
 
 def test_agent_card_has_required_fields():
-    assert "name" in AGENT_CARD
-    assert "description" in AGENT_CARD
-    assert "url" in AGENT_CARD
-    assert "capabilities" in AGENT_CARD
-    assert "version" in AGENT_CARD
+    for card in (AGENT_CARD, WORKOUT_CARD, NUTRITION_CARD):
+        assert "name" in card
+        assert "description" in card
+        assert "url" in card
+        assert "capabilities" in card
+        assert "version" in card
+        assert "skills" in card
 
 
-def test_agent_card_capabilities():
-    caps = AGENT_CARD["capabilities"]
-    assert "analyze_sleep" in caps
-    assert "log_sleep" in caps
-    assert "get_recommendations" in caps
+def test_agent_card_capabilities_a2a():
+    for card in (AGENT_CARD, WORKOUT_CARD, NUTRITION_CARD):
+        caps = card["capabilities"]
+        assert caps["streaming"] is True
+        assert caps["pushNotifications"] is True
 
 
-def test_workout_agent_card_has_required_fields():
-    assert "name" in WORKOUT_CARD
-    assert "description" in WORKOUT_CARD
-    assert "url" in WORKOUT_CARD
-    assert "capabilities" in WORKOUT_CARD
-    assert "version" in WORKOUT_CARD
+def test_sleep_agent_card_skills():
+    skill_ids = [s["id"] for s in AGENT_CARD["skills"]]
+    assert "analyze_sleep" in skill_ids
+    assert "log_sleep" in skill_ids
+    assert "get_recommendations" in skill_ids
 
 
-def test_workout_agent_card_capabilities():
-    caps = WORKOUT_CARD["capabilities"]
-    assert "log_workout" in caps
-    assert "analyze_workout" in caps
-    assert "get_recommendations" in caps
+def test_workout_agent_card_skills():
+    skill_ids = [s["id"] for s in WORKOUT_CARD["skills"]]
+    assert "log_workout" in skill_ids
+    assert "analyze_workout" in skill_ids
+    assert "get_recommendations" in skill_ids
 
 
-def test_nutrition_agent_card_has_required_fields():
-    assert "name" in NUTRITION_CARD
-    assert "description" in NUTRITION_CARD
-    assert "url" in NUTRITION_CARD
-    assert "capabilities" in NUTRITION_CARD
-    assert "version" in NUTRITION_CARD
-
-
-def test_nutrition_agent_card_capabilities():
-    caps = NUTRITION_CARD["capabilities"]
-    assert "log_meal" in caps
-    assert "analyze_nutrition" in caps
-    assert "get_recommendations" in caps
+def test_nutrition_agent_card_skills():
+    skill_ids = [s["id"] for s in NUTRITION_CARD["skills"]]
+    assert "log_meal" in skill_ids
+    assert "analyze_nutrition" in skill_ids
+    assert "get_recommendations" in skill_ids
