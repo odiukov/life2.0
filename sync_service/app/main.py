@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .scheduler import start_scheduler
-from .sync import do_sync
+from .sync import do_sync, do_nutrition_sync
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,6 +21,11 @@ app = FastAPI(title="sync-service", lifespan=lifespan)
 @app.post("/sync")
 async def sync():
     return await do_sync()
+
+
+@app.post("/sync/nutrition")
+async def sync_nutrition():
+    return await do_nutrition_sync()
 
 
 @app.get("/health")

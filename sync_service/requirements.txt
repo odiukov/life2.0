@@ -3,3 +3,4 @@ uvicorn[standard]>=0.29
 asyncpg>=0.29
 garminconnect>=0.2.19
 apscheduler>=3.10
+httpx>=0.27
