@@ -37,9 +37,15 @@ async def test_chat_stream_emits_agui_events():
     """POST /chat/stream emits RunStarted → TextMessageContent → RunFinished."""
     task_id = "test-task-id"
     sse_lines = [
+        "event: task-status-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "submitted", "timestamp": ""}})}',
+        "",
+        "event: task-status-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "working", "timestamp": ""}})}',
+        "",
+        "event: task-artifact-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "completed", "timestamp": ""}, "artifacts": [{"name": "analysis", "parts": [{"type": "text", "text": "Sleep better tonight."}]}]})}',
+        "",
     ]
     mock_client = _make_stream_mock(sse_lines)
 
@@ -72,11 +78,21 @@ async def test_chat_stream_emits_peer_status_for_workout():
     """Workout stream emits peer status messages before the final answer."""
     task_id = "wk-task"
     sse_lines = [
+        "event: task-status-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "submitted", "timestamp": ""}})}',
+        "",
+        "event: task-status-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "working", "timestamp": ""}})}',
+        "",
+        "event: task-artifact-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "working", "timestamp": ""}, "artifacts": [{"name": "peer_sleep", "parts": [{"type": "text", "text": "slept 7h"}]}]})}',
+        "",
+        "event: task-artifact-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "working", "timestamp": ""}, "artifacts": [{"name": "peer_nutrition", "parts": [{"type": "text", "text": "2000 kcal"}]}]})}',
+        "",
+        "event: task-artifact-update",
         f'data: {json.dumps({"id": task_id, "status": {"state": "completed", "timestamp": ""}, "artifacts": [{"name": "analysis", "parts": [{"type": "text", "text": "Grouped analysis."}]}]})}',
+        "",
     ]
     mock_client = _make_stream_mock(sse_lines)
 
@@ -95,6 +111,35 @@ async def test_chat_stream_emits_peer_status_for_workout():
     assert "sleep" in full_text.lower()
     assert "nutrition" in full_text.lower()
     assert "Grouped analysis." in full_text
+
+
+@pytest.mark.asyncio
+async def test_chat_stream_surfaces_agent_failure():
+    """Failed agent state surfaces error text to the user instead of silent empty response."""
+    task_id = "fail-task"
+    sse_lines = [
+        "event: task-status-update",
+        f'data: {json.dumps({"id": task_id, "status": {"state": "working", "timestamp": ""}})}',
+        "",
+        "event: task-artifact-update",
+        f'data: {json.dumps({"id": task_id, "status": {"state": "failed", "timestamp": ""}, "artifacts": [{"name": "error", "parts": [{"type": "text", "text": "Claude unavailable"}]}]})}',
+        "",
+    ]
+    mock_client = _make_stream_mock(sse_lines)
+
+    with patch("orchestrator.app.main.get_agent_url", return_value="http://agent-sleep:8001"):
+        with patch("orchestrator.app.main.classify_intent", return_value="sleep"):
+            with patch("orchestrator.app.main._build_peer_agents", return_value={}):
+                with patch("httpx.AsyncClient", return_value=mock_client):
+                    from orchestrator.app.main import app
+                    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                        resp = await client.post("/chat/stream", json={
+                            "messages": [{"role": "user", "content": "How was my sleep?"}],
+                        })
+
+    events = parse_sse(resp.text)
+    full_text = "".join(e.get("delta", "") for e in events if e.get("type") == "TextMessageContent")
+    assert "Claude unavailable" in full_text
 
 
 @pytest.mark.asyncio

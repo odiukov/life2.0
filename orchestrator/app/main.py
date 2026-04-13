@@ -212,6 +212,9 @@ async def chat_stream(req: StreamChatRequest):
                                 yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": delta})
                             elif state == "completed":
                                 yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": text})
+                            elif state == "failed":
+                                yield _sse({"type": "TextMessageContent", "messageId": message_id,
+                                            "delta": f"Agent error: {text}"})
 
         except Exception as e:
             yield _sse({"type": "TextMessageContent", "messageId": message_id,
