@@ -41,3 +41,19 @@ async def test_handle_sleep_task_has_artifact_name():
 
     assert result.artifacts[0].name == "analysis"
     assert result.id != ""
+
+
+@pytest.mark.asyncio
+async def test_handle_sleep_task_exception_returns_failed():
+    with patch("agents.sleep.app.tasks.build_sleep_prompt", new_callable=AsyncMock) as mock_prompt:
+        with patch("agents.sleep.app.tasks.run_claude") as mock_claude:
+            with patch("agents.sleep.app.tasks.insert_task", new_callable=AsyncMock):
+                with patch("agents.sleep.app.tasks.upsert_memory", new_callable=AsyncMock):
+                    mock_prompt.return_value = "mocked"
+                    mock_claude.side_effect = RuntimeError("Claude unavailable")
+
+                    from agents.sleep.app.tasks import handle_task
+                    result = await handle_task("analyze_sleep", {})
+
+    assert result.status.state == "failed"
+    assert "Claude unavailable" in result.artifacts[0].parts[0].text
