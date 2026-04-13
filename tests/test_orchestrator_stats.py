@@ -30,17 +30,18 @@ async def test_stats_endpoint_shape():
 @pytest.mark.asyncio
 async def test_agents_endpoint_returns_full_info():
     """GET /agents returns name, url, online, capabilities, tasks_today."""
-    with patch("orchestrator.app.db.get_tasks_today", new=AsyncMock(return_value=3)):
-        with patch("orchestrator.app.registry._registry", {
-            "sleep": {
-                "url": "http://agent-sleep:8001",
-                "card": {"name": "sleep-agent", "capabilities": ["analyze_sleep"]},
-                "online": True,
-            }
-        }):
-            from orchestrator.app.main import app
-            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                resp = await client.get("/agents")
+    with patch("orchestrator.app.main.get_tasks_today", new=AsyncMock(return_value=3)):
+        with patch("orchestrator.app.main.check_agent_health", new=AsyncMock(return_value=True)):
+            with patch("orchestrator.app.registry._registry", {
+                "sleep": {
+                    "url": "http://agent-sleep:8001",
+                    "card": {"name": "sleep-agent", "capabilities": ["analyze_sleep"]},
+                    "online": True,
+                }
+            }):
+                from orchestrator.app.main import app
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    resp = await client.get("/agents")
     assert resp.status_code == 200
     agents = resp.json()["agents"]
     assert len(agents) == 1

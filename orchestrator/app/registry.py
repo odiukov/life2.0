@@ -29,10 +29,23 @@ async def discover_agents() -> None:
                         f"which is not in known intents {list(INTENT_KEYWORDS.keys())}. "
                         f"It may not be routable by the classifier."
                     )
-                _registry[agent_name] = {"url": url, "card": card}
+                _registry[agent_name] = {"url": url, "card": card, "online": True}
                 logger.info(f"Discovered agent: {agent_name} at {url}")
         except Exception as e:
             logger.warning(f"Could not discover agent at {url}: {e}")
+
+
+async def check_agent_health(agent_name: str) -> bool:
+    """Ping agent's /health endpoint. Returns True if healthy."""
+    entry = _registry.get(agent_name)
+    if not entry:
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{entry['url']}/health")
+            return resp.status_code == 200
+    except Exception:
+        return False
 
 
 def get_agent_url(agent_name: str) -> str | None:
@@ -42,3 +55,7 @@ def get_agent_url(agent_name: str) -> str | None:
 
 def list_agents() -> list[str]:
     return list(_registry.keys())
+
+
+def get_registry() -> dict[str, dict]:
+    return _registry
