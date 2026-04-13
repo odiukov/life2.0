@@ -5,12 +5,11 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import httpx
 import uuid
-import asyncio
 import json
 
 from .registry import discover_agents, get_agent_url, list_agents, check_agent_health, get_registry
 from .router import classify_intent
-from .db import get_stats, get_tasks_today
+from .db import get_stats, get_tasks_today, clear_activity
 
 
 AGENT_DEFAULT_TASK: dict[str, str] = {
@@ -53,16 +52,6 @@ class StreamChatRequest(BaseModel):
 def _sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
-
-def _split_chunks(text: str, size: int = 5) -> list[str]:
-    words = text.split()
-    chunks = []
-    for i in range(0, len(words), size):
-        chunk = " ".join(words[i:i + size])
-        if i + size < len(words):
-            chunk += " "
-        chunks.append(chunk)
-    return chunks if chunks else [text]
 
 
 @app.post("/chat")
@@ -111,14 +100,16 @@ async def chat(req: ChatRequest):
 
 @app.post("/chat/stream")
 async def chat_stream(req: StreamChatRequest):
-    user_messages = [m for m in req.messages if m.get("role") == "user"]
-    if not user_messages:
-        raise HTTPException(status_code=400, detail="No user message found")
-    message = user_messages[-1].get("content", "")
-
     thread_id = req.threadId or str(uuid.uuid4())
     run_id = req.runId or str(uuid.uuid4())
     message_id = str(uuid.uuid4())
+
+    user_messages = [m for m in req.messages if m.get("role") == "user"]
+
+    if not user_messages:
+        raise HTTPException(status_code=400, detail="No user message found")
+
+    message = user_messages[-1].get("content", "")
 
     agent_name = classify_intent(message)
 
@@ -170,9 +161,7 @@ async def chat_stream(req: StreamChatRequest):
         except Exception as e:
             output = f"Error contacting agent: {str(e)}"
 
-        for chunk in _split_chunks(output, size=5):
-            yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": chunk})
-            await asyncio.sleep(0.02)
+        yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": output})
 
         yield _sse({"type": "TextMessageEnd", "messageId": message_id})
         yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
@@ -190,6 +179,12 @@ async def chat_stream(req: StreamChatRequest):
 @app.get("/stats")
 async def stats():
     return await get_stats()
+
+
+@app.delete("/activity")
+async def delete_activity():
+    deleted = await clear_activity()
+    return {"deleted": deleted}
 
 
 @app.get("/agents")

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StatsResponse, ActivityItem, AgentStats } from "../types";
 
 const AGENT_CONFIG = {
@@ -23,38 +24,56 @@ function StatCard({ agentKey, stats }: { agentKey: AgentKey; stats: AgentStats }
   );
 }
 
+const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"]; // 0=Sun … 6=Sat
+
 function BarChart({ agentKey, stats }: { agentKey: AgentKey; stats: AgentStats }) {
   const cfg = AGENT_CONFIG[agentKey];
-  const maxVal = Math.max(1, stats.tasks_week);
-  const bars = Array.from({ length: 7 }, (_, i) => {
-    const val = i === 6 ? Math.ceil(stats.tasks_week / 7) : Math.floor(stats.tasks_week / 7);
-    return Math.min(1, val / maxVal);
+  const daily = stats.daily ?? [];
+  const maxVal = Math.max(1, ...daily);
+
+  // Labels: last 7 days ending today
+  const today = new Date();
+  const dayLabels = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (6 - i));
+    return DAY_LETTERS[d.getDay()];
   });
-  const days = ["M", "T", "W", "T", "F", "S", "S"];
+
   return (
     <div>
-      <div style={{ color: cfg.color, fontSize: 9, marginBottom: 4 }}>{cfg.emoji} {cfg.label} (tasks/day est.)</div>
+      <div style={{ color: cfg.color, fontSize: 9, marginBottom: 4 }}>{cfg.emoji} {cfg.label} (tasks/day)</div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 32 }}>
-        {bars.map((h, i) => (
+        {daily.map((val, i) => (
           <div
             key={i}
-            style={{ background: cfg.color, flex: 1, height: `${Math.max(8, h * 100)}%`, borderRadius: "2px 2px 0 0", opacity: 0.8 }}
+            style={{ background: cfg.color, flex: 1, height: `${Math.max(8, (val / maxVal) * 100)}%`, borderRadius: "2px 2px 0 0", opacity: 0.8 }}
           />
         ))}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", color: "#444", fontSize: 8, marginTop: 2 }}>
-        {days.map((d, i) => <span key={i}>{d}</span>)}
+        {dayLabels.map((d, i) => <span key={i}>{d}</span>)}
       </div>
     </div>
   );
 }
 
 function ActivityFeed({ items }: { items: ActivityItem[] }) {
+  const [hidden, setHidden] = useState(false);
+
+  const visible = hidden ? [] : items;
+
   return (
     <div>
-      <div style={{ color: "#555", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Recent activity</div>
-      {items.length === 0 && <div style={{ color: "#444", fontSize: 10 }}>No activity yet</div>}
-      {items.map((item, i) => {
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <div style={{ color: "#555", fontSize: 9, textTransform: "uppercase", letterSpacing: 1 }}>Recent activity</div>
+        {items.length > 0 && !hidden && (
+          <button onClick={() => setHidden(true)} style={{ background: "none", border: "none", color: "#444", fontSize: 9, cursor: "pointer", padding: 0, fontFamily: "monospace" }}>
+            clear
+          </button>
+        )}
+      </div>
+      {visible.length === 0 && <div style={{ color: "#444", fontSize: 10 }}>No activity yet</div>}
+      {visible.map((item, i) => {
         const cfg = AGENT_CONFIG[item.agent as AgentKey] ?? AGENT_CONFIG.sleep;
         const ts = new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         const date = new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric" });

@@ -10,3 +10,5 @@ build/
 .DS_Store
 .worktrees/
 node_modules/
+.superpowers
+docs/superpowers

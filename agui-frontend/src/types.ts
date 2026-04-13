@@ -2,6 +2,7 @@ export interface AgentStats {
   tasks_week: number;
   tasks_prev_week: number;
   delta: number;
+  daily: number[];
 }
 
 export interface ActivityItem {

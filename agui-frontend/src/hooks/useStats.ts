@@ -5,12 +5,15 @@ interface UseStatsResult {
   data: StatsResponse | null;
   error: string | null;
   loading: boolean;
+  refresh: () => void;
 }
 
 export function useStats(intervalMs = 60_000): UseStatsResult {
   const [data, setData] = useState<StatsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,7 +40,9 @@ export function useStats(intervalMs = 60_000): UseStatsResult {
       cancelled = true;
       clearInterval(id);
     };
-  }, [intervalMs]);
+  }, [intervalMs, tick]);
 
-  return { data, error, loading };
+  const refresh = () => setTick(t => t + 1);
+
+  return { data, error, loading, refresh };
 }

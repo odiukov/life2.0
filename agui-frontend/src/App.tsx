@@ -1,8 +1,6 @@
-import { CopilotKit } from "@copilotkit/react-core";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import AgentsPage from "./pages/AgentsPage";
-import "@copilotkit/react-ui/styles.css";
 
 const NAV_STYLE: React.CSSProperties = {
   display: "flex",
@@ -28,30 +26,28 @@ const ACTIVE_STYLE: React.CSSProperties = {
 
 export default function App() {
   return (
-    <CopilotKit runtimeUrl="/chat/stream">
-      <BrowserRouter>
-        <div style={{ background: "#0d0d1a", minHeight: "100vh", color: "#e0e0e0" }}>
-          <nav style={NAV_STYLE}>
-            <NavLink
-              to="/"
-              end
-              style={({ isActive }) => (isActive ? ACTIVE_STYLE : LINK_STYLE)}
-            >
-              Dashboard
-            </NavLink>
-            <NavLink
-              to="/agents"
-              style={({ isActive }) => (isActive ? ACTIVE_STYLE : LINK_STYLE)}
-            >
-              Agents
-            </NavLink>
-          </nav>
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/agents" element={<AgentsPage />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
-    </CopilotKit>
+    <BrowserRouter>
+      <div style={{ background: "#0d0d1a", minHeight: "100vh", color: "#e0e0e0" }}>
+        <nav style={NAV_STYLE}>
+          <NavLink
+            to="/"
+            end
+            style={({ isActive }) => (isActive ? ACTIVE_STYLE : LINK_STYLE)}
+          >
+            Dashboard
+          </NavLink>
+          <NavLink
+            to="/agents"
+            style={({ isActive }) => (isActive ? ACTIVE_STYLE : LINK_STYLE)}
+          >
+            Agents
+          </NavLink>
+        </nav>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/agents" element={<AgentsPage />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }
