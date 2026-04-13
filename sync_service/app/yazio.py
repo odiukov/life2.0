@@ -26,7 +26,10 @@ def _fetch_sync(days: int) -> dict:
             json={"email": email, "password": password, "grant_type": "password"},
         )
         auth_resp.raise_for_status()
-        token = auth_resp.json()["access_token"]
+        data = auth_resp.json()
+        token = data.get("access_token")
+        if not token:
+            raise ValueError(f"Yazio auth response missing access_token: {data}")
         headers = {"Authorization": f"Bearer {token}"}
 
         dates = _get_dates(days)
