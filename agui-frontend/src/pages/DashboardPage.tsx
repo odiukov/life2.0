@@ -1,3 +1,13 @@
+import { DashboardPanel } from "../components/DashboardPanel";
+import { ChatPanel } from "../components/ChatPanel";
+import { useStats } from "../hooks/useStats";
+
 export default function DashboardPage() {
-  return <div style={{ color: "#e0e0e0", padding: 16, fontFamily: "monospace" }}>Dashboard (coming soon)</div>;
+  const { data } = useStats();
+  return (
+    <div style={{ display: "flex", height: "calc(100vh - 41px)", overflow: "hidden" }}>
+      <DashboardPanel stats={data} />
+      <ChatPanel />
+    </div>
+  );
 }
