@@ -28,3 +28,6 @@ CREATE TABLE IF NOT EXISTS tasks (
 -- Default user (single-user system for now)
 INSERT INTO users (name, timezone) VALUES ('me', 'Europe/Kyiv')
 ON CONFLICT DO NOTHING;
+
+CREATE UNIQUE INDEX IF NOT EXISTS health_logs_dedup_idx
+  ON health_logs (source, type, recorded_at);
