@@ -1,0 +1,11 @@
+:root {
+  --copilot-kit-primary-color: #4a9eff;
+  --copilot-kit-background-color: #0d0d1a;
+  --copilot-kit-secondary-color: #13131f;
+  --copilot-kit-font-family: monospace;
+}
+
+body {
+  margin: 0;
+  background: #0d0d1a;
+}
