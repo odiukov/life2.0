@@ -142,6 +142,16 @@ services:
         condition: service_started
     restart: unless-stopped
 
+  agui-frontend:
+    build:
+      context: ./agui-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      orchestrator:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   qdrant_data:
