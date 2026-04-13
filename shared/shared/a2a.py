@@ -1,14 +1,16 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Any, Literal
 from datetime import datetime, timezone
+
+_TaskState = Literal["submitted", "working", "completed", "failed"]
 
 
 class TaskStatus(BaseModel):
-    state: Literal["submitted", "working", "completed", "failed"]
+    state: _TaskState
     timestamp: str = ""
 
     @classmethod
-    def now(cls, state: str) -> "TaskStatus":
+    def now(cls, state: _TaskState) -> "TaskStatus":
         return cls(state=state, timestamp=datetime.now(timezone.utc).isoformat())
 
 
@@ -31,4 +33,4 @@ class A2ATask(BaseModel):
 class A2ATaskRequest(BaseModel):
     id: str = ""
     task: str
-    params: dict = {}
+    params: dict[str, Any] = {}
