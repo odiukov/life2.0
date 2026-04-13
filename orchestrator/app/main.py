@@ -189,6 +189,7 @@ async def chat_stream(req: StreamChatRequest):
                         "params": {"message": message, "peer_agents": _build_peer_agents(agent_name)},
                     },
                 ) as resp:
+                    resp.raise_for_status()
                     async for line in resp.aiter_lines():
                         if not line.startswith("data: "):
                             continue
