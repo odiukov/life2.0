@@ -2,15 +2,35 @@ from shared.db import fetch_recent_logs
 from shared.vector import search_memories
 
 
+def _format_log(r: dict) -> str:
+    """Format a single health_log row for the prompt."""
+    date = r["recorded_at"].date()
+    log_type = r["type"]
+    data = r.get("data", {})
+    source = r.get("source", "manual")
+
+    if source == "yazio" and log_type == "meal":
+        meal_type = data.get("meal_type", "")
+        totals = data.get("totals", {})
+        items = data.get("items", [])
+        items_str = ", ".join(
+            f"{item['name']} {item['amount_g']}g" for item in items
+        )
+        kcal = round(totals.get("kcal", 0))
+        protein = round(totals.get("protein_g", 0), 1)
+        carbs = round(totals.get("carbs_g", 0), 1)
+        fat = round(totals.get("fat_g", 0), 1)
+        return f"- {date} | {meal_type} | {items_str} → {kcal} kcal | P:{protein}g C:{carbs}g F:{fat}g"
+
+    return f"- {date} | {log_type} | {data}"
+
+
 async def build_nutrition_prompt(task: str, params: dict) -> str:
     nutrition_logs = await fetch_recent_logs("nutrition", limit=10)
     workout_logs = await fetch_recent_logs("workout", limit=3)
     memories = await search_memories("nutrition_memories", task, limit=5)
 
-    nutrition_text = "\n".join(
-        f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"
-        for r in nutrition_logs
-    ) or "No recent nutrition logs."
+    nutrition_text = "\n".join(_format_log(r) for r in nutrition_logs) or "No recent nutrition logs."
 
     workout_text = "\n".join(
         f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"

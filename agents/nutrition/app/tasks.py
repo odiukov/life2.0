@@ -40,6 +40,9 @@ async def handle_task(task: str, params: dict) -> A2ATask:
 
     try:
         if task in _SYNC_TASKS:
+            # Sync fires before prompt build so fresh data is available.
+            # On Claude failure (outer except), sync is skipped — next request
+            # will re-trigger it, so stale data for one cycle is acceptable.
             await _trigger_yazio_sync()
 
         prompt = await build_nutrition_prompt(task, params)
