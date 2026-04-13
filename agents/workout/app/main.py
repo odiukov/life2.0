@@ -1,4 +1,5 @@
 # agents/workout/app/main.py
+import asyncio
 import json
 import logging
 import uuid
@@ -15,6 +16,14 @@ from .tasks import fetch_peer_artifacts, handle_task
 app = FastAPI(title="Workout Agent")
 
 logger = logging.getLogger(__name__)
+
+_bg_tasks: set[asyncio.Task] = set()
+
+
+def _fire_and_forget(coro) -> None:
+    task = asyncio.create_task(coro)
+    _bg_tasks.add(task)
+    task.add_done_callback(_bg_tasks.discard)
 
 
 def _sse(event: dict, event_type: str = "message") -> str:
@@ -43,7 +52,7 @@ async def create_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
 
 
 @app.post("/tasks/stream")
-async def stream_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
+async def stream_task(req: A2ATaskRequest):
     task_id = req.id or str(uuid.uuid4())
     peer_agents = req.params.get("peer_agents", {})
 
@@ -67,6 +76,9 @@ async def stream_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
         # Pass pre-fetched artifacts to avoid double peer calls
         result = await handle_task(req.task, req.params, peer_artifacts=peer_artifacts)
         result.id = task_id  # consistent ID
+        webhook_url = req.params.get("webhook_url")
+        if webhook_url:
+            _fire_and_forget(_send_webhook(webhook_url, result.model_dump()))
         yield _sse(result.model_dump(), "task-artifact-update")
 
     return StreamingResponse(
