@@ -1,6 +1,5 @@
 import asyncpg
 import os
-from typing import Any
 
 _pool: asyncpg.Pool | None = None
 

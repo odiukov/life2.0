@@ -43,7 +43,7 @@ async def upsert_memory(collection: str, id_: str, text: str, metadata: dict) ->
     await client.upsert(
         collection_name=collection,
         points=[PointStruct(
-            id=abs(hash(id_)) % (2**63),
+            id=int(hashlib.sha256(id_.encode()).hexdigest()[:16], 16) % (2**63),
             vector=_text_to_vector(text),
             payload={"text": text, **metadata},
         )],
