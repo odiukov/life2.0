@@ -1,7 +1,10 @@
 # agents/nutrition/app/tasks.py
 import asyncio
 import json
+import os
 import uuid
+
+import httpx
 
 from shared.a2a import A2ATask, Artifact, TaskStatus, TextPart
 from shared.claude_runner import run_claude
@@ -10,6 +13,19 @@ from shared.vector import upsert_memory
 from .prompt import build_nutrition_prompt
 
 SUPPORTED_TASKS = {"log_meal", "analyze_nutrition", "get_recommendations"}
+_SYNC_TASKS = {"analyze_nutrition", "get_recommendations"}
+
+
+async def _trigger_yazio_sync() -> None:
+    """Fire-and-forget call to sync-service. Failure is logged, never raised."""
+    url = os.environ.get("SYNC_SERVICE_URL", "")
+    if not url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(f"{url}/sync/nutrition")
+    except Exception:
+        pass  # stale data is acceptable; sync failure must not block analysis
 
 
 async def handle_task(task: str, params: dict) -> A2ATask:
@@ -23,6 +39,9 @@ async def handle_task(task: str, params: dict) -> A2ATask:
         )
 
     try:
+        if task in _SYNC_TASKS:
+            await _trigger_yazio_sync()
+
         prompt = await build_nutrition_prompt(task, params)
         output = await asyncio.to_thread(run_claude, prompt)
         await insert_task("nutrition", task, params, output)
