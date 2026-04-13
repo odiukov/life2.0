@@ -29,7 +29,9 @@ services:
       retries: 5
 
   agent-sleep:
-    build: ./agents/sleep
+    build:
+      context: .
+      dockerfile: agents/sleep/Dockerfile
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}

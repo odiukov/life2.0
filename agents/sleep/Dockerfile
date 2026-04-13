@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install shared library
-COPY ../../shared /shared
+COPY shared/ /shared
 RUN pip install --no-cache-dir -e /shared
 
 COPY app/ ./app/
