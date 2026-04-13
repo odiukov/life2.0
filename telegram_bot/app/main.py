@@ -16,7 +16,12 @@ async def _reply(update: Update, message: str) -> None:
     """Send message to orchestrator and reply with the result."""
     thinking = await update.message.reply_text("...")
     output = await ask_orchestrator(message)
-    await thinking.edit_text(output)
+    if len(output) > 4096:
+        output = output[:4090] + "\n[truncated]"
+    try:
+        await thinking.edit_text(output)
+    except Exception:
+        await update.message.reply_text(output)
 
 
 async def cmd_sleep(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
