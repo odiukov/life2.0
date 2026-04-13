@@ -10,6 +10,7 @@ BASE_URL = "https://api2.yazio.com"
 
 def _get_dates(days: int) -> list[str]:
     """Return ISO date strings for the last N days, ending yesterday."""
+    # Anchor at yesterday: daily cron fires at 06:00 UTC to pull the previous day's diary.
     yesterday = date.today() - timedelta(days=1)
     return [(yesterday - timedelta(days=i)).isoformat() for i in range(days)]
 

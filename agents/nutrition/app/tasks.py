@@ -1,7 +1,10 @@
 # agents/nutrition/app/tasks.py
 import asyncio
 import json
+import os
 import uuid
+
+import requests
 
 from shared.a2a import A2ATask, Artifact, TaskStatus, TextPart
 from shared.claude_runner import run_claude
@@ -10,6 +13,19 @@ from shared.vector import upsert_memory
 from .prompt import build_nutrition_prompt
 
 SUPPORTED_TASKS = {"log_meal", "analyze_nutrition", "get_recommendations"}
+_SYNC_TASKS = {"analyze_nutrition", "get_recommendations"}
+
+
+def _trigger_yazio_sync() -> None:
+    """Fire-and-forget sync trigger for Yazio nutrition data."""
+    sync_url = os.getenv("SYNC_SERVICE_URL", "").strip()
+    if not sync_url:
+        return
+
+    try:
+        requests.post(f"{sync_url}/sync/nutrition", timeout=5)
+    except Exception:
+        pass
 
 
 async def handle_task(task: str, params: dict) -> A2ATask:
@@ -32,6 +48,12 @@ async def handle_task(task: str, params: dict) -> A2ATask:
             text=output,
             metadata={"task": task, "params": json.dumps(params)},
         )
+
+        if task in _SYNC_TASKS:
+            # Sync fires before prompt build so fresh data is available.
+            # On Claude failure (outer except), sync is skipped — next request
+            # will re-trigger it, so stale data for one cycle is acceptable.
+            await asyncio.to_thread(_trigger_yazio_sync)
 
         return A2ATask(
             id=task_id,
