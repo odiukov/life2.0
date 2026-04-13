@@ -53,10 +53,10 @@ async def upsert_memory(collection: str, id_: str, text: str, metadata: dict) ->
 async def search_memories(collection: str, query: str, limit: int = 5) -> list[dict]:
     client = _get_client()
     await ensure_collection(collection)
-    results = await client.search(
+    results = await client.query_points(
         collection_name=collection,
-        query_vector=_text_to_vector(query),
+        query=_text_to_vector(query),
         limit=limit,
         with_payload=True,
     )
-    return [r.payload for r in results]
+    return [r.payload for r in results.points]

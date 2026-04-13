@@ -23,7 +23,7 @@ services:
     ports:
       - "6333:6333"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:6333/healthz || exit 1"]
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6333' 2>/dev/null && echo ok || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,12 +32,16 @@ services:
     build:
       context: .
       dockerfile: agents/sleep/Dockerfile
+    env_file:
+      - .env
+      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
     volumes:
       - ~/.claude:/root/.claude:ro
+      - ~/.claude.json:/root/.claude.json:ro
     ports:
       - "8001:8001"
     depends_on:
