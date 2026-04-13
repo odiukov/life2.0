@@ -199,7 +199,7 @@ async def agents():
             "name": name,
             "url": entry["url"],
             "online": online,
-            "capabilities": card.get("capabilities", []),
+            "capabilities": card.get("capabilities", {}),
             "description": card.get("description", ""),
             "tasks_today": tasks_today,
         })

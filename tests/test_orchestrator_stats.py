@@ -75,7 +75,7 @@ async def test_agents_endpoint_returns_full_info():
             with patch("orchestrator.app.registry._registry", {
                 "sleep": {
                     "url": "http://agent-sleep:8001",
-                    "card": {"name": "sleep-agent", "capabilities": ["analyze_sleep"]},
+                    "card": {"name": "sleep-agent", "capabilities": {"streaming": True, "pushNotifications": True}},
                     "online": True,
                 }
             }):
