@@ -2,6 +2,8 @@ import httpx
 import os
 import logging
 
+from .router import INTENT_KEYWORDS
+
 logger = logging.getLogger(__name__)
 
 _registry: dict[str, dict] = {}
@@ -21,6 +23,12 @@ async def discover_agents() -> None:
                 resp.raise_for_status()
                 card = resp.json()
                 agent_name = card["name"].replace("-agent", "")
+                if agent_name not in INTENT_KEYWORDS:
+                    logger.warning(
+                        f"Agent '{card['name']}' produces key '{agent_name}' "
+                        f"which is not in known intents {list(INTENT_KEYWORDS.keys())}. "
+                        f"It may not be routable by the classifier."
+                    )
                 _registry[agent_name] = {"url": url, "card": card}
                 logger.info(f"Discovered agent: {agent_name} at {url}")
         except Exception as e:

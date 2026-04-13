@@ -7,6 +7,13 @@ from .registry import discover_agents, get_agent_url, list_agents
 from .router import classify_intent
 
 
+AGENT_DEFAULT_TASK: dict[str, str] = {
+    "sleep": "analyze_sleep",
+    "workout": "analyze_workout",
+    "nutrition": "analyze_nutrition",
+}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await discover_agents()
@@ -33,12 +40,23 @@ async def chat(req: ChatRequest):
         )
 
     async with httpx.AsyncClient(timeout=180.0) as client:
-        resp = await client.post(
-            f"{agent_url}/tasks",
-            json={"task": "analyze_sleep", "params": {"message": req.message}},
-        )
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = await client.post(
+                f"{agent_url}/tasks",
+                json={"task": AGENT_DEFAULT_TASK.get(agent_name, f"analyze_{agent_name}"), "params": {"message": req.message}},
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Agent '{agent_name}' error: {e.response.text[:500]}",
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Could not reach agent '{agent_name}': {str(e)}",
+            )
 
 
 @app.get("/agents")
