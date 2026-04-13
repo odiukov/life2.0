@@ -127,6 +127,21 @@ services:
       agent-nutrition:
         condition: service_healthy
 
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: telegram_bot/Dockerfile
+    env_file:
+      - .env
+      - .env.auth
+    environment:
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      orchestrator:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   qdrant_data:
