@@ -1,88 +1,35 @@
-# agents/sleep/app/main.py
-import json
+"""Sleep agent HTTP entrypoint.
+
+Mounts the A2A SDK Starlette application at the root of a FastAPI app that
+keeps /health for compatibility with docker-compose healthchecks.
+"""
 import logging
-import uuid
-from datetime import datetime, timezone
 
-import httpx
-from fastapi import BackgroundTasks, FastAPI
-from fastapi.responses import StreamingResponse
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from fastapi import FastAPI
 
-from shared.a2a import A2ATaskRequest
-from shared.peer import fetch_peer_artifacts
-from .agent_card import AGENT_CARD
-from .tasks import handle_task, _decide_peer_consultation, _PEER_TASK_NAMES
+from shared.a2a_store import PostgresTaskStore
 
-app = FastAPI(title="Sleep Agent")
+from .executor import SleepAgentExecutor
+from .skills import build_agent_card
 
 logger = logging.getLogger(__name__)
 
-
-async def _send_webhook(url: str, payload: dict) -> None:
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post(url, json=payload)
-    except Exception as e:
-        logger.warning("Webhook delivery failed to %s: %s", url, e)
-
-
-def _sse(event: dict, event_type: str = "message") -> str:
-    return f"event: {event_type}\ndata: {json.dumps(event)}\n\n"
-
-
-@app.get("/.well-known/agent.json")
-async def agent_card():
-    return AGENT_CARD
-
-
-@app.post("/tasks")
-async def create_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
-    result = await handle_task(req.task, req.params)
-    webhook_url = req.params.get("webhook_url")
-    if webhook_url:
-        background_tasks.add_task(_send_webhook, webhook_url, result.model_dump())
-    return result
-
-
-@app.post("/tasks/stream")
-async def stream_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
-    task_id = req.id or str(uuid.uuid4())
-    peer_agents = req.params.get("peer_agents", {})
-
-    async def generate():
-        ts = lambda: datetime.now(timezone.utc).isoformat()
-        yield _sse({"id": task_id, "status": {"state": "submitted", "timestamp": ts()}}, "task-status-update")
-        yield _sse({"id": task_id, "status": {"state": "working", "timestamp": ts()}}, "task-status-update")
-
-        # Decide which peers are actually needed before fetching
-        message = req.params.get("message", "")
-        needed = _decide_peer_consultation(req.task, message)
-        peer_artifacts = await fetch_peer_artifacts(peer_agents, _PEER_TASK_NAMES, needed=needed)
-
-        for name, text in peer_artifacts.items():
-            yield _sse(
-                {
-                    "id": task_id,
-                    "status": {"state": "working", "timestamp": ts()},
-                    "artifacts": [{"name": f"peer_{name}", "parts": [{"type": "text", "text": text}]}],
-                },
-                "task-status-update",
-            )
-
-        result = await handle_task(req.task, req.params, peer_artifacts=peer_artifacts)
-        result.id = task_id
-        webhook_url = req.params.get("webhook_url")
-        if webhook_url:
-            background_tasks.add_task(_send_webhook, webhook_url, result.model_dump())
-        yield _sse(result.model_dump(), "task-artifact-update")
-
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+app = FastAPI(title="Sleep Agent")
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+def _build_a2a_app() -> A2AStarletteApplication:
+    handler = DefaultRequestHandler(
+        agent_executor=SleepAgentExecutor(),
+        task_store=PostgresTaskStore(agent="sleep"),
+    )
+    return A2AStarletteApplication(agent_card=build_agent_card(), http_handler=handler)
+
+
+app.mount("/", _build_a2a_app().build())

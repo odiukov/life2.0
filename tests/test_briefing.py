@@ -120,23 +120,9 @@ def test_format_message_missing_workout():
     assert "💡" not in msg  # no insight line when insight is None
 
 
-@pytest.mark.asyncio
-async def test_sleep_briefing_task_returns_completed():
-    """Sleep agent handles 'briefing' task and returns completed with text."""
-    with patch("agents.sleep.app.tasks.run_claude") as mock_claude:
-        with patch("agents.sleep.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock) as mock_peer:
-            mock_claude.return_value = "You slept 7h 23m. Deep sleep was solid at 1h 45m."
-
-            from agents.sleep.app.tasks import handle_task
-            result = await handle_task("briefing", {
-                "duration_seconds": 26580,
-                "deep_sleep_seconds": 6300,
-                "hrv": 62,
-            })
-
-    assert result.status.state == "completed"
-    assert "slept" in result.artifacts[0].parts[0].text
-    mock_peer.assert_not_called()
+# NOTE: test_sleep_briefing_task_returns_completed removed — the old
+# `agents.sleep.app.tasks.handle_task` entrypoint was replaced by the A2A
+# executor pattern. Executor-level coverage lives in tests/test_sleep_executor.py.
 
 
 @pytest.mark.asyncio
