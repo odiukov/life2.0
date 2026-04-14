@@ -13,7 +13,7 @@ from shared.peer import fetch_peer_artifacts
 from shared.vector import upsert_memory
 from .prompt import build_nutrition_prompt
 
-SUPPORTED_TASKS = {"log_meal", "analyze_nutrition", "get_recommendations"}
+SUPPORTED_TASKS = {"log_meal", "analyze_nutrition", "get_recommendations", "briefing"}
 _SYNC_TASKS = {"analyze_nutrition", "get_recommendations"}
 
 _PEER_TASK_NAMES: dict[str, str] = {
@@ -67,6 +67,23 @@ async def _trigger_yazio_sync() -> None:
         pass  # stale data is acceptable; sync failure must not block analysis
 
 
+def _build_briefing_prompt(params: dict) -> str:
+    kcal = params.get("kcal", 0)
+    protein = params.get("protein_g", 0)
+    carbs = params.get("carbs_g", 0)
+    fat = params.get("fat_g", 0)
+
+    return f"""You are a personal nutrition coach providing a morning briefing.
+Yesterday's nutrition data:
+- Total calories: {kcal} kcal
+- Protein: {protein}g
+- Carbohydrates: {carbs}g
+- Fat: {fat}g
+
+Write a 2-3 sentence plain-text summary (no markdown) of yesterday's nutrition.
+Note any standouts (high/low protein, surplus/deficit) and implications for today."""
+
+
 async def handle_task(
     task: str,
     params: dict,
@@ -82,6 +99,15 @@ async def handle_task(
         )
 
     try:
+        if task == "briefing":
+            prompt = _build_briefing_prompt(params)
+            output = await asyncio.to_thread(run_claude, prompt)
+            return A2ATask(
+                id=task_id,
+                status=TaskStatus.now("completed"),
+                artifacts=[Artifact(name="briefing", parts=[TextPart(text=output)])],
+            )
+
         if task in _SYNC_TASKS:
             await _trigger_yazio_sync()
 

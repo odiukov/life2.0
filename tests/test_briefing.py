@@ -123,7 +123,7 @@ def test_format_message_missing_workout():
 async def test_sleep_briefing_task_returns_completed():
     """Sleep agent handles 'briefing' task and returns completed with text."""
     with patch("agents.sleep.app.tasks.run_claude") as mock_claude:
-        with patch("agents.sleep.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
+        with patch("agents.sleep.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock) as mock_peer:
             mock_claude.return_value = "You slept 7h 23m. Deep sleep was solid at 1h 45m."
 
             from agents.sleep.app.tasks import handle_task
@@ -135,13 +135,14 @@ async def test_sleep_briefing_task_returns_completed():
 
     assert result.status.state == "completed"
     assert "slept" in result.artifacts[0].parts[0].text
+    mock_peer.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_workout_briefing_task_returns_completed():
     """Workout agent handles 'briefing' task and returns completed with text."""
     with patch("agents.workout.app.tasks.run_claude") as mock_claude:
-        with patch("agents.workout.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
+        with patch("agents.workout.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock) as mock_peer:
             mock_claude.return_value = "You ran 14.2 km yesterday burning 1,240 kcal."
 
             from agents.workout.app.tasks import handle_task
@@ -155,6 +156,7 @@ async def test_workout_briefing_task_returns_completed():
 
     assert result.status.state == "completed"
     assert result.artifacts[0].parts[0].text != ""
+    mock_peer.assert_not_called()
 
 
 @pytest.mark.asyncio
