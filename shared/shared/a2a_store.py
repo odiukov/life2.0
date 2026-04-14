@@ -46,7 +46,7 @@ class PostgresTaskStore(TaskStore):
     def __init__(self, agent: str):
         self.agent = agent
 
-    async def save(self, task: Task) -> None:
+    async def save(self, task: Task, context=None) -> None:
         pool = await get_pool()
         artifacts = [_artifact_to_dict(a) for a in (task.artifacts or [])]
         history = [m.model_dump(mode="json") for m in (task.history or [])]
@@ -73,7 +73,7 @@ class PostgresTaskStore(TaskStore):
             history,
         )
 
-    async def get(self, task_id: str) -> Task | None:
+    async def get(self, task_id: str, context=None) -> Task | None:
         pool = await get_pool()
         row = await pool.fetchrow(
             "SELECT task_id, context_id, state, skill_id, artifacts, history "
@@ -94,7 +94,7 @@ class PostgresTaskStore(TaskStore):
             metadata=metadata,
         )
 
-    async def delete(self, task_id: str) -> None:
+    async def delete(self, task_id: str, context=None) -> None:
         pool = await get_pool()
         await pool.execute(
             "DELETE FROM tasks WHERE task_id = $1 AND agent = $2",
