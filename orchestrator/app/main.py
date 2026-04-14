@@ -1,29 +1,21 @@
-# orchestrator/app/main.py
+"""Orchestrator HTTP entrypoint."""
+from __future__ import annotations
+
 import json
 import uuid
 from contextlib import asynccontextmanager
 
-import httpx
+from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
-
-from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
-from .health_agent import create_health_agent
 
 from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
-from .registry import check_agent_health, discover_agents, get_agent_url, get_registry, list_agents
-from .router import classify_intent
-
-AGENT_DEFAULT_TASK: dict[str, str] = {
-    "sleep": "analyze_sleep",
-    "workout": "analyze_workout",
-    "nutrition": "analyze_nutrition",
-}
-
-_SYNC_SERVICE_URL = "http://sync-service:8080/sync"
+from .health_agent import create_health_agent
+from .registry import check_agent_health, discover_agents, get_registry
 
 
 @asynccontextmanager
@@ -33,7 +25,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -41,26 +32,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# ---------------------------------------------------------------------------
-# AG-UI endpoint — consumed by the Node copilotkit-runtime container which
-# bridges CopilotKit v1.8 frontend → AG-UI → LangGraph.
-# ---------------------------------------------------------------------------
+_graph = create_health_agent()
 
 add_langgraph_fastapi_endpoint(
     app,
     LangGraphAgent(
         name="default",
-        description="Personal health assistant with access to sleep, workout, and nutrition data",
-        graph=create_health_agent(),
+        description="Personal health assistant with access to sleep, workout, and nutrition agents",
+        graph=_graph,
     ),
     path="/agui",
 )
-
-
-class ChatRequest(BaseModel):
-    message: str
-    params: dict = {}
 
 
 class StreamChatRequest(BaseModel):
@@ -76,80 +58,6 @@ def _sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
-def _build_peer_agents(primary: str) -> dict:
-    """Return all registry agents except primary, formatted for A2A peer_agents param."""
-    registry = get_registry()
-    return {
-        name: {"url": entry["url"], "card": entry.get("card", {})}
-        for name, entry in registry.items()
-        if name != primary
-    }
-
-
-def _artifact_text(data: dict) -> str:
-    """Extract text from first A2A artifact, fall back to legacy 'output' field."""
-    artifacts = data.get("artifacts", [])
-    if artifacts and artifacts[0].get("parts"):
-        return artifacts[0]["parts"][0].get("text", "")
-    return data.get("output", "")
-
-
-# Maps peer artifact name prefix to display label
-_PEER_LABELS: dict[str, str] = {
-    "sleep": "sleep-agent",
-    "nutrition": "nutrition-agent",
-    "workout": "workout-agent",
-}
-
-
-@app.post("/chat")
-async def chat(req: ChatRequest):
-    agent_name = classify_intent(req.message)
-
-    if agent_name == "sync":
-        try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post("http://sync-service:8080/sync")
-                resp.raise_for_status()
-                data = resp.json()
-                text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
-                if data.get("errors"):
-                    text += f" Errors: {'; '.join(data['errors'][:3])}"
-            return {"output": text}
-        except Exception as e:
-            raise HTTPException(status_code=503, detail=f"Sync service error: {str(e)}")
-
-    agent_url = get_agent_url(agent_name)
-    if not agent_url:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Agent '{agent_name}' is not available. Available: {list_agents()}",
-        )
-
-    async with httpx.AsyncClient(timeout=180.0) as client:
-        try:
-            resp = await client.post(
-                f"{agent_url}/tasks",
-                json={
-                    "id": str(uuid.uuid4()),
-                    "task": AGENT_DEFAULT_TASK.get(agent_name, f"analyze_{agent_name}"),
-                    "params": {"message": req.message, "peer_agents": _build_peer_agents(agent_name)},
-                },
-            )
-            resp.raise_for_status()
-            return {"output": _artifact_text(resp.json())}
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=e.response.status_code,
-                detail=f"Agent '{agent_name}' error: {e.response.text[:500]}",
-            )
-        except httpx.RequestError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Could not reach agent '{agent_name}': {str(e)}",
-            )
-
-
 @app.post("/chat/stream")
 async def chat_stream(req: StreamChatRequest):
     thread_id = req.threadId or str(uuid.uuid4())
@@ -159,88 +67,34 @@ async def chat_stream(req: StreamChatRequest):
     user_messages = [m for m in req.messages if m.get("role") == "user"]
     if not user_messages:
         raise HTTPException(status_code=400, detail="No user message found")
-
-    message = user_messages[-1].get("content", "")
-    agent_name = classify_intent(message)
-
-    if agent_name == "sync":
-        async def sync_stream():
-            yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
-            yield _sse({"type": "TextMessageStart", "messageId": message_id, "role": "assistant"})
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post("http://sync-service:8080/sync")
-                    resp.raise_for_status()
-                    data = resp.json()
-                    text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
-                    if data.get("errors"):
-                        text += f" Errors: {'; '.join(data['errors'][:3])}"
-            except Exception as e:
-                text = f"Sync failed: {str(e)}"
-            yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": text})
-            yield _sse({"type": "TextMessageEnd", "messageId": message_id})
-            yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
-
-        return StreamingResponse(
-            sync_stream(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-
-    agent_url = get_agent_url(agent_name)
+    text = user_messages[-1].get("content", "")
 
     async def event_stream():
         yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
         yield _sse({"type": "TextMessageStart", "messageId": message_id, "role": "assistant"})
-
-        if not agent_url:
-            yield _sse({"type": "TextMessageContent", "messageId": message_id,
-                        "delta": f"Agent '{agent_name}' is not available."})
-            yield _sse({"type": "TextMessageEnd", "messageId": message_id})
-            yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
-            return
-
         try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                async with client.stream(
-                    "POST",
-                    f"{agent_url}/tasks/stream",
-                    json={
-                        "id": str(uuid.uuid4()),
-                        "task": AGENT_DEFAULT_TASK.get(agent_name, f"analyze_{agent_name}"),
-                        "params": {"message": message, "peer_agents": _build_peer_agents(agent_name)},
-                    },
-                ) as resp:
-                    resp.raise_for_status()
-                    async for line in resp.aiter_lines():
-                        if not line.startswith("data: "):
-                            continue
-                        event = json.loads(line[6:])
-                        state = event.get("status", {}).get("state")
-                        artifacts = event.get("artifacts", [])
-
-                        for artifact in artifacts:
-                            name = artifact.get("name", "")
-                            parts = artifact.get("parts", [])
-                            text = parts[0].get("text", "") if parts else ""
-                            if not text:
-                                continue
-
-                            if name.startswith("peer_"):
-                                # Show live agent consultation status in chat
-                                peer_key = name[5:]  # strip "peer_"
-                                label = _PEER_LABELS.get(peer_key, peer_key)
-                                delta = f"\n\n*Консультирую {label}...*\n\n{text}"
-                                yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": delta})
-                            elif state == "completed":
-                                yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": text})
-                            elif state == "failed":
-                                yield _sse({"type": "TextMessageContent", "messageId": message_id,
-                                            "delta": f"Agent error: {text}"})
-
+            async for event in _graph.astream(
+                {"messages": [HumanMessage(content=text)]},
+                config={"configurable": {"thread_id": thread_id}},
+            ):
+                for _node, update in event.items():
+                    messages = update.get("messages") if isinstance(update, dict) else None
+                    if not messages:
+                        continue
+                    last = messages[-1]
+                    content = getattr(last, "content", "")
+                    if content:
+                        yield _sse({
+                            "type": "TextMessageContent",
+                            "messageId": message_id,
+                            "delta": content,
+                        })
         except Exception as e:
-            yield _sse({"type": "TextMessageContent", "messageId": message_id,
-                        "delta": f"Error contacting agent: {str(e)}"})
+            yield _sse({
+                "type": "TextMessageContent",
+                "messageId": message_id,
+                "delta": f"Error: {e}",
+            })
 
         yield _sse({"type": "TextMessageEnd", "messageId": message_id})
         yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
@@ -289,8 +143,7 @@ async def agents():
 
 @app.post("/briefing")
 async def briefing(debug: bool = False):
-    result = await run_briefing(get_registry(), use_today=debug)
-    return result
+    return await run_briefing(get_registry(), use_today=debug)
 
 
 @app.get("/health")
