@@ -1,4 +1,6 @@
+import json
 import os
+
 import httpx
 
 ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000")
@@ -6,20 +8,31 @@ SYNC_SERVICE_URL = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:8080"
 
 
 async def ask_orchestrator(message: str) -> str:
-    """POST message to orchestrator /chat, return the output text."""
+    """POST message to orchestrator /chat/stream, accumulate text deltas, return final string."""
+    parts: list[str] = []
     try:
         async with httpx.AsyncClient(timeout=180.0) as client:
-            resp = await client.post(
-                f"{ORCHESTRATOR_URL}/chat",
-                json={"message": message, "params": {}},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("output", str(data))
+            async with client.stream(
+                "POST",
+                f"{ORCHESTRATOR_URL}/chat/stream",
+                json={"messages": [{"role": "user", "content": message}]},
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    try:
+                        event = json.loads(line[6:])
+                    except json.JSONDecodeError:
+                        continue
+                    if event.get("type") == "TextMessageContent":
+                        parts.append(event.get("delta", ""))
     except httpx.RequestError as e:
         return f"Orchestrator unavailable: {e}"
     except httpx.HTTPStatusError as e:
         return f"Orchestrator error {e.response.status_code}: {e.response.text[:200]}"
+
+    return "".join(parts) or "(empty response)"
 
 
 async def sync_body_pdf(payload: dict) -> str:
