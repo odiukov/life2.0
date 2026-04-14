@@ -25,7 +25,7 @@ def _format_log(r: dict) -> str:
     return f"- {date} | {log_type} | {data}"
 
 
-async def build_nutrition_prompt(task: str, params: dict) -> str:
+async def build_nutrition_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
     nutrition_logs = await fetch_recent_logs("nutrition", limit=10)
     workout_logs = await fetch_recent_logs("workout", limit=3)
     memories = await search_memories("nutrition_memories", task, limit=5)
@@ -41,13 +41,24 @@ async def build_nutrition_prompt(task: str, params: dict) -> str:
         f"- {m.get('text', '')}" for m in memories
     ) or "No relevant memories."
 
-    return f"""You are a personal nutrition assistant. You have access to the user's meal history and recent workouts.
+    peer = peer_artifacts or {}
+    workout_peer_section = (
+        f"\n## Workout analysis (from workout-agent):\n{peer['workout']}"
+        if peer.get("workout") else ""
+    )
+    sleep_section = (
+        f"\n## Sleep context (from sleep-agent):\n{peer['sleep']}"
+        if peer.get("sleep") else ""
+    )
+
+    return f"""You are a personal nutrition assistant. You have access to the user's meal history and context from peer agents.
 
 ## Recent nutrition (last 10 meals):
 {nutrition_text}
 
 ## Recent workouts (last 3):
 {workout_text}
+{workout_peer_section}{sleep_section}
 
 ## Relevant memories:
 {memories_text}
@@ -59,4 +70,5 @@ Params: {params}
 Respond in the user's language. Be concise, specific, and actionable. Reference actual data when relevant.
 For log_meal: parse the free-text meal description from params['raw_text'], estimate КБЖУ (kcal, protein_g, carbs_g, fat_g), and confirm what was logged. If uncertain about macros, state your confidence level.
 For analyze_nutrition: identify trends in daily calories, protein intake, and meal timing relative to workouts.
-For get_recommendations: suggest nutrition adjustments based on recent workout intensity and current macro balance. Flag low protein on training days."""
+For get_recommendations: suggest nutrition adjustments based on recent workout intensity and current macro balance. Flag low protein on training days.
+If peer context sections are present, synthesize a grouped response covering Nutrition and relevant insights from the peer domains."""

@@ -9,8 +9,9 @@ from fastapi import BackgroundTasks, FastAPI
 from fastapi.responses import StreamingResponse
 
 from shared.a2a import A2ATaskRequest
+from shared.peer import fetch_peer_artifacts
 from .agent_card import AGENT_CARD
-from .tasks import handle_task
+from .tasks import handle_task, _decide_peer_consultation, _PEER_TASK_NAMES
 
 app = FastAPI(title="Sleep Agent")
 
@@ -46,13 +47,30 @@ async def create_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
 @app.post("/tasks/stream")
 async def stream_task(req: A2ATaskRequest, background_tasks: BackgroundTasks):
     task_id = req.id or str(uuid.uuid4())
+    peer_agents = req.params.get("peer_agents", {})
 
     async def generate():
         ts = lambda: datetime.now(timezone.utc).isoformat()
         yield _sse({"id": task_id, "status": {"state": "submitted", "timestamp": ts()}}, "task-status-update")
         yield _sse({"id": task_id, "status": {"state": "working", "timestamp": ts()}}, "task-status-update")
-        result = await handle_task(req.task, req.params)
-        result.id = task_id  # Fix 2: consistent ID
+
+        # Decide which peers are actually needed before fetching
+        message = req.params.get("message", "")
+        needed = _decide_peer_consultation(req.task, message)
+        peer_artifacts = await fetch_peer_artifacts(peer_agents, _PEER_TASK_NAMES, needed=needed)
+
+        for name, text in peer_artifacts.items():
+            yield _sse(
+                {
+                    "id": task_id,
+                    "status": {"state": "working", "timestamp": ts()},
+                    "artifacts": [{"name": f"peer_{name}", "parts": [{"type": "text", "text": text}]}],
+                },
+                "task-status-update",
+            )
+
+        result = await handle_task(req.task, req.params, peer_artifacts=peer_artifacts)
+        result.id = task_id
         webhook_url = req.params.get("webhook_url")
         if webhook_url:
             background_tasks.add_task(_send_webhook, webhook_url, result.model_dump())

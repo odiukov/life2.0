@@ -6,13 +6,57 @@ import uuid
 from shared.a2a import A2ATask, Artifact, TaskStatus, TextPart
 from shared.claude_runner import run_claude
 from shared.db import insert_task
+from shared.peer import fetch_peer_artifacts
 from shared.vector import upsert_memory
 from .prompt import build_sleep_prompt
 
 SUPPORTED_TASKS = {"analyze_sleep", "log_sleep", "get_recommendations"}
 
+_PEER_TASK_NAMES: dict[str, str] = {
+    "workout": "analyze_workout",
+    "nutrition": "analyze_nutrition",
+}
 
-async def handle_task(task: str, params: dict) -> A2ATask:
+_WORKOUT_KEYWORDS = {
+    "тренировк", "трениров", "workout", "exercise", "нагрузк", "training",
+    "физ", "спорт", "sport", "run", "бег", "кардио", "cardio",
+}
+_NUTRITION_KEYWORDS = {
+    "питани", "еда", "еде", "калори", "nutrition", "food", "calorie",
+    "protein", "белок", "алкогол", "alcohol", "кофе", "coffee",
+    "ужин", "dinner", "поздн", "late",
+}
+
+
+def _decide_peer_consultation(task: str, message: str) -> set[str]:
+    """Return set of peer names to consult for this request.
+
+    Rules:
+    - log_sleep: never needs peers — just recording data
+    - get_recommendations: always consult workout (training load shapes sleep advice)
+    - analyze_sleep: consult relevant peers based on message keywords
+    """
+    if task == "log_sleep":
+        return set()
+
+    if task == "get_recommendations":
+        return {"workout"}
+
+    # analyze_sleep — consult only if message mentions the domain
+    msg_lower = message.lower()
+    needed: set[str] = set()
+    if any(kw in msg_lower for kw in _WORKOUT_KEYWORDS):
+        needed.add("workout")
+    if any(kw in msg_lower for kw in _NUTRITION_KEYWORDS):
+        needed.add("nutrition")
+    return needed
+
+
+async def handle_task(
+    task: str,
+    params: dict,
+    peer_artifacts: dict | None = None,
+) -> A2ATask:
     task_id = str(uuid.uuid4())
 
     if task not in SUPPORTED_TASKS:
@@ -23,7 +67,12 @@ async def handle_task(task: str, params: dict) -> A2ATask:
         )
 
     try:
-        prompt = await build_sleep_prompt(task, params)
+        if peer_artifacts is None:
+            message = params.get("message", "")
+            needed = _decide_peer_consultation(task, message)
+            peer_artifacts = await fetch_peer_artifacts(params.get("peer_agents", {}), _PEER_TASK_NAMES, needed=needed)
+
+        prompt = await build_sleep_prompt(task, params, peer_artifacts)
         output = await asyncio.to_thread(run_claude, prompt)
         await insert_task("sleep", task, params, output)
         await upsert_memory(

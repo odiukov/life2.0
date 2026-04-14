@@ -11,7 +11,8 @@ from fastapi.responses import StreamingResponse
 
 from shared.a2a import A2ATaskRequest
 from .agent_card import AGENT_CARD
-from .tasks import fetch_peer_artifacts, handle_task
+from shared.peer import fetch_peer_artifacts
+from .tasks import handle_task, _decide_peer_consultation, _PEER_TASK_NAMES
 
 app = FastAPI(title="Workout Agent")
 
@@ -61,8 +62,10 @@ async def stream_task(req: A2ATaskRequest):
         yield _sse({"id": task_id, "status": {"state": "submitted", "timestamp": ts()}}, "task-status-update")
         yield _sse({"id": task_id, "status": {"state": "working", "timestamp": ts()}}, "task-status-update")
 
-        # Fetch peer artifacts and stream each one as it arrives
-        peer_artifacts = await fetch_peer_artifacts(peer_agents)
+        # Decide which peers are actually needed before fetching
+        message = req.params.get("message", "")
+        needed = _decide_peer_consultation(req.task, message)
+        peer_artifacts = await fetch_peer_artifacts(peer_agents, _PEER_TASK_NAMES, needed=needed)
         for name, text in peer_artifacts.items():
             yield _sse(
                 {

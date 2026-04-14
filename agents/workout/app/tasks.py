@@ -4,11 +4,10 @@ import json
 import logging
 import uuid
 
-import httpx
-
 from shared.a2a import A2ATask, Artifact, TaskStatus, TextPart
 from shared.claude_runner import run_claude
 from shared.db import insert_task
+from shared.peer import fetch_peer_artifacts
 from shared.vector import upsert_memory
 from .prompt import build_workout_prompt
 
@@ -21,36 +20,40 @@ _PEER_TASK_NAMES: dict[str, str] = {
     "nutrition": "analyze_nutrition",
 }
 
-
-async def _call_peer(url: str, task_name: str) -> str:
-    """POST to a peer agent's /tasks endpoint, return artifact text."""
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                f"{url}/tasks",
-                json={"task": task_name, "params": {"context": "summary requested by workout-agent"}},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            artifacts = data.get("artifacts", [])
-            if artifacts and artifacts[0].get("parts"):
-                return artifacts[0]["parts"][0].get("text", "(данные недоступны)")
-    except Exception as e:
-        logger.warning("Peer call to %s failed: %s", url, e)
-    return "(данные недоступны)"
+# Keywords that signal a peer agent's context is relevant
+_SLEEP_KEYWORDS = {
+    "сон", "сна", "сну", "sleep", "восстановлени", "усталост", "fatigue",
+    "tired", "rest", "отдых", "recover", "hrv", "readiness",
+}
+_NUTRITION_KEYWORDS = {
+    "питани", "еда", "еде", "калори", "nutrition", "food", "calorie",
+    "protein", "белок", "energy", "энергия", "macro", "макро", "diet",
+    "диет", "углевод", "carb", "жир", "fat",
+}
 
 
-async def fetch_peer_artifacts(peer_agents: dict) -> dict[str, str]:
-    """Call all known peer agents in parallel, return {name: text}."""
-    coros = {
-        name: _call_peer(info["url"], _PEER_TASK_NAMES[name])
-        for name, info in peer_agents.items()
-        if name in _PEER_TASK_NAMES and info.get("url")
-    }
-    if not coros:
-        return {}
-    texts = await asyncio.gather(*coros.values())
-    return dict(zip(coros.keys(), texts))
+def _decide_peer_consultation(task: str, message: str) -> set[str]:
+    """Return set of peer names that should be consulted for this request.
+
+    Rules:
+    - log_workout: never needs peers — it's just recording data
+    - get_recommendations: always needs all peers — full context improves suggestions
+    - analyze_workout: check message for domain-specific keywords
+    """
+    if task == "log_workout":
+        return set()
+
+    if task == "get_recommendations":
+        return {"sleep", "nutrition"}
+
+    # analyze_workout — consult only if message is relevant
+    msg_lower = message.lower()
+    needed: set[str] = set()
+    if any(kw in msg_lower for kw in _SLEEP_KEYWORDS):
+        needed.add("sleep")
+    if any(kw in msg_lower for kw in _NUTRITION_KEYWORDS):
+        needed.add("nutrition")
+    return needed
 
 
 async def handle_task(
@@ -69,7 +72,9 @@ async def handle_task(
 
     try:
         if peer_artifacts is None:
-            peer_artifacts = await fetch_peer_artifacts(params.get("peer_agents", {}))
+            message = params.get("message", "")
+            needed = _decide_peer_consultation(task, message)
+            peer_artifacts = await fetch_peer_artifacts(params.get("peer_agents", {}), _PEER_TASK_NAMES, needed=needed)
 
         prompt = await build_workout_prompt(task, params, peer_artifacts)
         output = await asyncio.to_thread(run_claude, prompt)
