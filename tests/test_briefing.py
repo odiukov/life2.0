@@ -148,21 +148,39 @@ def test_format_message_no_insight():
     assert "💡" not in msg
 
 
+def _briefing_task_with_text(text: str):
+    """Build a completed Task carrying a single text artifact."""
+    from a2a.types import Artifact, Part, Task, TaskState, TaskStatus, TextPart
+
+    artifact = Artifact(
+        artifact_id="a1",
+        name="briefing",
+        parts=[Part(root=TextPart(text=text))],
+    )
+    return Task(
+        id="t1",
+        context_id="c1",
+        status=TaskStatus(state=TaskState.completed),
+        artifacts=[artifact],
+    )
+
+
+def _make_fake_briefing_client():
+    """Fake A2A Client whose send_message sentinels text off metadata.params['sentinel']."""
+    async def _send_message(message):
+        params = (message.metadata or {}).get("params", {})
+        sentinel = params.get("sentinel", "default-summary")
+        yield (_briefing_task_with_text(sentinel), None)
+
+    client = AsyncMock()
+    client.send_message = lambda message: _send_message(message)
+    return client
+
+
 @pytest.mark.asyncio
 async def test_call_agents_for_briefing_returns_summaries():
-    """Calls all agents in parallel and returns domain summaries."""
-    async def mock_post(url, **kwargs):
-        resp = MagicMock()
-        resp.raise_for_status = MagicMock()
-        resp.json = MagicMock(return_value={
-            "artifacts": [{"name": "briefing", "parts": [{"type": "text", "text": "summary text"}]}]
-        })
-        return resp
-
-    mock_client = AsyncMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    mock_client.post = mock_post
+    """Fan-out: each agent gets its own params and summary is keyed by agent name."""
+    fake_client = _make_fake_briefing_client()
 
     agents = {
         "sleep": {"url": "http://agent-sleep:8001"},
@@ -171,37 +189,41 @@ async def test_call_agents_for_briefing_returns_summaries():
     }
     metrics = {
         "date": "Mon 14 Apr",
-        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},
+        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300,
+                  "hrv": 62, "score": 78, "sentinel": "sleep-summary"},
         "workout": {"total_calories": 1240, "total_distance_meters": 14200,
-                    "activity_count": 1, "first_name": "Long run", "first_type": "running"},
-        "nutrition": {"kcal": 2850, "protein_g": 148, "carbs_g": 320, "fat_g": 95},
+                    "activity_count": 1, "first_name": "Long run",
+                    "first_type": "running", "sentinel": "workout-summary"},
+        "nutrition": {"kcal": 2850, "protein_g": 148, "carbs_g": 320,
+                      "fat_g": 95, "sentinel": "nutrition-summary"},
     }
 
-    with patch("httpx.AsyncClient", return_value=mock_client):
+    with patch("orchestrator.app.briefing.get_client", AsyncMock(return_value=fake_client)):
         from orchestrator.app.briefing import call_agents_for_briefing
         summaries = await call_agents_for_briefing(agents, metrics)
 
-    assert "sleep" in summaries
-    assert "workout" in summaries
-    assert "nutrition" in summaries
-    assert summaries["sleep"] == "summary text"
+    assert summaries == {
+        "sleep": "sleep-summary",
+        "workout": "workout-summary",
+        "nutrition": "nutrition-summary",
+    }
 
 
 @pytest.mark.asyncio
 async def test_call_agents_for_briefing_skips_missing_domain():
-    """Skips agent call when that domain's metrics are None."""
-    async def mock_post(url, **kwargs):
-        resp = MagicMock()
-        resp.raise_for_status = MagicMock()
-        resp.json = MagicMock(return_value={
-            "artifacts": [{"name": "briefing", "parts": [{"type": "text", "text": "sleep summary"}]}]
-        })
-        return resp
+    """Domains whose metrics are None result in no A2A call."""
+    call_urls: list[str] = []
 
-    mock_client = AsyncMock()
-    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_client.__aexit__ = AsyncMock(return_value=None)
-    mock_client.post = mock_post
+    async def _send_message(message):
+        params = (message.metadata or {}).get("params", {})
+        yield (_briefing_task_with_text(params.get("sentinel", "x")), None)
+
+    fake_client = AsyncMock()
+    fake_client.send_message = lambda message: _send_message(message)
+
+    async def fake_get_client(url: str):
+        call_urls.append(url)
+        return fake_client
 
     agents = {
         "sleep": {"url": "http://agent-sleep:8001"},
@@ -209,19 +231,18 @@ async def test_call_agents_for_briefing_skips_missing_domain():
     }
     metrics = {
         "date": "Mon 14 Apr",
-        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": None, "score": None},
+        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300,
+                  "hrv": None, "score": None, "sentinel": "sleep-only"},
         "workout": None,
         "nutrition": None,
     }
 
-    with patch("httpx.AsyncClient", return_value=mock_client):
+    with patch("orchestrator.app.briefing.get_client", fake_get_client):
         from orchestrator.app.briefing import call_agents_for_briefing
         summaries = await call_agents_for_briefing(agents, metrics)
 
-    assert "sleep" in summaries
-    assert summaries["sleep"] == "sleep summary"
-    assert "workout" not in summaries
-    assert "nutrition" not in summaries
+    assert summaries == {"sleep": "sleep-only"}
+    assert call_urls == ["http://agent-sleep:8001"]
 
 
 def test_generate_insight_calls_claude():

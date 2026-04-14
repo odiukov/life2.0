@@ -2,9 +2,12 @@
 import asyncio
 import logging
 import os
+import uuid
 
 import httpx
+from a2a.types import Message, Part, Role, Task, TextPart
 
+from shared.a2a_clients import get_client
 from shared.claude_runner import run_claude
 from .db import get_yesterday_metrics
 
@@ -67,23 +70,10 @@ def _agent_params(agent_name: str, metrics: dict) -> dict | None:
     return dict(domain_metrics)
 
 
-def _extract_briefing_text(data: dict) -> str:
-    """Extract text from agent briefing response."""
-    artifacts = data.get("artifacts", [])
-    if artifacts and artifacts[0].get("parts"):
-        return artifacts[0]["parts"][0].get("text", "")
-    return data.get("output", "")
-
-
 async def call_agents_for_briefing(agents: dict, metrics: dict) -> dict[str, str]:
-    """Call sleep/workout/nutrition agents in parallel with briefing task.
-
-    Skips agents whose domain metrics are None.
-    Returns dict mapping agent name → domain summary text.
-    """
+    """Fan out briefing skill calls via A2A, return {agent: summary text}."""
     domain_names = ["sleep", "workout", "nutrition"]
-    tasks_to_run: list[tuple[str, str, dict]] = []  # (name, url, params)
-
+    targets: list[tuple[str, str, dict]] = []
     for name in domain_names:
         agent_entry = agents.get(name)
         if not agent_entry:
@@ -91,25 +81,41 @@ async def call_agents_for_briefing(agents: dict, metrics: dict) -> dict[str, str
         params = _agent_params(name, metrics)
         if params is None:
             continue
-        tasks_to_run.append((name, agent_entry["url"], params))
+        targets.append((name, agent_entry["url"], params))
 
-    if not tasks_to_run:
+    if not targets:
         return {}
 
     async def _call_one(name: str, url: str, params: dict) -> tuple[str, str]:
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(
-                    f"{url}/tasks",
-                    json={"id": "", "task": "briefing", "params": params},
-                )
-                resp.raise_for_status()
-                return name, _extract_briefing_text(resp.json())
+            client = await get_client(url)
+            msg = Message(
+                role=Role.user,
+                parts=[Part(root=TextPart(text=f"briefing for {name}"))],
+                message_id=str(uuid.uuid4()),
+                metadata={"skillId": "briefing", "params": params},
+            )
+            async for resp in client.send_message(msg):
+                if isinstance(resp, tuple):
+                    task, _update = resp
+                    for art in task.artifacts or []:
+                        for p in art.parts or []:
+                            root = getattr(p, "root", p)
+                            text = getattr(root, "text", None)
+                            if text:
+                                return name, text
+                elif isinstance(resp, Message):
+                    for p in resp.parts or []:
+                        root = getattr(p, "root", p)
+                        text = getattr(root, "text", None)
+                        if text:
+                            return name, text
+            return name, ""
         except Exception as e:
             logger.warning("Briefing agent call failed for %s: %s", name, e)
             return name, ""
 
-    results = await asyncio.gather(*[_call_one(n, u, p) for n, u, p in tasks_to_run])
+    results = await asyncio.gather(*[_call_one(n, u, p) for n, u, p in targets])
     return {name: text for name, text in results if text}
 
 
