@@ -3,6 +3,7 @@ from .mapper import map_sleep, map_activity, map_daily_stats
 from .db import insert_rows
 from .yazio import fetch_diary
 from .yazio_mapper import map_diary_day
+from .apple_health import map_body_composition
 
 
 async def do_sync(days: int = 7) -> dict:
@@ -27,6 +28,25 @@ async def do_sync(days: int = 7) -> dict:
         row = map_daily_stats(date_str, stats_raw)
         if row:
             rows.append(row)
+
+    try:
+        inserted, skipped = await insert_rows(rows)
+    except Exception as e:
+        errors.append(f"db: {e}")
+        inserted, skipped = 0, 0
+
+    return {"synced": inserted, "skipped": skipped, "errors": errors}
+
+
+async def do_body_sync(payload: dict) -> dict:
+    """Accept Apple Health body composition payload, map and store.
+    Returns {"synced": int, "skipped": int, "errors": list[str]}.
+    """
+    rows = map_body_composition(payload)
+    errors: list[str] = []
+
+    if not rows:
+        return {"synced": 0, "skipped": 0, "errors": ["no recognized metrics in payload"]}
 
     try:
         inserted, skipped = await insert_rows(rows)

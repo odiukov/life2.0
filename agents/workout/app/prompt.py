@@ -4,13 +4,25 @@ from shared.vector import search_memories
 
 
 async def build_workout_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
-    workout_logs = await fetch_recent_logs("workout", limit=10)
+    all_logs = await fetch_recent_logs("workout", limit=20)
     memories = await search_memories("workout_memories", task, limit=5)
+
+    workout_logs = [r for r in all_logs if r["type"] != "body_composition"]
+    body_logs = [r for r in all_logs if r["type"] == "body_composition"]
 
     workout_text = "\n".join(
         f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"
-        for r in workout_logs
+        for r in workout_logs[:10]
     ) or "No recent workout logs."
+
+    body_text = "\n".join(
+        f"- {r['recorded_at'].date()} | weight={r['data'].get('weight_kg')}kg"
+        f" | fat={r['data'].get('body_fat_pct')}%"
+        f" | muscle={r['data'].get('skeletal_muscle_kg')}kg"
+        f" | lean={r['data'].get('lean_mass_kg')}kg"
+        f" | bmi={r['data'].get('bmi')}"
+        for r in body_logs[:5]
+    ) or "No body composition data."
 
     memories_text = "\n".join(
         f"- {m.get('text', '')}" for m in memories
@@ -30,6 +42,9 @@ async def build_workout_prompt(task: str, params: dict, peer_artifacts: dict | N
 
 ## Recent workouts (last 10):
 {workout_text}
+
+## Body composition (last 5 measurements):
+{body_text}
 {sleep_section}{nutrition_section}
 
 ## Relevant memories:

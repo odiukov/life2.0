@@ -2,9 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 from .scheduler import start_scheduler
-from .sync import do_sync, do_nutrition_sync
+from .sync import do_sync, do_nutrition_sync, do_body_sync
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,6 +27,15 @@ async def sync():
 @app.post("/sync/nutrition")
 async def sync_nutrition():
     return await do_nutrition_sync()
+
+
+class BodyPayload(BaseModel):
+    data: list[dict]
+
+
+@app.post("/sync/body")
+async def sync_body(payload: BodyPayload):
+    return await do_body_sync(payload.model_dump())
 
 
 @app.get("/health")
