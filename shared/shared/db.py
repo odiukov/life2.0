@@ -36,8 +36,34 @@ async def insert_log(agent: str, type_: str, data: dict, source: str = "manual")
 
 
 async def insert_task(agent: str, task_type: str, input_: dict, output: str) -> None:
+    """Legacy single-row insert — kept for callers that don't have task_id yet."""
     pool = await get_pool()
     await pool.execute(
         "INSERT INTO tasks (agent, task_type, input, output) VALUES ($1, $2, $3, $4)",
         agent, task_type, input_, output
+    )
+
+
+async def insert_task_record(
+    *,
+    agent: str,
+    task_id: str,
+    context_id: str | None,
+    skill_id: str,
+    input_: dict,
+    output: str,
+    state: str = "completed",
+) -> None:
+    """Persist a completed A2A task with its A2A identifiers."""
+    pool = await get_pool()
+    await pool.execute(
+        """
+        INSERT INTO tasks (task_id, context_id, agent, skill_id, input, output, state)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (task_id) DO UPDATE SET
+            output = EXCLUDED.output,
+            state = EXCLUDED.state,
+            updated_at = NOW()
+        """,
+        task_id, context_id, agent, skill_id, input_, output, state,
     )
