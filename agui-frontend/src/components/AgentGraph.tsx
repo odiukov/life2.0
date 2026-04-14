@@ -48,8 +48,8 @@ export function AgentGraph({ agents, selectedAgent, onSelect }: Props) {
               key={i}
               x1={totalW / 2} y1={0}
               x2={x} y2={32}
-              stroke="#2a2a4a"
-              strokeWidth={1}
+              stroke="#3a5a8a"
+              strokeWidth={1.5}
               strokeDasharray="4,4"
             />
           );
