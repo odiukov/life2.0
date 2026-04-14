@@ -60,16 +60,21 @@ def _build_briefing_prompt(params: dict) -> str:
     deep_hours = deep // 3600
     deep_minutes = (deep % 3600) // 60
     hrv = params.get("hrv")
-    hrv_line = f"- HRV: {hrv} ms" if hrv else ""
 
-    return f"""You are a personal sleep health assistant providing a morning briefing.
-Yesterday's sleep data:
-- Duration: {hours}h {minutes}m
-- Deep sleep: {deep_hours}h {deep_minutes}m
-{hrv_line}
+    data_lines = [
+        f"- Duration: {hours}h {minutes}m",
+        f"- Deep sleep: {deep_hours}h {deep_minutes}m",
+    ]
+    if hrv:
+        data_lines.append(f"- HRV: {hrv} ms")
 
-Write a 2-3 sentence plain-text summary (no markdown) of yesterday's sleep quality.
-Focus on what stands out and how it may affect today's energy and recovery."""
+    return (
+        "You are a personal sleep health assistant providing a morning briefing.\n"
+        "Yesterday's sleep data:\n"
+        + "\n".join(data_lines)
+        + "\n\nWrite a 2-3 sentence plain-text summary (no markdown) of yesterday's sleep quality.\n"
+        "Focus on what stands out and how it may affect today's energy and recovery."
+    )
 
 
 async def handle_task(

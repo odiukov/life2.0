@@ -37,7 +37,9 @@ async def _run_daily_sync() -> None:
     except Exception as e:
         logger.error(f"Daily Yazio sync failed: {e}")
 
-    # Fire briefing after sync — non-blocking, failure must not affect sync
+    # Fire briefing after sync completes — fire-and-forget via create_task so sync
+    # does not block waiting for the briefing (which includes a Claude call).
+    # The task runs on the same event loop and survives until _trigger_briefing completes.
     orchestrator_url = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000")
     asyncio.create_task(_trigger_briefing(orchestrator_url))
 

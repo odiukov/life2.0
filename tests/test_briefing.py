@@ -311,7 +311,7 @@ async def test_send_telegram_message_posts_to_api():
 @pytest.mark.asyncio
 async def test_run_briefing_skipped_when_no_data():
     """run_briefing returns skipped when no health data for yesterday."""
-    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+    with patch("orchestrator.app.briefing.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
         mock_metrics.return_value = {"date": "Mon 14 Apr", "sleep": None, "workout": None, "nutrition": None}
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "tok", "TELEGRAM_CHAT_ID": "chat"}):
             from orchestrator.app.briefing import run_briefing
@@ -337,7 +337,7 @@ async def test_run_briefing_skipped_when_telegram_not_configured():
 @pytest.mark.asyncio
 async def test_run_briefing_sends_metrics_only_when_claude_fails():
     """run_briefing sends message without insight when Claude call fails."""
-    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+    with patch("orchestrator.app.briefing.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
         mock_metrics.return_value = {
             "date": "Mon 14 Apr",
             "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},
@@ -363,7 +363,7 @@ async def test_run_briefing_sends_metrics_only_when_claude_fails():
 @pytest.mark.asyncio
 async def test_run_briefing_returns_error_when_telegram_fails():
     """run_briefing returns error when Telegram send fails."""
-    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+    with patch("orchestrator.app.briefing.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
         mock_metrics.return_value = {
             "date": "Mon 14 Apr",
             "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},

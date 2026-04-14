@@ -62,18 +62,20 @@ def _build_briefing_prompt(params: dict) -> str:
     kcal = params.get("total_calories", 0)
     count = params.get("activity_count", 1)
 
-    dist_line = f"- Distance: {dist_km:.1f} km" if dist_km > 0 else ""
-    count_line = f"- Activities: {count}" if count > 1 else ""
+    data_lines = [f"- Activity: {name}"]
+    if dist_km > 0:
+        data_lines.append(f"- Distance: {dist_km:.1f} km")
+    data_lines.append(f"- Calories burned: {kcal} kcal")
+    if count > 1:
+        data_lines.append(f"- Activities: {count}")
 
-    return f"""You are a personal fitness coach providing a morning briefing.
-Yesterday's workout data:
-- Activity: {name}
-{dist_line}
-- Calories burned: {kcal} kcal
-{count_line}
-
-Write a 2-3 sentence plain-text summary (no markdown) of yesterday's workout.
-Note training load and how it may affect today's readiness."""
+    return (
+        "You are a personal fitness coach providing a morning briefing.\n"
+        "Yesterday's workout data:\n"
+        + "\n".join(data_lines)
+        + "\n\nWrite a 2-3 sentence plain-text summary (no markdown) of yesterday's workout.\n"
+        "Note training load and how it may affect today's readiness."
+    )
 
 
 async def handle_task(

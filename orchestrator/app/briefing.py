@@ -6,6 +6,7 @@ import os
 import httpx
 
 from shared.claude_runner import run_claude
+from .db import get_yesterday_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +146,6 @@ async def run_briefing(agents: dict) -> dict:
     agents: registry dict from get_registry() — {name: {url, card}}
     Returns {"status": "sent" | "skipped" | "error", "reason": str}
     """
-    from .db import get_yesterday_metrics
-
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if not bot_token or not chat_id:
