@@ -9,6 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from copilotkit import CopilotKitRemoteEndpoint, Action
+from copilotkit.integrations.fastapi import add_fastapi_endpoint
+
 from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
 from .registry import check_agent_health, discover_agents, get_agent_url, get_registry, list_agents
@@ -35,6 +38,100 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------------------------------------------------------------------------
+# CopilotKit SDK
+# ---------------------------------------------------------------------------
+
+async def _call_health_agent_handler(message: str, agent: str, **kwargs) -> str:
+    agent_url = get_agent_url(agent)
+    if not agent_url:
+        return f"Agent '{agent}' is currently unavailable."
+    try:
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(
+                f"{agent_url}/tasks",
+                json={
+                    "id": str(uuid.uuid4()),
+                    "task": AGENT_DEFAULT_TASK.get(agent, f"analyze_{agent}"),
+                    "params": {
+                        "message": message,
+                        "peer_agents": _build_peer_agents(agent),
+                    },
+                },
+            )
+            resp.raise_for_status()
+            return _artifact_text(resp.json())
+    except Exception as e:
+        return f"Error calling {agent} agent: {str(e)}"
+
+
+async def _run_sync_handler(**kwargs) -> str:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post("http://sync-service:8080/sync")
+            resp.raise_for_status()
+            data = resp.json()
+            text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
+            if data.get("errors"):
+                text += f" Errors: {'; '.join(data['errors'][:3])}"
+            return text
+    except Exception as e:
+        return f"Sync failed: {str(e)}"
+
+
+async def _run_briefing_handler(**kwargs) -> str:
+    try:
+        await run_briefing(get_registry())
+        return "Daily health briefing generated and sent via Telegram."
+    except Exception as e:
+        return f"Briefing failed: {str(e)}"
+
+
+# ANTHROPIC_API_KEY is loaded from .env.auth by docker-compose.
+# CopilotKit SDK picks it up automatically when langchain-anthropic is installed.
+# If it doesn't (e.g., defaults to OpenAI), add: llm=ChatAnthropic(model="claude-sonnet-4-6")
+# and check CopilotKit docs for the correct kwarg name.
+_copilotkit_sdk = CopilotKitRemoteEndpoint(
+    actions=[
+        Action(
+            name="call_health_agent",
+            description=(
+                "Call a specialized health agent to analyze the user's data. "
+                "Use agent='sleep' for sleep questions, 'workout' for exercise, "
+                "'nutrition' for diet and food."
+            ),
+            parameters=[
+                {
+                    "name": "message",
+                    "type": "string",
+                    "description": "The user's question or request",
+                },
+                {
+                    "name": "agent",
+                    "type": "string",
+                    "description": "Which agent to call: sleep | workout | nutrition",
+                },
+            ],
+            handler=_call_health_agent_handler,
+        ),
+        Action(
+            name="run_sync",
+            description="Synchronize health data from external sources (Garmin, Yazio).",
+            parameters=[],
+            handler=_run_sync_handler,
+        ),
+        Action(
+            name="run_briefing",
+            description="Generate and send the daily health briefing via Telegram.",
+            parameters=[],
+            handler=_run_briefing_handler,
+        ),
+    ],
+)
+
+add_fastapi_endpoint(app, _copilotkit_sdk, "/copilotkit")
 
 
 class ChatRequest(BaseModel):
