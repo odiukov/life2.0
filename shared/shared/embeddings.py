@@ -5,12 +5,9 @@ Returns 768-dim vectors. Raises EmbeddingError on any failure.
 """
 from __future__ import annotations
 
-import logging
 import os
 
 import httpx
-
-logger = logging.getLogger(__name__)
 
 _MODEL = "text-embedding-004"
 _URL = f"https://generativelanguage.googleapis.com/v1beta/models/{_MODEL}:embedContent"
