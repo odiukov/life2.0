@@ -23,6 +23,8 @@ AGENT_DEFAULT_TASK: dict[str, str] = {
     "nutrition": "analyze_nutrition",
 }
 
+_SYNC_SERVICE_URL = "http://sync-service:8080/sync"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,6 +65,10 @@ async def _call_health_agent_handler(message: str, agent: str, **kwargs) -> str:
             )
             resp.raise_for_status()
             return _artifact_text(resp.json())
+    except httpx.HTTPStatusError as e:
+        return f"Agent '{agent}' returned error {e.response.status_code}: {e.response.text[:500]}"
+    except httpx.RequestError as e:
+        return f"Could not reach agent '{agent}': {str(e)}"
     except Exception as e:
         return f"Error calling {agent} agent: {str(e)}"
 
@@ -70,7 +76,7 @@ async def _call_health_agent_handler(message: str, agent: str, **kwargs) -> str:
 async def _run_sync_handler(**kwargs) -> str:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post("http://sync-service:8080/sync")
+            resp = await client.post(_SYNC_SERVICE_URL)
             resp.raise_for_status()
             data = resp.json()
             text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
@@ -91,8 +97,10 @@ async def _run_briefing_handler(**kwargs) -> str:
 
 # ANTHROPIC_API_KEY is loaded from .env.auth by docker-compose.
 # CopilotKit SDK picks it up automatically when langchain-anthropic is installed.
-# If it doesn't (e.g., defaults to OpenAI), add: llm=ChatAnthropic(model="claude-sonnet-4-6")
-# and check CopilotKit docs for the correct kwarg name.
+# If it doesn't (e.g., defaults to OpenAI), pass the llm explicitly:
+#   from langchain_anthropic import ChatAnthropic
+#   _copilotkit_sdk = CopilotKitRemoteEndpoint(actions=[...], llm=ChatAnthropic(model="claude-sonnet-4-6"))
+# Tested with copilotkit==0.1.39.
 _copilotkit_sdk = CopilotKitRemoteEndpoint(
     actions=[
         Action(
