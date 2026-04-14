@@ -130,24 +130,9 @@ def test_format_message_missing_workout():
 # executor pattern. Executor-level coverage lives in tests/test_workout_executor.py.
 
 
-@pytest.mark.asyncio
-async def test_nutrition_briefing_task_returns_completed():
-    """Nutrition agent handles 'briefing' task and returns completed with text."""
-    with patch("agents.nutrition.app.tasks.run_claude") as mock_claude:
-        with patch("agents.nutrition.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
-            with patch("agents.nutrition.app.tasks._trigger_yazio_sync", new_callable=AsyncMock):
-                mock_claude.return_value = "You ate 2,850 kcal with 148g protein yesterday."
-
-                from agents.nutrition.app.tasks import handle_task
-                result = await handle_task("briefing", {
-                    "kcal": 2850,
-                    "protein_g": 148,
-                    "carbs_g": 320,
-                    "fat_g": 95,
-                })
-
-    assert result.status.state == "completed"
-    assert result.artifacts[0].parts[0].text != ""
+# NOTE: test_nutrition_briefing_task_returns_completed removed — the old
+# `agents.nutrition.app.tasks.handle_task` entrypoint was replaced by the A2A
+# executor pattern. Executor-level coverage lives in tests/test_nutrition_executor.py.
 
 
 def test_format_message_no_insight():
