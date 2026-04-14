@@ -1,8 +1,10 @@
-import httpx
-import os
+"""Agent discovery — resolves AgentCards via A2A SDK."""
 import logging
+import os
 
-from .router import INTENT_KEYWORDS
+import httpx
+
+from shared.a2a_clients import get_card
 
 logger = logging.getLogger(__name__)
 
@@ -10,33 +12,23 @@ _registry: dict[str, dict] = {}
 
 
 async def discover_agents() -> None:
-    """Query all configured agent URLs for their Agent Cards."""
-    agent_urls = os.environ.get("AGENT_URLS", "").split(",")
-
-    for url in agent_urls:
+    for url in os.environ.get("AGENT_URLS", "").split(","):
         url = url.strip()
         if not url:
             continue
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(f"{url}/.well-known/agent.json")
-                resp.raise_for_status()
-                card = resp.json()
-                agent_name = card["name"].replace("-agent", "")
-                if agent_name not in INTENT_KEYWORDS:
-                    logger.warning(
-                        f"Agent '{card['name']}' produces key '{agent_name}' "
-                        f"which is not in known intents {list(INTENT_KEYWORDS.keys())}. "
-                        f"It may not be routable by the classifier."
-                    )
-                _registry[agent_name] = {"url": url, "card": card, "online": True}
-                logger.info(f"Discovered agent: {agent_name} at {url}")
+            card = await get_card(url)
+            agent_name = card.name.replace("-agent", "")
+            _registry[agent_name] = {
+                "url": url,
+                "card": card.model_dump(mode="json", by_alias=True),
+            }
+            logger.info("Discovered agent: %s at %s", agent_name, url)
         except Exception as e:
-            logger.warning(f"Could not discover agent at {url}: {e}")
+            logger.warning("Could not discover agent at %s: %s", url, e)
 
 
 async def check_agent_health(agent_name: str) -> bool:
-    """Ping agent's /health endpoint. Returns True if healthy."""
     entry = _registry.get(agent_name)
     if not entry:
         return False
