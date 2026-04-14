@@ -11,4 +11,3 @@ build/
 .worktrees/
 node_modules/
 .superpowers
-docs/superpowers
