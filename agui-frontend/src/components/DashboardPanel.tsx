@@ -136,11 +136,17 @@ export function DashboardPanel({ summary, expandedMetric }: Props) {
               <>
                 <div style={{ height: 1, background: "#1e1e30", margin: "6px 0" }} />
                 <MetricRow label="Resting HR" value={daily.resting_hr} unit="bpm" color="#e57373" />
-                <div style={{ ...highlight("body_battery") }}>
-                  <MetricRow label="Body battery" value={daily.body_battery_max} unit="%" color="#4a9eff" />
-                </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* BODY BATTERY */}
+      {daily && (
+        <div style={{ ...highlight("body_battery") }}>
+          <div style={{ background: "#1a1a2e", borderRadius: 6, padding: "10px 12px" }}>
+            <MetricRow label="Body battery" value={daily.body_battery_max} unit="%" color="#4a9eff" />
           </div>
         </div>
       )}

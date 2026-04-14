@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCopilotAction } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const { data, refresh } = useHealthSummary();
   const navigate = useNavigate();
   const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
+  const metricTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useCopilotAction({
     name: "refresh_health_data",
@@ -54,8 +55,9 @@ export default function DashboardPage() {
       },
     ],
     handler: ({ metric }: { metric: string }) => {
+      if (metricTimerRef.current) clearTimeout(metricTimerRef.current);
       setExpandedMetric(metric);
-      setTimeout(() => setExpandedMetric(null), 4000);
+      metricTimerRef.current = setTimeout(() => setExpandedMetric(null), 4000);
     },
   });
 
