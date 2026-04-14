@@ -190,3 +190,192 @@ def test_format_message_no_insight():
     }
     msg = format_message(metrics, insight=None)
     assert "💡" not in msg
+
+
+@pytest.mark.asyncio
+async def test_call_agents_for_briefing_returns_summaries():
+    """Calls all agents in parallel and returns domain summaries."""
+    async def mock_post(url, **kwargs):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value={
+            "artifacts": [{"name": "briefing", "parts": [{"type": "text", "text": "summary text"}]}]
+        })
+        return resp
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = mock_post
+
+    agents = {
+        "sleep": {"url": "http://agent-sleep:8001"},
+        "workout": {"url": "http://agent-workout:8002"},
+        "nutrition": {"url": "http://agent-nutrition:8003"},
+    }
+    metrics = {
+        "date": "Mon 14 Apr",
+        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},
+        "workout": {"total_calories": 1240, "total_distance_meters": 14200,
+                    "activity_count": 1, "first_name": "Long run", "first_type": "running"},
+        "nutrition": {"kcal": 2850, "protein_g": 148, "carbs_g": 320, "fat_g": 95},
+    }
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        from orchestrator.app.briefing import call_agents_for_briefing
+        summaries = await call_agents_for_briefing(agents, metrics)
+
+    assert "sleep" in summaries
+    assert "workout" in summaries
+    assert "nutrition" in summaries
+    assert summaries["sleep"] == "summary text"
+
+
+@pytest.mark.asyncio
+async def test_call_agents_for_briefing_skips_missing_domain():
+    """Skips agent call when that domain's metrics are None."""
+    async def mock_post(url, **kwargs):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value={
+            "artifacts": [{"name": "briefing", "parts": [{"type": "text", "text": "sleep summary"}]}]
+        })
+        return resp
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = mock_post
+
+    agents = {
+        "sleep": {"url": "http://agent-sleep:8001"},
+        "workout": {"url": "http://agent-workout:8002"},
+    }
+    metrics = {
+        "date": "Mon 14 Apr",
+        "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": None, "score": None},
+        "workout": None,
+        "nutrition": None,
+    }
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        from orchestrator.app.briefing import call_agents_for_briefing
+        summaries = await call_agents_for_briefing(agents, metrics)
+
+    assert "sleep" in summaries
+    assert summaries["sleep"] == "sleep summary"
+    assert "workout" not in summaries
+    assert "nutrition" not in summaries
+
+
+def test_generate_insight_calls_claude():
+    """generate_insight passes metrics + summaries to Claude and returns text."""
+    with patch("orchestrator.app.briefing.run_claude", return_value="Rest today.") as mock_claude:
+        from orchestrator.app.briefing import generate_insight
+        result = generate_insight(
+            metrics={"date": "Mon 14 Apr", "sleep": {"hrv": 50}, "workout": {"total_calories": 1240}, "nutrition": None},
+            summaries={"sleep": "Short on deep sleep.", "workout": "Heavy run."},
+        )
+
+    assert result == "Rest today."
+    assert mock_claude.called
+    prompt = mock_claude.call_args[0][0]
+    assert "Short on deep sleep" in prompt
+    assert "Heavy run" in prompt
+
+
+@pytest.mark.asyncio
+async def test_send_telegram_message_posts_to_api():
+    """send_telegram_message POSTs to Telegram sendMessage endpoint."""
+    async def mock_post(url, **kwargs):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_client.post = AsyncMock(side_effect=mock_post)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        from orchestrator.app.briefing import send_telegram_message
+        await send_telegram_message("TOKEN123", "CHAT456", "Hello!")
+
+    call_args = mock_client.post.call_args
+    assert "TOKEN123" in call_args[0][0]
+    assert call_args[1]["json"]["chat_id"] == "CHAT456"
+    assert call_args[1]["json"]["text"] == "Hello!"
+
+
+@pytest.mark.asyncio
+async def test_run_briefing_skipped_when_no_data():
+    """run_briefing returns skipped when no health data for yesterday."""
+    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+        mock_metrics.return_value = {"date": "Mon 14 Apr", "sleep": None, "workout": None, "nutrition": None}
+        with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "tok", "TELEGRAM_CHAT_ID": "chat"}):
+            from orchestrator.app.briefing import run_briefing
+            result = await run_briefing({})
+
+    assert result["status"] == "skipped"
+    assert "no data" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_run_briefing_skipped_when_telegram_not_configured():
+    """run_briefing returns skipped when TELEGRAM env vars are missing."""
+    import os
+    env_without_telegram = {k: v for k, v in os.environ.items() if k not in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")}
+    with patch.dict("os.environ", env_without_telegram, clear=True):
+        from orchestrator.app.briefing import run_briefing
+        result = await run_briefing({})
+
+    assert result["status"] == "skipped"
+    assert "telegram not configured" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_run_briefing_sends_metrics_only_when_claude_fails():
+    """run_briefing sends message without insight when Claude call fails."""
+    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+        mock_metrics.return_value = {
+            "date": "Mon 14 Apr",
+            "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},
+            "workout": None,
+            "nutrition": None,
+        }
+        with patch("orchestrator.app.briefing.call_agents_for_briefing", new_callable=AsyncMock) as mock_agents:
+            mock_agents.return_value = {"sleep": "Good sleep."}
+            with patch("orchestrator.app.briefing.generate_insight", side_effect=RuntimeError("Claude down")):
+                with patch("orchestrator.app.briefing.send_telegram_message", new_callable=AsyncMock) as mock_send:
+                    with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "tok", "TELEGRAM_CHAT_ID": "chat"}):
+                        from orchestrator.app.briefing import run_briefing
+                        result = await run_briefing({})
+
+    assert result["status"] == "sent"
+    # Message was sent despite Claude failing
+    mock_send.assert_called_once()
+    sent_text = mock_send.call_args[0][2]
+    assert "🌅" in sent_text
+    assert "💡" not in sent_text  # no insight since Claude failed
+
+
+@pytest.mark.asyncio
+async def test_run_briefing_returns_error_when_telegram_fails():
+    """run_briefing returns error when Telegram send fails."""
+    with patch("orchestrator.app.db.get_yesterday_metrics", new_callable=AsyncMock) as mock_metrics:
+        mock_metrics.return_value = {
+            "date": "Mon 14 Apr",
+            "sleep": {"duration_seconds": 26580, "deep_sleep_seconds": 6300, "hrv": 62, "score": 78},
+            "workout": None,
+            "nutrition": None,
+        }
+        with patch("orchestrator.app.briefing.call_agents_for_briefing", new_callable=AsyncMock) as mock_agents:
+            mock_agents.return_value = {}
+            with patch("orchestrator.app.briefing.send_telegram_message", new_callable=AsyncMock) as mock_send:
+                mock_send.side_effect = Exception("network error")
+                with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "tok", "TELEGRAM_CHAT_ID": "chat"}):
+                    from orchestrator.app.briefing import run_briefing
+                    result = await run_briefing({})
+
+    assert result["status"] == "error"
+    assert "network error" in result["reason"]
