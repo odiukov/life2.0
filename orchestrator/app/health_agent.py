@@ -3,8 +3,9 @@ import uuid
 import warnings
 
 import httpx
-from langchain_anthropic import ChatAnthropic
 from langchain_core.tools import tool
+
+from .llm import build_llm
 
 _AGENT_DEFAULT_TASK: dict[str, str] = {
     "sleep": "analyze_sleep",
@@ -122,7 +123,7 @@ _SYSTEM_PROMPT = (
 def create_health_agent():
     """Create the LangGraph ReAct agent for health analysis."""
     from langgraph.checkpoint.memory import MemorySaver
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)
+    llm = build_llm()
     tools = [analyze_sleep, analyze_workout, analyze_nutrition, sync_health_data, send_daily_briefing]
 
     with warnings.catch_warnings():
