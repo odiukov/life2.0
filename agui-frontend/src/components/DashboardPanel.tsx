@@ -92,9 +92,10 @@ function SleepPhaseBar({ deep, rem, light }: { deep?: number; rem?: number; ligh
 
 interface Props {
   summary: HealthSummary | null;
+  expandedMetric?: string | null;
 }
 
-export function DashboardPanel({ summary }: Props) {
+export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Props) {
   if (!summary) {
     return (
       <div style={{ padding: 16, color: "#555", fontSize: 11, fontFamily: "monospace" }}>Loading...</div>
