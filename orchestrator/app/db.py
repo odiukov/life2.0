@@ -2,6 +2,7 @@ import asyncpg
 import json
 import os
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 _pool: asyncpg.Pool | None = None
 
@@ -266,3 +267,97 @@ async def get_tasks_today(agent: str) -> int:
         agent, today_start
     )
     return int(row["cnt"]) if row else 0
+
+
+async def get_yesterday_metrics() -> dict:
+    """Return yesterday's health metrics aggregated by domain (Europe/Kyiv timezone).
+
+    Returns a dict with keys: date (str), sleep (dict|None), workout (dict|None), nutrition (dict|None).
+    """
+    kyiv = ZoneInfo("Europe/Kyiv")
+    now_kyiv = datetime.now(kyiv)
+    yesterday = now_kyiv.date() - timedelta(days=1)
+    day_start = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=kyiv)
+    day_end = day_start + timedelta(days=1)
+
+    pool = await get_pool()
+
+    # Sleep: latest sleep_session for yesterday
+    sleep_row = await pool.fetchrow(
+        """
+        SELECT
+            (data->>'duration_seconds')::int AS duration_seconds,
+            (data->>'deep_sleep_seconds')::int AS deep_sleep_seconds,
+            (data->>'hrv_weekly_avg')::float AS hrv_weekly_avg,
+            (data->>'score')::int AS score
+        FROM health_logs
+        WHERE agent = 'sleep' AND type = 'sleep_session'
+          AND recorded_at >= $1 AND recorded_at < $2
+        ORDER BY recorded_at DESC
+        LIMIT 1
+        """,
+        day_start, day_end,
+    )
+    sleep = None
+    if sleep_row:
+        sleep = {
+            "duration_seconds": sleep_row["duration_seconds"] or 0,
+            "deep_sleep_seconds": sleep_row["deep_sleep_seconds"] or 0,
+            "hrv": int(sleep_row["hrv_weekly_avg"]) if sleep_row["hrv_weekly_avg"] else None,
+            "score": sleep_row["score"],
+        }
+
+    # Workout: aggregate all activities for yesterday
+    workout_row = await pool.fetchrow(
+        """
+        SELECT
+            SUM((data->>'calories')::float)::int AS total_calories,
+            SUM((data->>'distance_meters')::float)::int AS total_distance_meters,
+            COUNT(*) AS activity_count,
+            (array_agg(data->>'name' ORDER BY recorded_at DESC))[1] AS first_name,
+            (array_agg(data->>'activity_type' ORDER BY recorded_at DESC))[1] AS first_type
+        FROM health_logs
+        WHERE agent = 'workout' AND type = 'activity'
+          AND recorded_at >= $1 AND recorded_at < $2
+        """,
+        day_start, day_end,
+    )
+    workout = None
+    if workout_row and workout_row["activity_count"]:
+        workout = {
+            "total_calories": workout_row["total_calories"] or 0,
+            "total_distance_meters": workout_row["total_distance_meters"] or 0,
+            "activity_count": int(workout_row["activity_count"]),
+            "first_name": workout_row["first_name"] or "",
+            "first_type": workout_row["first_type"] or "",
+        }
+
+    # Nutrition: sum all meals for yesterday (type='meal' from Yazio)
+    nutrition_row = await pool.fetchrow(
+        """
+        SELECT
+            SUM((data->'totals'->>'kcal')::float) AS kcal,
+            SUM((data->'totals'->>'protein_g')::float) AS protein_g,
+            SUM((data->'totals'->>'carbs_g')::float) AS carbs_g,
+            SUM((data->'totals'->>'fat_g')::float) AS fat_g
+        FROM health_logs
+        WHERE agent = 'nutrition' AND type = 'meal'
+          AND recorded_at >= $1 AND recorded_at < $2
+        """,
+        day_start, day_end,
+    )
+    nutrition = None
+    if nutrition_row and nutrition_row["kcal"] is not None:
+        nutrition = {
+            "kcal": round(nutrition_row["kcal"] or 0),
+            "protein_g": round(nutrition_row["protein_g"] or 0),
+            "carbs_g": round(nutrition_row["carbs_g"] or 0),
+            "fat_g": round(nutrition_row["fat_g"] or 0),
+        }
+
+    return {
+        "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
+        "sleep": sleep,
+        "workout": workout,
+        "nutrition": nutrition,
+    }
