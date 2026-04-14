@@ -4,7 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import uuid
+
+import httpx
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
@@ -28,6 +31,25 @@ from shared.db import insert_task_record
 from .skills import PEER_SKILLS, SKILL_PROMPTS
 
 logger = logging.getLogger(__name__)
+
+_SYNC_SKILLS = {"analyze_nutrition", "get_nutrition_recommendations"}
+
+
+async def _trigger_yazio_sync() -> None:
+    """Fire-and-forget sync before analysis so results reflect latest Yazio data.
+
+    Failure is logged and swallowed — stale data is acceptable, a sync failure
+    must not block the analysis path.
+    """
+    url = os.environ.get("SYNC_SERVICE_URL", "")
+    if not url:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(f"{url}/sync/nutrition")
+    except Exception as e:
+        logger.warning("Yazio sync trigger failed: %s", e)
+
 
 _WORKOUT_KEYWORDS = {
     "тренировк", "трениров", "workout", "exercise", "нагрузк", "training",
@@ -111,6 +133,9 @@ class NutritionAgentExecutor(AgentExecutor):
             return
 
         try:
+            if skill_id in _SYNC_SKILLS:
+                await _trigger_yazio_sync()
+
             peer_agents = _peer_agents_from_metadata(ctx)
             needed = _decide_peers(skill_id, message)
             peer_artifacts = await fetch_peer_artifacts(peer_agents, PEER_SKILLS, needed=needed)
