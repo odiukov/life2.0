@@ -131,6 +131,124 @@ async def get_stats() -> dict:
     return {"agents": agent_stats, "activity": activity}
 
 
+async def get_health_summary() -> dict:
+    """Return personal health metrics: body composition, last sleep, daily stats, weekly trends, last recommendation."""
+    pool = await get_pool()
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+
+    # Build list of 7 day-start timestamps: oldest first (6 days ago → today)
+    day_starts = [
+        (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+        for i in range(6, -1, -1)
+    ]
+
+    # Latest body composition
+    body_row = await pool.fetchrow(
+        "SELECT data, recorded_at FROM health_logs WHERE type='body_composition' ORDER BY recorded_at DESC LIMIT 1"
+    )
+    body = None
+    if body_row:
+        d = body_row["data"] or {}
+        body = {
+            "weight_kg": d.get("weight_kg"),
+            "body_fat_pct": d.get("body_fat_pct"),
+            "lean_mass_kg": d.get("lean_mass_kg"),
+            "bmi": d.get("bmi"),
+            "recorded_at": body_row["recorded_at"].isoformat(),
+        }
+
+    # Last sleep session
+    sleep_row = await pool.fetchrow(
+        "SELECT data, recorded_at FROM health_logs WHERE agent='sleep' AND type='sleep_session' ORDER BY recorded_at DESC LIMIT 1"
+    )
+    sleep = None
+    if sleep_row:
+        d = sleep_row["data"] or {}
+        sleep = {
+            "duration_hours": round(d.get("duration_seconds", 0) / 3600, 1),
+            "score": d.get("score"),
+            "hrv": d.get("hrv_weekly_avg"),
+            "deep_hours": round(d.get("deep_sleep_seconds", 0) / 3600, 1),
+            "rem_hours": round(d.get("rem_sleep_seconds", 0) / 3600, 1),
+            "light_hours": round(d.get("light_sleep_seconds", 0) / 3600, 1),
+            "recorded_at": sleep_row["recorded_at"].isoformat(),
+        }
+
+    # Latest daily stats
+    daily_row = await pool.fetchrow(
+        "SELECT data, recorded_at FROM health_logs WHERE type='daily_stats' ORDER BY recorded_at DESC LIMIT 1"
+    )
+    daily = None
+    if daily_row:
+        d = daily_row["data"] or {}
+        daily = {
+            "steps": d.get("steps"),
+            "calories_active": d.get("calories_active"),
+            "body_battery_max": d.get("body_battery_max"),
+            "resting_hr": d.get("resting_hr"),
+            "stress_avg": d.get("stress_avg"),
+            "recorded_at": daily_row["recorded_at"].isoformat(),
+        }
+
+    # Last 7 days sleep hours/day
+    sleep_daily = await pool.fetch(
+        """SELECT date_trunc('day', recorded_at AT TIME ZONE 'UTC')::date AS day,
+           AVG((data->>'duration_seconds')::float / 3600) AS hours
+           FROM health_logs WHERE agent='sleep' AND type='sleep_session' AND recorded_at >= $1
+           GROUP BY day""",
+        day_starts[0]
+    )
+    sleep_map = {r["day"]: round(float(r["hours"]), 1) for r in sleep_daily}
+    sleep_hours = [sleep_map.get(d.date(), 0) for d in day_starts]
+
+    # Last 7 days workout minutes/day
+    workout_daily = await pool.fetch(
+        """SELECT date_trunc('day', recorded_at AT TIME ZONE 'UTC')::date AS day,
+           SUM((data->>'duration_seconds')::float / 60) AS minutes
+           FROM health_logs WHERE agent='workout' AND type='activity' AND recorded_at >= $1
+           GROUP BY day""",
+        day_starts[0]
+    )
+    workout_map = {r["day"]: round(float(r["minutes"])) for r in workout_daily}
+    workout_minutes = [workout_map.get(d.date(), 0) for d in day_starts]
+
+    # Last 7 days nutrition calories/day
+    nutrition_daily = await pool.fetch(
+        """SELECT date_trunc('day', recorded_at AT TIME ZONE 'UTC')::date AS day,
+           SUM((data->>'calories')::float) AS calories
+           FROM health_logs WHERE agent='nutrition' AND type='nutrition_log' AND recorded_at >= $1
+           GROUP BY day""",
+        day_starts[0]
+    )
+    nutrition_map = {r["day"]: round(float(r["calories"])) for r in nutrition_daily}
+    nutrition_calories = [nutrition_map.get(d.date(), 0) for d in day_starts]
+
+    # Last recommendation from tasks
+    rec_row = await pool.fetchrow(
+        "SELECT agent, task_type, output, created_at FROM tasks WHERE output IS NOT NULL AND output != '' ORDER BY created_at DESC LIMIT 1"
+    )
+    recommendation = None
+    if rec_row and rec_row["output"]:
+        recommendation = {
+            "agent": rec_row["agent"],
+            "text": rec_row["output"][:400],
+            "created_at": rec_row["created_at"].isoformat(),
+        }
+
+    return {
+        "body": body,
+        "sleep": sleep,
+        "daily": daily,
+        "trends": {
+            "sleep_hours": sleep_hours,
+            "workout_minutes": workout_minutes,
+            "nutrition_calories": nutrition_calories,
+        },
+        "recommendation": recommendation,
+    }
+
+
 async def clear_activity() -> int:
     """Delete all tasks from the activity feed. Returns number of deleted rows."""
     pool = await get_pool()

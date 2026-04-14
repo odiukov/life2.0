@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .db import clear_activity, get_stats, get_tasks_today
+from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
 from .registry import check_agent_health, discover_agents, get_agent_url, get_registry, list_agents
 from .router import classify_intent
 
@@ -233,6 +233,11 @@ async def chat_stream(req: StreamChatRequest):
 @app.get("/stats")
 async def stats():
     return await get_stats()
+
+
+@app.get("/health-summary")
+async def health_summary():
+    return await get_health_summary()
 
 
 @app.delete("/activity")

@@ -21,6 +21,53 @@ export interface StatsResponse {
   activity: ActivityItem[];
 }
 
+export interface BodyMetrics {
+  weight_kg?: number;
+  body_fat_pct?: number;
+  lean_mass_kg?: number;
+  bmi?: number;
+  recorded_at?: string;
+}
+
+export interface SleepSummary {
+  duration_hours: number;
+  score?: number;
+  hrv?: number;
+  deep_hours?: number;
+  rem_hours?: number;
+  light_hours?: number;
+  recorded_at?: string;
+}
+
+export interface DailyStats {
+  steps?: number;
+  calories_active?: number;
+  body_battery_max?: number;
+  resting_hr?: number;
+  stress_avg?: number;
+  recorded_at?: string;
+}
+
+export interface WeeklyTrends {
+  sleep_hours: number[];
+  workout_minutes: number[];
+  nutrition_calories: number[];
+}
+
+export interface LastRecommendation {
+  agent: string;
+  text: string;
+  created_at: string;
+}
+
+export interface HealthSummary {
+  body: BodyMetrics | null;
+  sleep: SleepSummary | null;
+  daily: DailyStats | null;
+  trends: WeeklyTrends;
+  recommendation: LastRecommendation | null;
+}
+
 export interface AgentInfo {
   name: string;
   url: string;

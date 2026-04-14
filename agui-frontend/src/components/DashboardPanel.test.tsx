@@ -1,29 +1,33 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { DashboardPanel } from "./DashboardPanel";
-import type { StatsResponse } from "../types";
+import type { HealthSummary } from "../types";
 
-const STATS: StatsResponse = {
-  agents: {
-    sleep: { tasks_week: 5, tasks_prev_week: 3, delta: 2, daily: [1,1,1,1,1,0,0] },
-    workout: { tasks_week: 3, tasks_prev_week: 4, delta: -1, daily: [0,0,1,1,1,0,0] },
-    nutrition: { tasks_week: 4, tasks_prev_week: 2, delta: 2, daily: [1,1,1,1,0,0,0] },
+const SUMMARY: HealthSummary = {
+  body: { weight_kg: 79.6, body_fat_pct: 26.5, lean_mass_kg: 58.4, bmi: 24.1 },
+  sleep: { duration_hours: 7.5, score: 85, hrv: 45, deep_hours: 1.5, rem_hours: 1.2, light_hours: 4.8 },
+  daily: { steps: 8234, calories_active: 450, body_battery_max: 85, resting_hr: 58, stress_avg: 35 },
+  trends: {
+    sleep_hours: [7, 6.5, 8, 7.5, 7, 6, 7.5],
+    workout_minutes: [0, 60, 0, 45, 0, 90, 0],
+    nutrition_calories: [1800, 2100, 1950, 2000, 1750, 2200, 1900],
   },
-  activity: [
-    { agent: "sleep", task_type: "analyze_sleep", message: "slept 7h", created_at: "2026-04-13T08:00:00Z" },
-  ],
+  recommendation: {
+    agent: "sleep",
+    text: "Your sleep score has improved. Try maintaining a consistent bedtime.",
+    created_at: "2026-04-13T08:00:00Z",
+  },
 };
 
 describe("DashboardPanel", () => {
-  it("renders stat cards for each agent", () => {
-    render(<DashboardPanel stats={STATS} />);
-    expect(screen.getAllByText(/sleep/i).length).toBeGreaterThan(0);
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText(/slept 7h/i)).toBeInTheDocument();
+  it("renders health metrics", () => {
+    render(<DashboardPanel summary={SUMMARY} />);
+    expect(screen.getByText(/79.6/)).toBeInTheDocument();
+    expect(screen.getByText(/7.5h/)).toBeInTheDocument();
   });
 
-  it("renders loading state when stats is null", () => {
-    render(<DashboardPanel stats={null} />);
+  it("renders loading state when summary is null", () => {
+    render(<DashboardPanel summary={null} />);
     expect(screen.getByText(/loading/i)).toBeInTheDocument();
   });
 });
