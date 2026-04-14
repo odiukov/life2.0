@@ -1,4 +1,6 @@
 -- 0002: Extend tasks table for A2A v0.2 Task objects.
+BEGIN;
+
 ALTER TABLE tasks
     ADD COLUMN IF NOT EXISTS task_id UUID UNIQUE,
     ADD COLUMN IF NOT EXISTS context_id UUID,
@@ -20,5 +22,7 @@ ALTER TABLE tasks ALTER COLUMN task_id SET NOT NULL;
 -- Drop legacy column (skill_id replaces it)
 ALTER TABLE tasks DROP COLUMN IF EXISTS task_type;
 
-CREATE INDEX IF NOT EXISTS tasks_task_id_idx ON tasks (task_id);
+-- UNIQUE on task_id already creates a btree index; no separate tasks_task_id_idx needed.
 CREATE INDEX IF NOT EXISTS tasks_state_idx ON tasks (agent, state, updated_at DESC);
+
+COMMIT;

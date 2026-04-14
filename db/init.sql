@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS tasks_task_id_idx ON tasks (task_id);
+-- UNIQUE on task_id already creates a btree index; no separate tasks_task_id_idx needed.
 CREATE INDEX IF NOT EXISTS tasks_state_idx ON tasks (agent, state, updated_at DESC);
 
 -- Default user (single-user system for now)
