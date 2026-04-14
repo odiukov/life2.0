@@ -119,6 +119,64 @@ def test_format_message_missing_workout():
     assert "💡" not in msg  # no insight line when insight is None
 
 
+@pytest.mark.asyncio
+async def test_sleep_briefing_task_returns_completed():
+    """Sleep agent handles 'briefing' task and returns completed with text."""
+    with patch("agents.sleep.app.tasks.run_claude") as mock_claude:
+        with patch("agents.sleep.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
+            mock_claude.return_value = "You slept 7h 23m. Deep sleep was solid at 1h 45m."
+
+            from agents.sleep.app.tasks import handle_task
+            result = await handle_task("briefing", {
+                "duration_seconds": 26580,
+                "deep_sleep_seconds": 6300,
+                "hrv": 62,
+            })
+
+    assert result.status.state == "completed"
+    assert "slept" in result.artifacts[0].parts[0].text
+
+
+@pytest.mark.asyncio
+async def test_workout_briefing_task_returns_completed():
+    """Workout agent handles 'briefing' task and returns completed with text."""
+    with patch("agents.workout.app.tasks.run_claude") as mock_claude:
+        with patch("agents.workout.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
+            mock_claude.return_value = "You ran 14.2 km yesterday burning 1,240 kcal."
+
+            from agents.workout.app.tasks import handle_task
+            result = await handle_task("briefing", {
+                "total_calories": 1240,
+                "total_distance_meters": 14200,
+                "first_name": "Long run",
+                "first_type": "running",
+                "activity_count": 1,
+            })
+
+    assert result.status.state == "completed"
+    assert result.artifacts[0].parts[0].text != ""
+
+
+@pytest.mark.asyncio
+async def test_nutrition_briefing_task_returns_completed():
+    """Nutrition agent handles 'briefing' task and returns completed with text."""
+    with patch("agents.nutrition.app.tasks.run_claude") as mock_claude:
+        with patch("agents.nutrition.app.tasks.fetch_peer_artifacts", new_callable=AsyncMock):
+            with patch("agents.nutrition.app.tasks._trigger_yazio_sync", new_callable=AsyncMock):
+                mock_claude.return_value = "You ate 2,850 kcal with 148g protein yesterday."
+
+                from agents.nutrition.app.tasks import handle_task
+                result = await handle_task("briefing", {
+                    "kcal": 2850,
+                    "protein_g": 148,
+                    "carbs_g": 320,
+                    "fat_g": 95,
+                })
+
+    assert result.status.state == "completed"
+    assert result.artifacts[0].parts[0].text != ""
+
+
 def test_format_message_no_insight():
     """No 💡 line when insight is None."""
     from orchestrator.app.briefing import format_message

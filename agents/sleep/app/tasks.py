@@ -10,7 +10,7 @@ from shared.peer import fetch_peer_artifacts
 from shared.vector import upsert_memory
 from .prompt import build_sleep_prompt
 
-SUPPORTED_TASKS = {"analyze_sleep", "log_sleep", "get_recommendations"}
+SUPPORTED_TASKS = {"analyze_sleep", "log_sleep", "get_recommendations", "briefing"}
 
 _PEER_TASK_NAMES: dict[str, str] = {
     "workout": "analyze_workout",
@@ -52,6 +52,26 @@ def _decide_peer_consultation(task: str, message: str) -> set[str]:
     return needed
 
 
+def _build_briefing_prompt(params: dict) -> str:
+    dur = params.get("duration_seconds", 0)
+    hours = dur // 3600
+    minutes = (dur % 3600) // 60
+    deep = params.get("deep_sleep_seconds", 0)
+    deep_hours = deep // 3600
+    deep_minutes = (deep % 3600) // 60
+    hrv = params.get("hrv")
+    hrv_line = f"- HRV: {hrv} ms" if hrv else ""
+
+    return f"""You are a personal sleep health assistant providing a morning briefing.
+Yesterday's sleep data:
+- Duration: {hours}h {minutes}m
+- Deep sleep: {deep_hours}h {deep_minutes}m
+{hrv_line}
+
+Write a 2-3 sentence plain-text summary (no markdown) of yesterday's sleep quality.
+Focus on what stands out and how it may affect today's energy and recovery."""
+
+
 async def handle_task(
     task: str,
     params: dict,
@@ -67,6 +87,15 @@ async def handle_task(
         )
 
     try:
+        if task == "briefing":
+            prompt = _build_briefing_prompt(params)
+            output = await asyncio.to_thread(run_claude, prompt)
+            return A2ATask(
+                id=task_id,
+                status=TaskStatus.now("completed"),
+                artifacts=[Artifact(name="briefing", parts=[TextPart(text=output)])],
+            )
+
         if peer_artifacts is None:
             message = params.get("message", "")
             needed = _decide_peer_consultation(task, message)
