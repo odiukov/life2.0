@@ -13,7 +13,7 @@ from .prompt import build_workout_prompt
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_TASKS = {"log_workout", "analyze_workout", "get_recommendations"}
+SUPPORTED_TASKS = {"log_workout", "analyze_workout", "get_recommendations", "briefing"}
 
 _PEER_TASK_NAMES: dict[str, str] = {
     "sleep": "analyze_sleep",
@@ -56,6 +56,28 @@ def _decide_peer_consultation(task: str, message: str) -> set[str]:
     return needed
 
 
+def _build_briefing_prompt(params: dict) -> str:
+    name = params.get("first_name") or params.get("first_type") or "Workout"
+    dist_km = params.get("total_distance_meters", 0) / 1000
+    kcal = params.get("total_calories", 0)
+    count = params.get("activity_count", 1)
+
+    data_lines = [f"- Activity: {name}"]
+    if dist_km > 0:
+        data_lines.append(f"- Distance: {dist_km:.1f} km")
+    data_lines.append(f"- Calories burned: {kcal} kcal")
+    if count > 1:
+        data_lines.append(f"- Activities: {count}")
+
+    return (
+        "You are a personal fitness coach providing a morning briefing.\n"
+        "Yesterday's workout data:\n"
+        + "\n".join(data_lines)
+        + "\n\nWrite a 2-3 sentence plain-text summary (no markdown) of yesterday's workout.\n"
+        "Note training load and how it may affect today's readiness."
+    )
+
+
 async def handle_task(
     task: str,
     params: dict,
@@ -71,6 +93,15 @@ async def handle_task(
         )
 
     try:
+        if task == "briefing":
+            prompt = _build_briefing_prompt(params)
+            output = await asyncio.to_thread(run_claude, prompt)
+            return A2ATask(
+                id=task_id,
+                status=TaskStatus.now("completed"),
+                artifacts=[Artifact(name="briefing", parts=[TextPart(text=output)])],
+            )
+
         if peer_artifacts is None:
             message = params.get("message", "")
             needed = _decide_peer_consultation(task, message)
