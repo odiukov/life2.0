@@ -1,28 +1,55 @@
-# shared/shared/peer.py
-"""Utilities for peer-agent consultation used by all agents."""
+"""Peer-agent consultation over A2A v0.2+ (SDK ClientFactory API)."""
+from __future__ import annotations
+
 import asyncio
 import logging
+import uuid
 
-import httpx
+from a2a.types import Message, Part, Role, Task, TextPart
+
+from .a2a_clients import get_client
 
 logger = logging.getLogger(__name__)
 
 
-async def call_peer(url: str, task_name: str) -> str:
-    """POST to a peer agent's /tasks endpoint, return artifact text."""
+def _extract_task_text(task: Task) -> str | None:
+    for art in task.artifacts or []:
+        for p in art.parts or []:
+            root = getattr(p, "root", p)
+            text = getattr(root, "text", None)
+            if text:
+                return text
+    return None
+
+
+async def call_peer(
+    url: str,
+    skill_id: str,
+    *,
+    message_text: str = "Summary requested by peer agent",
+) -> str:
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                f"{url}/tasks",
-                json={"task": task_name, "params": {"context": "summary requested by peer-agent"}},
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            artifacts = data.get("artifacts", [])
-            if artifacts and artifacts[0].get("parts"):
-                return artifacts[0]["parts"][0].get("text", "(данные недоступны)")
+        client = await get_client(url)
+        message = Message(
+            role=Role.user,
+            parts=[Part(root=TextPart(text=message_text))],
+            message_id=str(uuid.uuid4()),
+            metadata={"skillId": skill_id},
+        )
+        async for resp in client.send_message(message):
+            if isinstance(resp, tuple):
+                task, _update = resp
+                text = _extract_task_text(task)
+                if text:
+                    return text
+            elif isinstance(resp, Message):
+                for p in resp.parts or []:
+                    root = getattr(p, "root", p)
+                    text = getattr(root, "text", None)
+                    if text:
+                        return text
     except Exception as e:
-        logger.warning("Peer call to %s/%s failed: %s", url, task_name, e)
+        logger.warning("Peer call to %s/%s failed: %s", url, skill_id, e)
     return "(данные недоступны)"
 
 
@@ -31,13 +58,6 @@ async def fetch_peer_artifacts(
     peer_task_names: dict[str, str],
     needed: set[str] | None = None,
 ) -> dict[str, str]:
-    """Call selected peer agents in parallel, return {name: text}.
-
-    Args:
-        peer_agents: dict of {name: {url, card}} passed in request params.
-        peer_task_names: mapping of peer name → task to call (agent-specific).
-        needed: set of peer names to consult. None = all known peers, empty set = skip all.
-    """
     coros = {
         name: call_peer(info["url"], peer_task_names[name])
         for name, info in peer_agents.items()
