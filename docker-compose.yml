@@ -120,6 +120,8 @@ services:
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     ports:
       - "8000:8000"
     depends_on:
@@ -164,6 +166,7 @@ services:
       YAZIO_EMAIL: ${YAZIO_EMAIL}
       YAZIO_PASSWORD: ${YAZIO_PASSWORD}
       SYNC_HOUR: "6"
+      ORCHESTRATOR_URL: http://orchestrator:8000
     depends_on:
       postgres:
         condition: service_healthy
