@@ -48,13 +48,22 @@ app.add_middleware(
 # CopilotKit SDK — LangGraph agent required by CopilotKit v1.8
 # ---------------------------------------------------------------------------
 
-# health_agent.py wraps sleep/workout/nutrition HTTP agents as LangChain tools.
-# Workaround: copilotkit 0.1.86 enforces LangGraphAGUIAgent but that class lacks
-# the execute() method that sdk.execute_agent() calls. Use the old LangGraphAgent
-# directly, bypassing the isinstance check by setting agents after init.
+# Workaround for copilotkit 0.1.86 incompatibility:
+# - CopilotKitRemoteEndpoint rejects the old LangGraphAgent at init time
+# - LangGraphAGUIAgent (new) has broken dict_repr and missing execute()
+# Solution: use old LangGraphAgent (has working execute()) but report type
+# "langgraph_agui" so CopilotKit v1.8 frontend recognises it. Bypass the
+# isinstance check by assigning agents after init.
+class _HealthAgent(_CopilotKitLangGraphAgent):
+    def dict_repr(self):
+        base = super().dict_repr()
+        base["type"] = "langgraph_agui"
+        return base
+
+
 _copilotkit_sdk = CopilotKitRemoteEndpoint()
 _copilotkit_sdk.agents = [
-    _CopilotKitLangGraphAgent(
+    _HealthAgent(
         name="default",
         description="Personal health assistant with access to sleep, workout, and nutrition data",
         graph=create_health_agent(),
