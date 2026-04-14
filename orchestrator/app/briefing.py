@@ -140,7 +140,7 @@ async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> None
         resp.raise_for_status()
 
 
-async def run_briefing(agents: dict) -> dict:
+async def run_briefing(agents: dict, use_today: bool = False) -> dict:
     """Top-level briefing orchestrator.
 
     agents: registry dict from get_registry() — {name: {url, card}}
@@ -153,7 +153,7 @@ async def run_briefing(agents: dict) -> dict:
         return {"status": "skipped", "reason": "telegram not configured"}
 
     try:
-        metrics = await get_yesterday_metrics()
+        metrics = await get_yesterday_metrics(use_today=use_today)
     except Exception as e:
         logger.error("Briefing DB query failed: %s", e)
         return {"status": "error", "reason": f"db error: {e}"}

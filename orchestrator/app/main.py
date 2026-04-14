@@ -9,8 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from copilotkit import CopilotKitRemoteEndpoint, Action
+from copilotkit import CopilotKitRemoteEndpoint
+from copilotkit.langgraph_agent import LangGraphAgent as _CopilotKitLangGraphAgent
 from copilotkit.integrations.fastapi import add_fastapi_endpoint
+from .health_agent import create_health_agent
 
 from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
@@ -43,101 +45,21 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# CopilotKit SDK
+# CopilotKit SDK — LangGraph agent required by CopilotKit v1.8
 # ---------------------------------------------------------------------------
 
-async def _call_health_agent_handler(message: str, agent: str, **kwargs) -> str:
-    agent_url = get_agent_url(agent)
-    if not agent_url:
-        return f"Agent '{agent}' is currently unavailable."
-    try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            resp = await client.post(
-                f"{agent_url}/tasks",
-                json={
-                    "id": str(uuid.uuid4()),
-                    "task": AGENT_DEFAULT_TASK.get(agent, f"analyze_{agent}"),
-                    "params": {
-                        "message": message,
-                        "peer_agents": _build_peer_agents(agent),
-                    },
-                },
-            )
-            resp.raise_for_status()
-            return _artifact_text(resp.json())
-    except httpx.HTTPStatusError as e:
-        return f"Agent '{agent}' returned error {e.response.status_code}: {e.response.text[:500]}"
-    except httpx.RequestError as e:
-        return f"Could not reach agent '{agent}': {str(e)}"
-    except Exception as e:
-        return f"Error calling {agent} agent: {str(e)}"
-
-
-async def _run_sync_handler(**kwargs) -> str:
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(_SYNC_SERVICE_URL)
-            resp.raise_for_status()
-            data = resp.json()
-            text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
-            if data.get("errors"):
-                text += f" Errors: {'; '.join(data['errors'][:3])}"
-            return text
-    except Exception as e:
-        return f"Sync failed: {str(e)}"
-
-
-async def _run_briefing_handler(**kwargs) -> str:
-    try:
-        await run_briefing(get_registry())
-        return "Daily health briefing generated and sent via Telegram."
-    except Exception as e:
-        return f"Briefing failed: {str(e)}"
-
-
-# ANTHROPIC_API_KEY is loaded from .env.auth by docker-compose.
-# CopilotKit SDK picks it up automatically when langchain-anthropic is installed.
-# If it doesn't (e.g., defaults to OpenAI), pass the llm explicitly:
-#   from langchain_anthropic import ChatAnthropic
-#   _copilotkit_sdk = CopilotKitRemoteEndpoint(actions=[...], llm=ChatAnthropic(model="claude-sonnet-4-6"))
-# Tested with copilotkit==0.1.39.
-_copilotkit_sdk = CopilotKitRemoteEndpoint(
-    actions=[
-        Action(
-            name="call_health_agent",
-            description=(
-                "Call a specialized health agent to analyze the user's data. "
-                "Use agent='sleep' for sleep questions, 'workout' for exercise, "
-                "'nutrition' for diet and food."
-            ),
-            parameters=[
-                {
-                    "name": "message",
-                    "type": "string",
-                    "description": "The user's question or request",
-                },
-                {
-                    "name": "agent",
-                    "type": "string",
-                    "description": "Which agent to call: sleep | workout | nutrition",
-                },
-            ],
-            handler=_call_health_agent_handler,
-        ),
-        Action(
-            name="run_sync",
-            description="Synchronize health data from external sources (Garmin, Yazio).",
-            parameters=[],
-            handler=_run_sync_handler,
-        ),
-        Action(
-            name="run_briefing",
-            description="Generate and send the daily health briefing via Telegram.",
-            parameters=[],
-            handler=_run_briefing_handler,
-        ),
-    ],
-)
+# health_agent.py wraps sleep/workout/nutrition HTTP agents as LangChain tools.
+# Workaround: copilotkit 0.1.86 enforces LangGraphAGUIAgent but that class lacks
+# the execute() method that sdk.execute_agent() calls. Use the old LangGraphAgent
+# directly, bypassing the isinstance check by setting agents after init.
+_copilotkit_sdk = CopilotKitRemoteEndpoint()
+_copilotkit_sdk.agents = [
+    _CopilotKitLangGraphAgent(
+        name="default",
+        description="Personal health assistant with access to sleep, workout, and nutrition data",
+        graph=create_health_agent(),
+    )
+]
 
 add_fastapi_endpoint(app, _copilotkit_sdk, "/copilotkit")
 
@@ -372,8 +294,8 @@ async def agents():
 
 
 @app.post("/briefing")
-async def briefing():
-    result = await run_briefing(get_registry())
+async def briefing(debug: bool = False):
+    result = await run_briefing(get_registry(), use_today=debug)
     return result
 
 

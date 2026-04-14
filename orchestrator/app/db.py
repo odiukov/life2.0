@@ -269,14 +269,15 @@ async def get_tasks_today(agent: str) -> int:
     return int(row["cnt"]) if row else 0
 
 
-async def get_yesterday_metrics() -> dict:
+async def get_yesterday_metrics(use_today: bool = False) -> dict:
     """Return yesterday's health metrics aggregated by domain (Europe/Kyiv timezone).
 
     Returns a dict with keys: date (str), sleep (dict|None), workout (dict|None), nutrition (dict|None).
     """
     kyiv = ZoneInfo("Europe/Kyiv")
     now_kyiv = datetime.now(kyiv)
-    yesterday = now_kyiv.date() - timedelta(days=1)
+    target = now_kyiv.date() if use_today else now_kyiv.date() - timedelta(days=1)
+    yesterday = target
     day_start = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=kyiv)
     day_end = day_start + timedelta(days=1)
 
