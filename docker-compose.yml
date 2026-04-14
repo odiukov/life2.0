@@ -158,6 +158,17 @@ services:
     depends_on:
       orchestrator:
         condition: service_started
+      copilotkit-runtime:
+        condition: service_started
+    restart: unless-stopped
+
+  copilotkit-runtime:
+    build: ./copilotkit-runtime
+    environment:
+      ORCHESTRATOR_AGUI_URL: http://orchestrator:8000/agui
+    depends_on:
+      orchestrator:
+        condition: service_started
     restart: unless-stopped
 
   sync-service:

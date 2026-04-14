@@ -1,0 +1,15 @@
+{
+  "name": "copilotkit-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@copilotkit/runtime": "^1.8.0",
+    "@ag-ui/client": "*",
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}

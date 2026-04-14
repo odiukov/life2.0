@@ -9,9 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from copilotkit import CopilotKitRemoteEndpoint
-from copilotkit.langgraph_agent import LangGraphAgent as _CopilotKitLangGraphAgent
-from copilotkit.integrations.fastapi import add_fastapi_endpoint
+from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
 from .health_agent import create_health_agent
 
 from .briefing import run_briefing
@@ -45,32 +43,19 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# CopilotKit SDK — LangGraph agent required by CopilotKit v1.8
+# AG-UI endpoint — consumed by the Node copilotkit-runtime container which
+# bridges CopilotKit v1.8 frontend → AG-UI → LangGraph.
 # ---------------------------------------------------------------------------
 
-# Workaround for copilotkit 0.1.86 incompatibility:
-# - CopilotKitRemoteEndpoint rejects the old LangGraphAgent at init time
-# - LangGraphAGUIAgent (new) has broken dict_repr and missing execute()
-# Solution: use old LangGraphAgent (has working execute()) but report type
-# "langgraph_agui" so CopilotKit v1.8 frontend recognises it. Bypass the
-# isinstance check by assigning agents after init.
-class _HealthAgent(_CopilotKitLangGraphAgent):
-    def dict_repr(self):
-        base = super().dict_repr()
-        base["type"] = "langgraph_agui"
-        return base
-
-
-_copilotkit_sdk = CopilotKitRemoteEndpoint()
-_copilotkit_sdk.agents = [
-    _HealthAgent(
+add_langgraph_fastapi_endpoint(
+    app,
+    LangGraphAgent(
         name="default",
         description="Personal health assistant with access to sleep, workout, and nutrition data",
         graph=create_health_agent(),
-    )
-]
-
-add_fastapi_endpoint(app, _copilotkit_sdk, "/copilotkit")
+    ),
+    path="/agui",
+)
 
 
 class ChatRequest(BaseModel):
