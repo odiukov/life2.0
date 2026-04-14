@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { AgentGraph } from "../components/AgentGraph";
 import { AgentCard } from "../components/AgentCard";
 import { AgentStatsPanel } from "../components/AgentStatsPanel";
@@ -10,6 +11,9 @@ export default function AgentsPage() {
   const { agents, loading, error } = useAgents();
   const { data: stats } = useStats();
   const [selected, setSelected] = useState<string | null>(null);
+  const location = useLocation();
+  const highlighted: string | null =
+    (location.state as { highlighted?: string } | null)?.highlighted ?? null;
 
   const selectedAgent: AgentInfo | undefined = agents.find(a => a.name === selected);
 
@@ -28,7 +32,12 @@ export default function AgentsPage() {
         <h2 style={{ color: "#e0e0e0", fontFamily: "monospace", fontWeight: "normal", margin: 0 }}>
           Agent Topology
         </h2>
-        <AgentGraph agents={agents} selectedAgent={selected} onSelect={setSelected} />
+        <AgentGraph
+          agents={agents}
+          selectedAgent={selected}
+          highlightedAgent={highlighted}
+          onSelect={setSelected}
+        />
         {selectedAgent && (
           <AgentCard agent={selectedAgent} onClose={() => setSelected(null)} />
         )}

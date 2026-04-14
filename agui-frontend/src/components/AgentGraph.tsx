@@ -9,10 +9,11 @@ const AGENT_CONFIG: Record<string, { emoji: string; color: string }> = {
 interface Props {
   agents: AgentInfo[];
   selectedAgent: string | null;
+  highlightedAgent?: string | null;
   onSelect: (name: string | null) => void;
 }
 
-export function AgentGraph({ agents, selectedAgent, onSelect }: Props) {
+export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }: Props) {
   const onlineCount = agents.filter(a => a.online).length;
 
   return (
@@ -74,6 +75,9 @@ export function AgentGraph({ agents, selectedAgent, onSelect }: Props) {
                 width: 100,
                 cursor: "pointer",
                 transition: "border-color 0.15s",
+                ...(highlightedAgent === agent.name
+                  ? { outline: "2px solid #4a9eff", outlineOffset: "3px" }
+                  : {}),
               }}
             >
               <div style={{ fontSize: 22 }}>{cfg.emoji}</div>
