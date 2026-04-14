@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 
+import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -34,3 +36,16 @@ async def _run_daily_sync() -> None:
         logger.info(f"Daily Yazio sync complete: {result}")
     except Exception as e:
         logger.error(f"Daily Yazio sync failed: {e}")
+
+    # Fire briefing after sync — non-blocking, failure must not affect sync
+    orchestrator_url = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000")
+    asyncio.create_task(_trigger_briefing(orchestrator_url))
+
+
+async def _trigger_briefing(orchestrator_url: str) -> None:
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(f"{orchestrator_url}/briefing")
+            logger.info(f"Daily briefing triggered: {resp.json()}")
+    except Exception as e:
+        logger.warning(f"Daily briefing trigger failed: {e}")
