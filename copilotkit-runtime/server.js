@@ -18,11 +18,13 @@ app.use(cors());
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-app.use("/copilotkit", (req, res, next) =>
+// Mount at root: the handler's internal Hono app uses basePath "/copilotkit"
+// and matches the full request URL, so we must not let Express strip the prefix.
+app.use(
   copilotRuntimeNodeHttpEndpoint({
     endpoint: "/copilotkit",
     runtime,
-  })(req, res, next)
+  })
 );
 
 app.listen(PORT, () => {
