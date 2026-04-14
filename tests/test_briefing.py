@@ -2,6 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import date
+from httpx import AsyncClient, ASGITransport
 
 
 @pytest.mark.asyncio
@@ -379,3 +380,31 @@ async def test_run_briefing_returns_error_when_telegram_fails():
 
     assert result["status"] == "error"
     assert "network error" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_post_briefing_endpoint_returns_sent():
+    """POST /briefing returns {"status": "sent"} when briefing succeeds."""
+    with patch("orchestrator.app.main.run_briefing", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"status": "sent"}
+        with patch("orchestrator.app.registry.get_registry", return_value={}):
+            from orchestrator.app.main import app
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.post("/briefing")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "sent"
+
+
+@pytest.mark.asyncio
+async def test_post_briefing_endpoint_returns_skipped():
+    """POST /briefing returns {"status": "skipped"} when no data available."""
+    with patch("orchestrator.app.main.run_briefing", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = {"status": "skipped", "reason": "no data for yesterday"}
+        with patch("orchestrator.app.registry.get_registry", return_value={}):
+            from orchestrator.app.main import app
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.post("/briefing")
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "skipped"

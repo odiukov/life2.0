@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
 from .registry import check_agent_health, discover_agents, get_agent_url, get_registry, list_agents
 from .router import classify_intent
@@ -263,6 +264,12 @@ async def agents():
             "tasks_today": tasks_today,
         })
     return {"agents": result}
+
+
+@app.post("/briefing")
+async def briefing():
+    result = await run_briefing(get_registry())
+    return result
 
 
 @app.get("/health")
