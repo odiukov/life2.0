@@ -40,6 +40,7 @@ sdk = CopilotKitSDK(
         Action(name="highlight_agent", description="Highlight a specific agent in the graph (sleep/workout/nutrition)"),
         Action(name="show_metric_detail", description="Expand a specific metric card (sleep, weight, steps)"),
         Action(name="trigger_sync", description="Start data synchronization"),
+        Action(name="trigger_briefing", description="Generate and send the daily health briefing via Telegram"),
         Action(name="ask_agent", description="Send a pre-filled question to a specific agent"),
     ]
 )
@@ -132,6 +133,15 @@ useCopilotAction({
   },
 });
 
+// Trigger daily briefing
+useCopilotAction({
+  name: "trigger_briefing",
+  description: "Generate and send the daily health briefing via Telegram",
+  handler: async () => {
+    await fetch("/briefing", { method: "POST" });
+  },
+});
+
 // Ask agent (pre-fills and submits a question)
 useCopilotAction({
   name: "ask_agent",
@@ -181,5 +191,5 @@ location /copilotkit {
 | `agui-frontend/package.json` | Upgrade CopilotKit to `^1.8` |
 | `agui-frontend/src/main.tsx` or `App.tsx` | Wrap with `<CopilotKit>` provider |
 | `agui-frontend/src/components/ChatPanel.tsx` | Delete |
-| `agui-frontend/src/pages/Dashboard.tsx` | Replace `<ChatPanel>` with `<CopilotChat>`, register 4 actions |
+| `agui-frontend/src/pages/Dashboard.tsx` | Replace `<ChatPanel>` with `<CopilotChat>`, register 5 actions |
 | `agui-frontend/src/pages/Agents.tsx` | Register `highlight_agent` action |
