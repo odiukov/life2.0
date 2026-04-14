@@ -1,3 +1,4 @@
+import type React from "react";
 import type { HealthSummary } from "../types";
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -95,7 +96,11 @@ interface Props {
   expandedMetric?: string | null;
 }
 
-export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Props) {
+export function DashboardPanel({ summary, expandedMetric }: Props) {
+  const highlight = (key: string): React.CSSProperties =>
+    expandedMetric === key
+      ? { outline: "2px solid #4a9eff", outlineOffset: "2px", borderRadius: "4px" }
+      : {};
   if (!summary) {
     return (
       <div style={{ padding: 16, color: "#555", fontSize: 11, fontFamily: "monospace" }}>Loading...</div>
@@ -120,7 +125,7 @@ export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Pro
 
       {/* BODY COMPOSITION */}
       {body && (
-        <div>
+        <div style={{ ...highlight("weight") }}>
           {sectionLabel("My stats")}
           <div style={{ background: "#1a1a2e", borderRadius: 6, padding: "10px 12px" }}>
             <MetricRow label="Weight" value={body.weight_kg} unit="kg" color="#fff" />
@@ -131,7 +136,9 @@ export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Pro
               <>
                 <div style={{ height: 1, background: "#1e1e30", margin: "6px 0" }} />
                 <MetricRow label="Resting HR" value={daily.resting_hr} unit="bpm" color="#e57373" />
-                <MetricRow label="Body battery" value={daily.body_battery_max} unit="%" color="#4a9eff" />
+                <div style={{ ...highlight("body_battery") }}>
+                  <MetricRow label="Body battery" value={daily.body_battery_max} unit="%" color="#4a9eff" />
+                </div>
               </>
             )}
           </div>
@@ -140,7 +147,7 @@ export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Pro
 
       {/* LAST NIGHT SLEEP */}
       {sleep && (
-        <div>
+        <div style={{ ...highlight("sleep") }}>
           {sectionLabel("Last night")}
           <div style={{ background: "#1a1a2e", borderRadius: 6, padding: "10px 12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -166,7 +173,7 @@ export function DashboardPanel({ summary, expandedMetric: _expandedMetric }: Pro
 
       {/* TODAY */}
       {daily && (
-        <div>
+        <div style={{ ...highlight("steps") }}>
           {sectionLabel("Today")}
           <div style={{ background: "#1a1a2e", borderRadius: 6, padding: "10px 12px" }}>
             {daily.steps != null && (
