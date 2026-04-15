@@ -50,10 +50,11 @@ def _artifact_events(queue: _FakeEventQueue):
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.sleep.app.executor.run_claude", return_value="ok logged")
-async def test_log_sleep_emits_log_entry_artifact(run_claude_mock):
+@patch("agents.sleep.app.executor._LLM")
+async def test_log_sleep_emits_log_entry_artifact(mock_llm):
     from agents.sleep.app.executor import SleepAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     await SleepAgentExecutor().execute(_ctx("slept 8h yesterday", "log_sleep"), queue)
     arts = _collected_artifacts(queue)
@@ -89,10 +90,11 @@ async def test_log_sleep_emits_log_entry_artifact(run_claude_mock):
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.sleep.app.executor.run_claude", return_value="analysis text")
-async def test_analyze_sleep_does_not_emit_log_entry(run_claude_mock):
+@patch("agents.sleep.app.executor._LLM")
+async def test_analyze_sleep_does_not_emit_log_entry(mock_llm):
     from agents.sleep.app.executor import SleepAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="analysis text"))
     queue = _FakeEventQueue()
     await SleepAgentExecutor().execute(_ctx("how did I sleep this week?", "analyze_sleep"), queue)
     arts = _collected_artifacts(queue)
@@ -106,10 +108,11 @@ async def test_analyze_sleep_does_not_emit_log_entry(run_claude_mock):
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.sleep.app.executor.run_claude", return_value="ok logged")
-async def test_log_sleep_clips_long_summary(run_claude_mock):
+@patch("agents.sleep.app.executor._LLM")
+async def test_log_sleep_clips_long_summary(mock_llm):
     from agents.sleep.app.executor import SleepAgentExecutor, _LOG_ENTRY_SUMMARY_MAX
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     long_msg = "a" * 250
     await SleepAgentExecutor().execute(_ctx(long_msg, "log_sleep"), queue)

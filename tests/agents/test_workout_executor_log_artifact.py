@@ -50,10 +50,11 @@ def _artifact_events(queue: _FakeEventQueue):
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.workout.app.executor.run_claude", return_value="ok logged")
-async def test_log_workout_emits_log_entry_artifact(run_claude_mock):
+@patch("agents.workout.app.executor._LLM")
+async def test_log_workout_emits_log_entry_artifact(mock_llm):
     from agents.workout.app.executor import WorkoutAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     await WorkoutAgentExecutor().execute(_ctx("30 min run today", "log_workout"), queue)
     arts = _collected_artifacts(queue)
@@ -86,10 +87,11 @@ async def test_log_workout_emits_log_entry_artifact(run_claude_mock):
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.workout.app.executor.run_claude", return_value="analysis text")
-async def test_analyze_workout_does_not_emit_log_entry(run_claude_mock):
+@patch("agents.workout.app.executor._LLM")
+async def test_analyze_workout_does_not_emit_log_entry(mock_llm):
     from agents.workout.app.executor import WorkoutAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="analysis text"))
     queue = _FakeEventQueue()
     await WorkoutAgentExecutor().execute(_ctx("how hard was last week?", "analyze_workout"), queue)
     arts = _collected_artifacts(queue)
@@ -103,10 +105,11 @@ async def test_analyze_workout_does_not_emit_log_entry(run_claude_mock):
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.workout.app.executor.run_claude", return_value="ok logged")
-async def test_log_workout_clips_long_summary(run_claude_mock):
+@patch("agents.workout.app.executor._LLM")
+async def test_log_workout_clips_long_summary(mock_llm):
     from agents.workout.app.executor import WorkoutAgentExecutor, _LOG_ENTRY_SUMMARY_MAX
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     long_msg = "a" * 250
     await WorkoutAgentExecutor().execute(_ctx(long_msg, "log_workout"), queue)

@@ -1,7 +1,6 @@
 """SleepAgentExecutor — maps incoming A2A messages to sleep-domain skills."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import uuid
@@ -22,10 +21,20 @@ from a2a.types import (
     TextPart,
 )
 
-from shared.claude_runner import run_claude
+from langchain_core.messages import HumanMessage
+from shared.llm import build_llm
 from shared.peer import fetch_peer_artifacts
 from shared.vector import upsert_memory
 from shared.db import insert_task_record
+
+_LLM = None  # lazy-initialised on first LLM call; patched in tests
+
+
+def _get_llm():
+    global _LLM
+    if _LLM is None:
+        _LLM = build_llm()
+    return _LLM
 
 from .skills import PEER_SKILLS, SKILL_PROMPTS
 
@@ -102,7 +111,8 @@ async def _infer_skill_via_llm(message: str) -> str | None:
         f"User message: {message}"
     )
     try:
-        raw = await asyncio.to_thread(run_claude, prompt, 30)
+        result = await _get_llm().ainvoke([HumanMessage(prompt)])
+        raw = result.content if isinstance(result.content, str) else str(result.content)
     except Exception as e:
         logger.warning("LLM skill inference failed: %s", e)
         return None
@@ -137,7 +147,8 @@ class SleepAgentExecutor(AgentExecutor):
             params["peer_artifacts"] = peer_artifacts
             prompt_fn = SKILL_PROMPTS[skill_id]
             prompt = await prompt_fn(message, params)
-            output = await asyncio.to_thread(run_claude, prompt)
+            result = await _get_llm().ainvoke([HumanMessage(prompt)])
+            output = result.content if isinstance(result.content, str) else str(result.content)
 
             if skill_id != "briefing":
                 await insert_task_record(
@@ -171,9 +182,9 @@ class SleepAgentExecutor(AgentExecutor):
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
-        # TODO: cancel() just enqueues a canceled status; it does NOT kill the running
-        # Claude subprocess (which runs in asyncio.to_thread). Properly killing it would
-        # require refactoring shared/claude_runner.py to return the Popen handle.
+        # cancel() enqueues a canceled status; it does NOT abort an in-flight
+        # LLM request. Proper cancellation would require threading a cancel
+        # token through shared.llm.
         await _emit_status(event_queue, ctx.task_id, ctx.context_id, TaskState.canceled, final=True)
 
 

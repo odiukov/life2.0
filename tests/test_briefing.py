@@ -245,18 +245,22 @@ async def test_call_agents_for_briefing_skips_missing_domain():
     assert call_urls == ["http://agent-sleep:8001"]
 
 
-def test_generate_insight_calls_claude():
-    """generate_insight passes metrics + summaries to Claude and returns text."""
-    with patch("orchestrator.app.briefing.run_claude", return_value="Rest today.") as mock_claude:
+@pytest.mark.asyncio
+async def test_generate_insight_calls_claude():
+    """generate_insight passes metrics + summaries to the LLM and returns text."""
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="Rest today."))
+    with patch("orchestrator.app.briefing._LLM", fake_llm):
         from orchestrator.app.briefing import generate_insight
-        result = generate_insight(
+        result = await generate_insight(
             metrics={"date": "Mon 14 Apr", "sleep": {"hrv": 50}, "workout": {"total_calories": 1240}, "nutrition": None},
             summaries={"sleep": "Short on deep sleep.", "workout": "Heavy run."},
         )
 
     assert result == "Rest today."
-    assert mock_claude.called
-    prompt = mock_claude.call_args[0][0]
+    assert fake_llm.ainvoke.called
+    call_args = fake_llm.ainvoke.call_args[0][0]
+    prompt = call_args[0].content
     assert "Short on deep sleep" in prompt
     assert "Heavy run" in prompt
 

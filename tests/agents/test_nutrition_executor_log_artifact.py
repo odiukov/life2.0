@@ -50,10 +50,11 @@ def _artifact_events(queue: _FakeEventQueue):
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.nutrition.app.executor.run_claude", return_value="ok logged")
-async def test_log_meal_emits_log_entry_artifact(run_claude_mock):
+@patch("agents.nutrition.app.executor._LLM")
+async def test_log_meal_emits_log_entry_artifact(mock_llm):
     from agents.nutrition.app.executor import NutritionAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     await NutritionAgentExecutor().execute(_ctx("greek salad 320 kcal", "log_meal"), queue)
     arts = _collected_artifacts(queue)
@@ -86,10 +87,11 @@ async def test_log_meal_emits_log_entry_artifact(run_claude_mock):
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.nutrition.app.executor.run_claude", return_value="analysis text")
-async def test_analyze_nutrition_does_not_emit_log_entry(run_claude_mock):
+@patch("agents.nutrition.app.executor._LLM")
+async def test_analyze_nutrition_does_not_emit_log_entry(mock_llm):
     from agents.nutrition.app.executor import NutritionAgentExecutor
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="analysis text"))
     queue = _FakeEventQueue()
     await NutritionAgentExecutor().execute(_ctx("analyze my diet", "analyze_nutrition"), queue)
     arts = _collected_artifacts(queue)
@@ -103,10 +105,11 @@ async def test_analyze_nutrition_does_not_emit_log_entry(run_claude_mock):
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
-@patch("agents.nutrition.app.executor.run_claude", return_value="ok logged")
-async def test_log_meal_clips_long_summary(run_claude_mock):
+@patch("agents.nutrition.app.executor._LLM")
+async def test_log_meal_clips_long_summary(mock_llm):
     from agents.nutrition.app.executor import NutritionAgentExecutor, _LOG_ENTRY_SUMMARY_MAX
 
+    mock_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok logged"))
     queue = _FakeEventQueue()
     long_msg = "a" * 250
     await NutritionAgentExecutor().execute(_ctx(long_msg, "log_meal"), queue)

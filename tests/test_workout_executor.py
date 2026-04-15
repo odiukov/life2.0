@@ -25,7 +25,9 @@ async def test_executor_happy_path_uses_skill_id_and_emits_completed():
     event_queue = MagicMock()
     event_queue.enqueue_event = AsyncMock()
 
-    with patch("agents.workout.app.executor.run_claude", return_value="Хорошая неделя"), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="Хорошая неделя"))
+    with patch("agents.workout.app.executor._LLM", fake_llm), \
          patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.workout.app.executor.insert_task_record", new=AsyncMock()), \
          patch("agents.workout.app.executor.upsert_memory", new=AsyncMock()), \
@@ -65,7 +67,9 @@ async def test_executor_falls_back_to_llm_infer_when_no_skill_id():
     event_queue.enqueue_event = AsyncMock()
 
     fake_prompt = AsyncMock(return_value="prompt")
-    with patch("agents.workout.app.executor.run_claude", return_value="ok"), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
+    with patch("agents.workout.app.executor._LLM", fake_llm), \
          patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.workout.app.executor.insert_task_record", new=AsyncMock()), \
          patch("agents.workout.app.executor.upsert_memory", new=AsyncMock()), \
@@ -85,7 +89,9 @@ async def test_executor_subprocess_error_marks_failed():
     event_queue = MagicMock()
     event_queue.enqueue_event = AsyncMock()
 
-    with patch("agents.workout.app.executor.run_claude", side_effect=RuntimeError("boom")), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
+    with patch("agents.workout.app.executor._LLM", fake_llm), \
          patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.workout.app.executor.SKILL_PROMPTS", {"analyze_workout": AsyncMock(return_value="p")}):
         executor = WorkoutAgentExecutor()
