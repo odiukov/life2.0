@@ -48,6 +48,15 @@ class _FakeClient:
         return _gen()
 
 
+def _tool_call(args: dict, tc_id: str = "tc") -> dict:
+    return {
+        "name": "ask_sleep_agent",
+        "type": "tool_call",
+        "id": tc_id,
+        "args": {**args, "state": {"messages": [], "toolCalls": []}},
+    }
+
+
 @pytest.mark.asyncio
 async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
     fake = _FakeClient(_make_task("sleep summary"))
@@ -60,12 +69,15 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
     ), patch(
         "orchestrator.app.health_agent._resolve_url",
         return_value="http://sleep-agent:8080",
+    ), patch(
+        "orchestrator.app.health_agent.copilotkit_emit_state",
     ):
-        result = await ask_sleep_agent.ainvoke(
-            {"message": "how did I sleep?", "skill": "analyze_sleep"}
+        cmd = await ask_sleep_agent.ainvoke(
+            _tool_call({"message": "how did I sleep?", "skill": "analyze_sleep"})
         )
 
-    assert result == "sleep summary"
+    tool_msg = cmd.update["messages"][0]
+    assert tool_msg.content == "sleep summary"
     assert len(fake.sent) == 1
     sent = fake.sent[0]
     assert sent.role == Role.user
@@ -77,8 +89,12 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
 
 @pytest.mark.asyncio
 async def test_ask_sleep_agent_returns_unavailable_when_url_missing():
-    with patch("orchestrator.app.health_agent._resolve_url", return_value=None):
-        result = await ask_sleep_agent.ainvoke(
-            {"message": "hi", "skill": "analyze_sleep"}
+    with patch(
+        "orchestrator.app.health_agent._resolve_url", return_value=None
+    ), patch(
+        "orchestrator.app.health_agent.copilotkit_emit_state",
+    ):
+        cmd = await ask_sleep_agent.ainvoke(
+            _tool_call({"message": "hi", "skill": "analyze_sleep"})
         )
-    assert "unavailable" in result.lower()
+    assert "unavailable" in cmd.update["messages"][0].content.lower()

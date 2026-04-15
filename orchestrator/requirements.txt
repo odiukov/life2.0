@@ -6,3 +6,4 @@ ag-ui-langgraph==0.0.32
 langchain-anthropic>=0.3
 langchain-openai>=0.3
 a2a-sdk>=0.2.5
+copilotkit>=0.1.39,<0.2

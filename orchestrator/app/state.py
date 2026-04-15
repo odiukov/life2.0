@@ -9,6 +9,7 @@ from typing import Annotated, Literal, NotRequired, TypedDict
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
+from langgraph.managed.is_last_step import RemainingSteps
 
 ToolStatus = Literal["running", "done", "error"]
 
@@ -32,6 +33,7 @@ class LogEntry(TypedDict):
 
 class HealthAgentState(TypedDict):
     messages: Annotated[list[AnyMessage], add_messages]
+    remaining_steps: NotRequired[RemainingSteps]
     currentStep: NotRequired[str]
     activeAgent: NotRequired[str | None]
     toolCalls: NotRequired[list[ToolCall]]
