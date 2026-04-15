@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
@@ -14,7 +15,8 @@ from shared.llm import build_llm
 @pytest.fixture(autouse=True)
 def _clear_env(monkeypatch):
     for k in ("LLM_PROVIDER", "LLM_MODEL", "ANTHROPIC_API_KEY",
-              "OPENROUTER_API_KEY", "GEMINI_API_KEY", "OLLAMA_HOST"):
+              "OPENROUTER_API_KEY", "GEMINI_API_KEY", "OLLAMA_HOST",
+              "GROQ_API_KEY"):
         monkeypatch.delenv(k, raising=False)
 
 
@@ -65,6 +67,14 @@ def test_gemini_branch(monkeypatch):
     assert llm.model.endswith("gemini-2.0-flash-exp")
 
 
+def test_groq_branch(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    llm = build_llm()
+    assert isinstance(llm, ChatGroq)
+    assert llm.model_name == "llama-3.3-70b-versatile"
+
+
 def test_ollama_branch(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "ollama")
     llm = build_llm()
@@ -100,6 +110,7 @@ def test_unknown_provider_raises(monkeypatch):
         ("anthropic", "ANTHROPIC_API_KEY"),
         ("openrouter", "OPENROUTER_API_KEY"),
         ("gemini", "GEMINI_API_KEY"),
+        ("groq", "GROQ_API_KEY"),
         ("claude-cli", "ANTHROPIC_API_KEY"),
     ],
 )
