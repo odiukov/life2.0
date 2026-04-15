@@ -152,7 +152,7 @@ class NutritionAgentExecutor(AgentExecutor):
                     skill_id=skill_id, input_=params, output=output, state="completed",
                 )
                 await upsert_memory(
-                    collection="nutrition_memories",
+                    agent_id="nutrition",
                     id_=str(uuid.uuid4()),
                     text=output,
                     metadata={

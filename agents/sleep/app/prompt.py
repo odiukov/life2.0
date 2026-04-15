@@ -4,7 +4,7 @@ from shared.vector import search_memories
 
 async def build_sleep_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
     recent_logs = await fetch_recent_logs("sleep", limit=10)
-    memories = await search_memories("sleep_memories", task, limit=5)
+    memories = await search_memories(task, limit=5)
 
     logs_text = "\n".join(
         f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"

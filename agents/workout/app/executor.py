@@ -132,7 +132,7 @@ class WorkoutAgentExecutor(AgentExecutor):
                     skill_id=skill_id, input_=params, output=output, state="completed",
                 )
                 await upsert_memory(
-                    collection="workout_memories",
+                    agent_id="workout",
                     id_=str(uuid.uuid4()),
                     text=output,
                     metadata={

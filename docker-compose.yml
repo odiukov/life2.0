@@ -39,6 +39,7 @@ services:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ~/.claude:/root/.claude:ro
       - ~/.claude.json:/root/.claude.json:ro
@@ -67,6 +68,7 @@ services:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ~/.claude:/root/.claude:ro
       - ~/.claude.json:/root/.claude.json:ro
@@ -95,6 +97,7 @@ services:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       SYNC_SERVICE_URL: http://sync-service:8080
     volumes:
       - ~/.claude:/root/.claude:ro
