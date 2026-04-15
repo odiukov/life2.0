@@ -28,7 +28,7 @@ def _format_log(r: dict) -> str:
 async def build_nutrition_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
     nutrition_logs = await fetch_recent_logs("nutrition", limit=10)
     workout_logs = await fetch_recent_logs("workout", limit=3)
-    memories = await search_memories("nutrition_memories", task, limit=5)
+    memories = await search_memories(task, limit=5)
 
     nutrition_text = "\n".join(_format_log(r) for r in nutrition_logs) or "No recent nutrition logs."
 
