@@ -40,10 +40,24 @@ def _extract_text_from_message(msg: Message) -> str:
     return ""
 
 
-async def _call_agent(agent: str, message: str, skill: str) -> str:
+def _extract_log_entry_from_task(task: Task) -> dict | None:
+    for art in task.artifacts or []:
+        if art.name != "log_entry":
+            continue
+        for p in art.parts or []:
+            root = getattr(p, "root", p)
+            data = getattr(root, "data", None)
+            if isinstance(data, dict) and "summary" in data and "timestamp" in data:
+                return data
+    return None
+
+
+async def _call_agent_with_artifact(
+    agent: str, message: str, skill: str
+) -> tuple[str, dict | None]:
     url = _resolve_url(agent)
     if not url:
-        return f"Agent '{agent}' is currently unavailable."
+        return f"Agent '{agent}' is currently unavailable.", None
     try:
         client = await get_client(url)
         msg = Message(
@@ -52,19 +66,28 @@ async def _call_agent(agent: str, message: str, skill: str) -> str:
             message_id=str(uuid.uuid4()),
             metadata={"skillId": skill},
         )
+        text = ""
+        log_entry: dict | None = None
         async for resp in client.send_message(msg):
             if isinstance(resp, tuple):
                 task, _update = resp
-                text = _extract_text_from_task(task)
-                if text:
-                    return text
+                if not text:
+                    text = _extract_text_from_task(task)
+                if log_entry is None:
+                    log_entry = _extract_log_entry_from_task(task)
             elif isinstance(resp, Message):
-                text = _extract_text_from_message(resp)
-                if text:
-                    return text
-        return f"Agent '{agent}' returned no content."
+                if not text:
+                    text = _extract_text_from_message(resp)
+        if not text:
+            text = f"Agent '{agent}' returned no content."
+        return text, log_entry
     except Exception as e:
-        return f"Error calling {agent} agent: {e}"
+        return f"Error calling {agent} agent: {e}", None
+
+
+async def _call_agent(agent: str, message: str, skill: str) -> str:
+    text, _ = await _call_agent_with_artifact(agent, message, skill)
+    return text
 
 
 @tool
