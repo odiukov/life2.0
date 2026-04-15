@@ -73,10 +73,9 @@ asyncpg>=0.29
 ag-ui-langgraph==0.0.32
 a2a-sdk>=0.2.5
 copilotkit>=0.1.39,<0.2
-sse-starlette>=3.0
 ```
 
-(Deleted lines: `langchain-anthropic>=0.3`, `langchain-openai>=0.3`. Shared package pulls them in.)
+(Deleted lines: `langchain-anthropic>=0.3`, `langchain-openai>=0.3`. Shared package pulls them in. No other lines change.)
 
 - [ ] **Step 3: Rebuild images to pick up the new shared deps**
 
