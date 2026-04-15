@@ -50,6 +50,8 @@ class ChatClaudeCLI(BaseChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:
+        # Sync entrypoint. Will raise if called from inside a running event loop;
+        # prefer .ainvoke() from async contexts (all current call sites are async).
         return asyncio.run(self._agenerate(messages, stop, None, **kwargs))
 
     async def _agenerate(
@@ -85,7 +87,8 @@ class ChatClaudeCLI(BaseChatModel):
                 proc.communicate(), timeout=self.timeout_seconds
             )
         except asyncio.TimeoutError as e:
-            await proc.kill()
+            proc.kill()
+            await proc.wait()
             raise TimeoutError(
                 f"claude CLI timed out after {self.timeout_seconds}s"
             ) from e

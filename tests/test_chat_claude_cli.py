@@ -1,7 +1,7 @@
 """Unit tests for ChatClaudeCLI — mocks the subprocess, no real CLI calls."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -21,7 +21,8 @@ def _fake_process(stdout: bytes = b"pong", stderr: bytes = b"", returncode: int 
     proc = AsyncMock()
     proc.communicate = AsyncMock(return_value=(stdout, stderr))
     proc.returncode = returncode
-    proc.kill = AsyncMock()
+    proc.kill = MagicMock()
+    proc.wait = AsyncMock(return_value=None)
     return proc
 
 
@@ -82,7 +83,8 @@ async def test_subprocess_timeout():
         await asyncio.sleep(10)
 
     proc.communicate = _never
-    proc.kill = AsyncMock()
+    proc.kill = MagicMock()
+    proc.wait = AsyncMock(return_value=None)
     proc.returncode = None
     with patch("shared.chat_claude_cli.asyncio.create_subprocess_exec",
                new=AsyncMock(return_value=proc)):
