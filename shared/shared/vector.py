@@ -5,7 +5,7 @@ payload carries `agent_id` (sleep/workout/nutrition), `text`, `source`
 (agent/garmin/yazio/…), plus caller-supplied metadata. Cross-agent search is
 the default; narrow scope with `agent_ids=[...]`.
 
-Embeddings come from Gemini `text-embedding-004` (768 dims). Embedding or
+Embeddings come from Gemini `gemini-embedding-001` (768 dims, Matryoshka). Embedding or
 Qdrant failures are logged and swallowed — memory is best-effort; the Postgres
 `health_logs` table is source of truth.
 """

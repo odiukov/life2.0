@@ -1,7 +1,8 @@
-"""Google Gemini text-embedding-004 async HTTP client.
+"""Google Gemini gemini-embedding-001 async HTTP client.
 
 Wraps the generativelanguage.googleapis.com embedContent endpoint.
-Returns 768-dim vectors. Raises EmbeddingError on any failure.
+Requests 768-dim vectors via Matryoshka truncation (outputDimensionality=768).
+Raises EmbeddingError on any failure.
 """
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ import os
 
 import httpx
 
-_MODEL = "text-embedding-004"
+_MODEL = "gemini-embedding-001"
 _URL = f"https://generativelanguage.googleapis.com/v1beta/models/{_MODEL}:embedContent"
 _VECTOR_SIZE = 768
 
@@ -48,6 +49,7 @@ async def embed(text: str, task_type: str = "retrieval_document") -> list[float]
         "model": f"models/{_MODEL}",
         "content": {"parts": [{"text": text}]},
         "taskType": _task_type(task_type),
+        "outputDimensionality": _VECTOR_SIZE,
     }
     try:
         response = await client.post(url, json=body)

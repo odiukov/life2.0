@@ -19,6 +19,9 @@ if [[ -z "${GEMINI_API_KEY:-}" ]]; then
   exit 1
 fi
 
+# .env sets QDRANT_HOST=qdrant for the docker network; we run from the host.
+export QDRANT_HOST="${QDRANT_HOST_OVERRIDE:-localhost}"
+
 # shellcheck disable=SC1091
 source .venv/bin/activate
 

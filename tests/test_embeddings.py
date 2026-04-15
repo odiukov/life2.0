@@ -20,7 +20,7 @@ async def test_embed_returns_vector_from_gemini_response():
     assert vec[0] == 0.1
     # URL contains the model
     call_url = post.await_args.args[0]
-    assert "text-embedding-004:embedContent" in call_url
+    assert "gemini-embedding-001:embedContent" in call_url
     # Body includes taskType and content
     body = post.await_args.kwargs["json"]
     assert body["content"]["parts"][0]["text"] == "hello"
