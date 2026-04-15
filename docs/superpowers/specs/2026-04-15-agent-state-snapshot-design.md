@@ -14,7 +14,7 @@ AG-UI defines `StateSnapshot`/`StateDelta` events (JSON Patch, RFC 6902) for str
 
 - Dashboards (`/stats`, `/agents`, `/health-summary`) are query results, not agent state. They stay on HTTP polling. A separate future plan may move them to SSE push.
 - Durable state across orchestrator restarts. We keep `MemorySaver`. A follow-up plan will migrate to `PostgresSaver` (`langgraph-checkpoint-postgres`).
-- Removing `/chat/stream` code path — dead (frontend goes through `/copilotkit` runtime → `/agui`). Cleanup is bundled into this plan.
+- Removing `/chat/stream` endpoint — it is used by `telegram_bot/app/client.py` and must stay. Telegram bot does not participate in CoAgent state (it's chat-UI only).
 
 ## Standards alignment
 
@@ -103,7 +103,7 @@ In a new `pre_model_hook` (or inside the tool, simpler): cap `toolCalls` at the 
 
 Currently each A2A `Task` returned by sub-agents carries a single text artifact. To avoid brittle LLM/regex parsing in the orchestrator, sub-agents emit a second named artifact for log skills.
 
-**Modified:** `agents/{sleep,workout,nutrition}/app/handler.py` — after a successful `log_*` skill, build:
+**Modified:** `agents/{sleep,workout,nutrition}/app/executor.py` — after a successful `log_*` skill, build:
 
 ```python
 Artifact(
@@ -162,7 +162,7 @@ User: "залогай 30 минут бега"
 Backend:
 - `tests/orchestrator/test_health_agent_state.py` — per tool, mock `_call_agent_with_artifact` and `copilotkit_emit_state`; assert emit call args and `Command.update` contents for both `log_*` and non-log skills.
 - `tests/orchestrator/test_artifact_extraction.py` — `_call_agent_with_artifact` parses text + `log_entry` from synthetic `Task.artifacts`.
-- `tests/agents/test_{sleep,workout,nutrition}_handler_log_artifact.py` — handler emits `log_entry` artifact for log skills only.
+- `tests/agents/test_{sleep,workout,nutrition}_executor_log_artifact.py` — executor emits `log_entry` artifact for log skills only.
 
 Frontend:
 - `AgentStatusBar.test.tsx` — render matrix: no state, running, done-only, error.
@@ -179,10 +179,6 @@ Manual smoke (in implementation plan):
 - `toolCalls` grows per turn; trimmed to last 20 to bound StateSnapshot size.
 - Telegram bot does not participate — it uses `/chat`, not `/agui`. CoAgent state is chat-UI only.
 
-## Cleanup bundled with this change
-
-- Remove `/chat/stream` endpoint in `orchestrator/app/main.py:61-106` and associated `StreamChatRequest` / `_sse` helpers. Frontend already goes through `/copilotkit` runtime → `/agui`.
-
 ## File map
 
 New:
@@ -191,13 +187,12 @@ New:
 - `agui-frontend/src/components/LastLoggedCard.tsx` (+ `.test.tsx`)
 - `tests/orchestrator/test_health_agent_state.py`
 - `tests/orchestrator/test_artifact_extraction.py`
-- `tests/agents/test_{sleep,workout,nutrition}_handler_log_artifact.py`
+- `tests/agents/test_{sleep,workout,nutrition}_executor_log_artifact.py`
 
 Modified:
 - `orchestrator/app/health_agent.py` — tools refactored, `_call_agent` → `_call_agent_with_artifact`, `create_react_agent(state_schema=HealthAgentState)`.
-- `orchestrator/app/main.py` — remove `/chat/stream` block.
 - `orchestrator/requirements.txt` — add `copilotkit>=0.1.39`.
-- `agents/{sleep,workout,nutrition}/app/handler.py` — emit `log_entry` artifact for `log_*` skills.
+- `agents/{sleep,workout,nutrition}/app/executor.py` — emit second `log_entry` artifact for `log_*` skills.
 - `agui-frontend/src/types.ts` — add `ToolCall`, `LogEntry`, `HealthAgentState`.
 - `agui-frontend/src/pages/DashboardPage.tsx` — wire `useCoAgent`, mount new components.
 
