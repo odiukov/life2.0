@@ -54,3 +54,36 @@ def test_row_metadata():
 def test_empty_payload():
     assert map_body_composition({}) == []
     assert map_body_composition({"data": []}) == []
+
+
+def test_map_body_composition_widened_metrics():
+    from sync_service.app.apple_health import map_body_composition
+    payload = {
+        "data": [
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 79.6, "name": "Body Mass", "units": "kg"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 1633, "name": "Basal Metabolic Rate", "units": "kcal"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 8, "name": "Visceral Fat Grade", "units": "count"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 32, "name": "Body Age", "units": "count"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 73, "name": "Body Score", "units": "count"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 18.9, "name": "Subcutaneous Fat Percentage", "units": "%"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 11.7, "name": "Protein Mass", "units": "kg"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 42.9, "name": "Body Water", "units": "kg"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 54.6, "name": "Muscle Mass", "units": "kg"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 21.1, "name": "Body Fat Mass", "units": "kg"},
+            {"date": "2026-04-14 09:37:16 +0000", "qty": 58.5, "name": "Fat Free Body Weight", "units": "kg"},
+        ],
+    }
+    rows = map_body_composition(payload)
+    assert len(rows) == 1
+    data = rows[0]["data"]
+    assert data["weight_kg"] == 79.6
+    assert data["bmr_kcal"] == 1633.0
+    assert data["visceral_fat_grade"] == 8.0
+    assert data["body_age"] == 32.0
+    assert data["body_score"] == 73.0
+    assert data["subcutaneous_fat_pct"] == 18.9
+    assert data["protein_kg"] == 11.7
+    assert data["body_water_kg"] == 42.9
+    assert data["muscle_kg"] == 54.6
+    assert data["body_fat_kg"] == 21.1
+    assert data["fat_free_kg"] == 58.5

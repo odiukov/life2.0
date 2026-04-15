@@ -16,6 +16,16 @@ Supported metric names (Health Auto Export field names):
 - Body Mass Index
 - Skeletal Muscle Mass
 - Bone Mass
+- Basal Metabolic Rate
+- Visceral Fat Grade
+- Body Age
+- Body Score
+- Subcutaneous Fat Percentage
+- Protein Mass
+- Body Water
+- Muscle Mass
+- Body Fat Mass
+- Fat Free Body Weight
 """
 
 from datetime import datetime, timezone
@@ -30,6 +40,17 @@ _METRIC_MAP: dict[str, str] = {
     "Body Mass Index": "bmi",
     "Skeletal Muscle Mass": "skeletal_muscle_kg",
     "Bone Mass": "bone_mass_kg",
+    # ViHealth-derived metrics (invented HealthKit-style names kept stable)
+    "Basal Metabolic Rate": "bmr_kcal",
+    "Visceral Fat Grade": "visceral_fat_grade",
+    "Body Age": "body_age",
+    "Body Score": "body_score",
+    "Subcutaneous Fat Percentage": "subcutaneous_fat_pct",
+    "Protein Mass": "protein_kg",
+    "Body Water": "body_water_kg",
+    "Muscle Mass": "muscle_kg",
+    "Body Fat Mass": "body_fat_kg",
+    "Fat Free Body Weight": "fat_free_kg",
 }
 
 
