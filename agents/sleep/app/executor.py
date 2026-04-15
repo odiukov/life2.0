@@ -1,7 +1,6 @@
 """SleepAgentExecutor — maps incoming A2A messages to sleep-domain skills."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import uuid

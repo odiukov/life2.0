@@ -1,7 +1,6 @@
 """NutritionAgentExecutor — maps incoming A2A messages to nutrition-domain skills."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os

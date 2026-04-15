@@ -50,9 +50,16 @@ class ChatClaudeCLI(BaseChatModel):
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
     ) -> ChatResult:
-        # Sync entrypoint. Will raise if called from inside a running event loop;
-        # prefer .ainvoke() from async contexts (all current call sites are async).
-        return asyncio.run(self._agenerate(messages, stop, None, **kwargs))
+        # Sync entrypoint. Fail fast with a clear message inside a running loop;
+        # the app's own code paths are all async and should use .ainvoke().
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self._agenerate(messages, stop, None, **kwargs))
+        raise RuntimeError(
+            "ChatClaudeCLI._generate called from a running event loop. "
+            "Use .ainvoke() from async contexts."
+        )
 
     async def _agenerate(
         self,

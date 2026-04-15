@@ -1,7 +1,6 @@
 """WorkoutAgentExecutor — maps incoming A2A messages to workout-domain skills."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import uuid
