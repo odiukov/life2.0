@@ -102,3 +102,9 @@ async def test_missing_token_raises(monkeypatch):
 
 def test_llm_type():
     assert ChatClaudeCLI()._llm_type == "claude-cli"
+
+
+def test_bind_tools_raises_clear_error():
+    llm = ChatClaudeCLI()
+    with pytest.raises(NotImplementedError, match="does not support tool calling"):
+        llm.bind_tools([{"name": "dummy"}])

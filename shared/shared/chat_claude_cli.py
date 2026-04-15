@@ -109,6 +109,14 @@ class ChatClaudeCLI(BaseChatModel):
             generations=[ChatGeneration(message=AIMessage(content=text))]
         )
 
+    def bind_tools(self, tools, **kwargs):
+        raise NotImplementedError(
+            "ChatClaudeCLI does not support tool calling (the claude --print "
+            "subprocess is text-only). For agents that bind tools (e.g. "
+            "LangGraph's create_react_agent), use LLM_PROVIDER in "
+            "{anthropic, openrouter, gemini, groq, ollama} instead."
+        )
+
     @staticmethod
     def _flatten_messages(messages: List[BaseMessage]) -> str:
         """Join messages (system first, then rest in order) into one prompt string."""

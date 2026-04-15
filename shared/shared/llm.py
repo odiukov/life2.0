@@ -3,7 +3,7 @@
 Public surface: a single function `build_llm() -> BaseChatModel`.
 
 Env vars:
-    LLM_PROVIDER — one of: anthropic | openrouter | gemini | ollama | claude-cli
+    LLM_PROVIDER — one of: anthropic | openrouter | gemini | groq | ollama | claude-cli
                    (default: openrouter).
     LLM_MODEL    — optional override. Each provider has a default (see below).
 
@@ -11,6 +11,7 @@ Required key per provider:
     anthropic   — ANTHROPIC_API_KEY
     openrouter  — OPENROUTER_API_KEY
     gemini      — GEMINI_API_KEY
+    groq        — GROQ_API_KEY
     ollama      — (none; OLLAMA_HOST optional, defaults to http://localhost:11434)
     claude-cli  — ANTHROPIC_API_KEY  (OAuth token from scripts/export-auth.sh)
 
@@ -28,6 +29,7 @@ import anthropic
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
@@ -36,8 +38,9 @@ from .chat_claude_cli import ChatClaudeCLI
 
 _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-6",
-    "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter": "qwen/qwen3-coder-480b-a35b-instruct:free",
     "gemini": "gemini-2.0-flash-exp",
+    "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3.1:8b",
     "claude-cli": "claude-sonnet-4-6",
 }
@@ -57,6 +60,8 @@ def build_llm() -> BaseChatModel:
         return _build_openrouter(model)
     if provider == "gemini":
         return _build_gemini(model)
+    if provider == "groq":
+        return _build_groq(model)
     if provider == "ollama":
         return _build_ollama(model)
     if provider == "claude-cli":
@@ -73,7 +78,7 @@ def _require(key: str) -> str:
 
 def _build_anthropic(model: str) -> BaseChatModel:
     token = _require("ANTHROPIC_API_KEY")
-    llm = ChatAnthropic(model=model, temperature=0)
+    llm = ChatAnthropic(model=model, temperature=0, streaming=True)
     if token.startswith("sk-ant-oat"):
         headers = {"anthropic-beta": "oauth-2025-04-20"}
         llm.__dict__["_async_client"] = anthropic.AsyncAnthropic(
@@ -99,6 +104,14 @@ def _build_gemini(model: str) -> BaseChatModel:
         model=model,
         temperature=0,
         google_api_key=_require("GEMINI_API_KEY"),
+    )
+
+
+def _build_groq(model: str) -> BaseChatModel:
+    return ChatGroq(
+        model=model,
+        temperature=0,
+        api_key=_require("GROQ_API_KEY"),
     )
 
 
