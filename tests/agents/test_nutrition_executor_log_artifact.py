@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -40,6 +41,10 @@ def _collected_artifacts(queue: _FakeEventQueue) -> list[Artifact]:
     return out
 
 
+def _artifact_events(queue: _FakeEventQueue):
+    return [e for e in queue.events if getattr(e, "artifact", None) is not None]
+
+
 @pytest.mark.asyncio
 @patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
@@ -60,6 +65,21 @@ async def test_log_meal_emits_log_entry_artifact(run_claude_mock):
     assert data_part.data["summary"].startswith("greek salad")
     assert "timestamp" in data_part.data
 
+    art_events = _artifact_events(queue)
+    art_names = [e.artifact.name for e in art_events]
+    assert art_names.index("log_entry") < art_names.index("analysis")
+
+    log_evt = next(e for e in art_events if e.artifact.name == "log_entry")
+    analysis_evt = next(e for e in art_events if e.artifact.name == "analysis")
+    assert log_evt.append is True
+    assert log_evt.last_chunk is False
+    assert analysis_evt.append is False
+    assert analysis_evt.last_chunk is True
+
+    ts = datetime.fromisoformat(data_part.data["timestamp"])
+    assert ts.tzinfo is not None
+    assert ts.utcoffset().total_seconds() == 0
+
 
 @pytest.mark.asyncio
 @patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
@@ -76,3 +96,22 @@ async def test_analyze_nutrition_does_not_emit_log_entry(run_claude_mock):
     names = [a.name for a in arts]
     assert "log_entry" not in names
     assert "analysis" in names
+
+
+@pytest.mark.asyncio
+@patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
+@patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
+@patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
+@patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
+@patch("agents.nutrition.app.executor.run_claude", return_value="ok logged")
+async def test_log_meal_clips_long_summary(run_claude_mock):
+    from agents.nutrition.app.executor import NutritionAgentExecutor, _LOG_ENTRY_SUMMARY_MAX
+
+    queue = _FakeEventQueue()
+    long_msg = "a" * 250
+    await NutritionAgentExecutor().execute(_ctx(long_msg, "log_meal"), queue)
+    arts = _collected_artifacts(queue)
+    log_art = next(a for a in arts if a.name == "log_entry")
+    summary = log_art.parts[0].root.data["summary"]
+    assert len(summary) == _LOG_ENTRY_SUMMARY_MAX
+    assert summary.endswith("…")

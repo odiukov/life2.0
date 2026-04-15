@@ -31,6 +31,17 @@ from .skills import PEER_SKILLS, SKILL_PROMPTS
 
 logger = logging.getLogger(__name__)
 
+# Summary shown in the LogEntry DataPart; kept short for the chat UI toast card.
+_LOG_ENTRY_SUMMARY_MAX = 120
+
+
+def _clip_summary(text: str) -> str:
+    cleaned = text.strip()
+    if len(cleaned) <= _LOG_ENTRY_SUMMARY_MAX:
+        return cleaned
+    return cleaned[:_LOG_ENTRY_SUMMARY_MAX - 1] + "…"
+
+
 _WORKOUT_KEYWORDS = {
     "тренировк", "трениров", "workout", "exercise", "нагрузк", "training",
     "физ", "спорт", "sport", "run", "бег", "кардио", "cardio",
@@ -145,6 +156,8 @@ class SleepAgentExecutor(AgentExecutor):
                     },
                 )
 
+            # emit only after durable persistence (insert_task_record + upsert_memory) succeeded,
+            # so a log_entry never reaches the UI for a record that wasn't saved.
             if skill_id.startswith("log_"):
                 await _emit_log_entry_artifact(event_queue, task_id, context_id, message)
             await _emit_artifact(event_queue, task_id, context_id, "analysis", output)
@@ -211,13 +224,13 @@ async def _emit_log_entry_artifact(
     event_queue: EventQueue,
     task_id: str,
     context_id: str,
-    summary: str,
+    raw_message: str,
 ) -> None:
     artifact = Artifact(
         artifact_id=str(uuid.uuid4()),
         name="log_entry",
         parts=[Part(root=DataPart(data={
-            "summary": summary[:120],
+            "summary": _clip_summary(raw_message),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }))],
     )
