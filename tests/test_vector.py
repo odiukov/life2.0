@@ -5,10 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 @pytest.mark.asyncio
 async def test_upsert_memory_calls_embed_and_qdrant_with_payload():
     client = MagicMock()
-    client.get_collections = AsyncMock(return_value=MagicMock(collections=[
-        MagicMock(name="health_memories"),
-    ]))
-    # force ensure_collection to create — pretend collection missing
     missing_collections = MagicMock()
     missing_collections.collections = []
     client.get_collections = AsyncMock(return_value=missing_collections)

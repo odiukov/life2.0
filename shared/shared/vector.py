@@ -83,11 +83,12 @@ async def upsert_memory(
     try:
         client = _get_client()
         await _ensure_collection()
+        md = dict(metadata)
         payload = {
             "agent_id": agent_id,
             "text": text,
-            "source": metadata.pop("source", "agent"),
-            **metadata,
+            "source": md.pop("source", "agent"),
+            **md,
         }
         await client.upsert(
             collection_name=COLLECTION,
