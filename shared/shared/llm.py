@@ -38,7 +38,7 @@ from .chat_claude_cli import ChatClaudeCLI
 
 _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-6",
-    "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter": "qwen/qwen3-coder-480b-a35b-instruct:free",
     "gemini": "gemini-2.0-flash-exp",
     "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3.1:8b",

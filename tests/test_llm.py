@@ -25,7 +25,7 @@ def test_default_provider_is_openrouter(monkeypatch):
     llm = build_llm()
     assert isinstance(llm, ChatOpenAI)
     assert str(llm.openai_api_base).rstrip("/") == "https://openrouter.ai/api/v1"
-    assert llm.model_name == "meta-llama/llama-3.3-70b-instruct:free"
+    assert llm.model_name == "qwen/qwen3-coder-480b-a35b-instruct:free"
 
 
 def test_anthropic_branch(monkeypatch):
