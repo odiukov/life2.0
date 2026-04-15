@@ -5,7 +5,7 @@ from shared.vector import search_memories
 
 async def build_workout_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
     all_logs = await fetch_recent_logs("workout", limit=20)
-    memories = await search_memories("workout_memories", task, limit=5)
+    memories = await search_memories(task, limit=5)
 
     workout_logs = [r for r in all_logs if r["type"] != "body_composition"]
     body_logs = [r for r in all_logs if r["type"] == "body_composition"]
