@@ -73,7 +73,7 @@ def _require(key: str) -> str:
 
 def _build_anthropic(model: str) -> BaseChatModel:
     token = _require("ANTHROPIC_API_KEY")
-    llm = ChatAnthropic(model=model, temperature=0)
+    llm = ChatAnthropic(model=model, temperature=0, streaming=True)
     if token.startswith("sk-ant-oat"):
         headers = {"anthropic-beta": "oauth-2025-04-20"}
         llm.__dict__["_async_client"] = anthropic.AsyncAnthropic(

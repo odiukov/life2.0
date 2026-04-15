@@ -34,6 +34,13 @@ def test_anthropic_branch(monkeypatch):
     assert llm.model == "claude-sonnet-4-6"
 
 
+def test_anthropic_has_streaming_enabled(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-k")
+    llm = build_llm()
+    assert llm.streaming is True
+
+
 def test_anthropic_oauth_token_injects_manual_client(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-oat-xyz")
