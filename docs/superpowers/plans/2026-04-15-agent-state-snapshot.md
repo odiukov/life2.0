@@ -1371,6 +1371,19 @@ docker compose down
 
 No code changes from this task. Add a short note to `docs/superpowers/plans/2026-04-15-agent-state-snapshot.md` if any surprise was found during smoke test and a fix was committed.
 
+### Smoke-test findings (2026-04-15)
+
+1. **A2A flag bug caught on live stack.** Sub-agent emitted the `log_entry` artifact with `append=True, last_chunk=False` (copied from the plan). The `a2a-sdk==0.3.26` `TaskStore` rejects an `append=True` event for an artifact it has never seen with the warning *"Received append=True for nonexistent artifact index … Ignoring chunk"* and silently drops the payload. Fix: emit `log_entry` as a standalone, final chunk — `append=False, last_chunk=True` — same flags as the existing `analysis` artifact. Each artifact has its own `artifact_id`, so they remain independent updates on the Task. Committed as `4ad12a4c` across three executors + six tests.
+
+2. **Registry lookups in isolated Python scripts.** `orchestrator/app/registry.py`'s `get_agent_url` / `get_registry` read an in-process dict populated by `discover_agents()` on FastAPI lifespan startup. A throwaway `docker compose exec orchestrator python smoke.py` has a fresh interpreter and an empty registry. Any out-of-band smoke script must `await discover_agents()` first. Not a code bug; document for future smokes.
+
+3. **Verified three invariants on the real stack:**
+   - Sub-agent (`workout`) emits both `log_entry` DataPart and `analysis` TextPart artifacts for `log_workout`.
+   - Orchestrator's `_call_agent_with_artifact` extracts `log_entry` correctly from the A2A stream.
+   - Full graph run: LLM tool call → `ask_workout_agent` → `Command(update={toolCalls:[done], lastLoggedEntry:{...}})` visible in `astream(stream_mode="values")`.
+
+   Visual verification (`AgentStatusBar` + `LastLoggedCard` rendering in the browser) was not automated — remains a manual step for anyone who wants it.
+
 ---
 
 ## Task 9: Documentation — update memory
