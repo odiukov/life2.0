@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 @pytest.mark.asyncio
 async def test_fetch_body_logs_filters_by_type():
-    from shared.shared.db import fetch_body_logs
+    from shared.db import fetch_body_logs
 
     fake_pool = AsyncMock()
     fake_pool.fetch.return_value = [
@@ -12,7 +12,7 @@ async def test_fetch_body_logs_filters_by_type():
          "recorded_at": "2026-04-14", "source": "vihealth"},
     ]
 
-    with patch("shared.shared.db.get_pool", new=AsyncMock(return_value=fake_pool)):
+    with patch("shared.db.get_pool", new=AsyncMock(return_value=fake_pool)):
         rows = await fetch_body_logs(limit=5)
 
     assert len(rows) == 1
