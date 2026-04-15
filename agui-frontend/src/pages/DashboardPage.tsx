@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useCopilotAction, useCoAgent } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { DashboardPanel } from "../components/DashboardPanel";
+import { AgentStatusBar } from "../components/AgentStatusBar";
+import { LastLoggedCard } from "../components/LastLoggedCard";
 import { useHealthSummary } from "../hooks/useHealthSummary";
 import type { HealthAgentState } from "../types";
 
@@ -63,12 +65,12 @@ export default function DashboardPage() {
   });
 
   const { state: agentState } = useCoAgent<HealthAgentState>({ name: "default" });
-  if (agentState) console.debug("[CoAgent]", agentState);
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 41px)", overflow: "hidden" }}>
       <DashboardPanel summary={data} expandedMetric={expandedMetric} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        <LastLoggedCard entry={agentState?.lastLoggedEntry} />
         <CopilotChat
           instructions={
             "You are a personal health assistant. The user tracks sleep, workouts, and nutrition. " +
@@ -83,6 +85,11 @@ export default function DashboardPage() {
             title: "life-agents",
             initial: "Ask about your sleep, workouts, or nutrition.",
           }}
+        />
+        <AgentStatusBar
+          currentStep={agentState?.currentStep}
+          activeAgent={agentState?.activeAgent ?? null}
+          toolCalls={agentState?.toolCalls}
         />
       </div>
     </div>
