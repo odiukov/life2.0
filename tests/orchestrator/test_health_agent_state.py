@@ -115,3 +115,8 @@ async def test_tool_exception_sets_error_status(_call_mock, _emit_mock):
     assert cmd.update["toolCalls"][0]["status"] == "error"
     assert "boom" in cmd.update["toolCalls"][0]["error"]
     assert "lastLoggedEntry" not in cmd.update
+    # running state must be emitted before the exception so the UI
+    # shows "querying nutrition" during a failing peer call
+    assert _emit_mock.await_count == 1
+    assert _emit_mock.await_args.args[1]["currentStep"] == "querying nutrition (log_meal)"
+    assert _emit_mock.await_args.args[1]["toolCalls"][-1]["status"] == "running"
