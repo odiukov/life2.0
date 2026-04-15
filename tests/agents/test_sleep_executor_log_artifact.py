@@ -73,8 +73,8 @@ async def test_log_sleep_emits_log_entry_artifact(run_claude_mock):
     # Flag check: log_entry is an append chunk; analysis is the final chunk.
     log_evt = next(e for e in art_events if e.artifact.name == "log_entry")
     analysis_evt = next(e for e in art_events if e.artifact.name == "analysis")
-    assert log_evt.append is True
-    assert log_evt.last_chunk is False
+    assert log_evt.append is False
+    assert log_evt.last_chunk is True
     assert analysis_evt.append is False
     assert analysis_evt.last_chunk is True
 

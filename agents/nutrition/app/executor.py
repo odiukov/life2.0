@@ -258,8 +258,8 @@ async def _emit_log_entry_artifact(
         task_id=task_id,
         context_id=context_id,
         artifact=artifact,
-        append=True,
-        last_chunk=False,
+        append=False,
+        last_chunk=True,
     )
     await event_queue.enqueue_event(evt)
 
