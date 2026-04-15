@@ -80,3 +80,29 @@ export interface AgentInfo {
 export interface AgentsResponse {
   agents: AgentInfo[];
 }
+
+export type ToolStatus = "running" | "done" | "error";
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  skill?: string;
+  status: ToolStatus;
+  startedAt: string;
+  endedAt?: string;
+  error?: string;
+}
+
+export interface LogEntry {
+  agent: "sleep" | "workout" | "nutrition";
+  skill: string;
+  summary: string;
+  timestamp: string;
+}
+
+export interface HealthAgentState {
+  currentStep?: string;
+  activeAgent?: "sleep" | "workout" | "nutrition" | null;
+  toolCalls?: ToolCall[];
+  lastLoggedEntry?: LogEntry | null;
+}

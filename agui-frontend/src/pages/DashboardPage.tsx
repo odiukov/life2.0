@@ -1,9 +1,10 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCopilotAction } from "@copilotkit/react-core";
+import { useCopilotAction, useCoAgent } from "@copilotkit/react-core";
 import { CopilotChat } from "@copilotkit/react-ui";
 import { DashboardPanel } from "../components/DashboardPanel";
 import { useHealthSummary } from "../hooks/useHealthSummary";
+import type { HealthAgentState } from "../types";
 
 export default function DashboardPage() {
   const { data, refresh } = useHealthSummary();
@@ -60,6 +61,9 @@ export default function DashboardPage() {
       metricTimerRef.current = setTimeout(() => setExpandedMetric(null), 4000);
     },
   });
+
+  const { state: agentState } = useCoAgent<HealthAgentState>({ name: "default" });
+  if (agentState) console.debug("[CoAgent]", agentState);
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 41px)", overflow: "hidden" }}>
