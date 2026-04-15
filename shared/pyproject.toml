@@ -18,3 +18,7 @@ dependencies = [
     "langchain-ollama>=0.2",
     "anthropic>=0.39",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["shared*"]

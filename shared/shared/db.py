@@ -67,3 +67,18 @@ async def insert_task_record(
         """,
         task_id, context_id, agent, skill_id, input_, output, state,
     )
+
+
+async def fetch_body_logs(limit: int = 30) -> list[dict]:
+    """Return latest body_composition rows regardless of the `agent` column.
+
+    Historical rows were written with agent='workout' by map_body_composition;
+    new rows may land under agent='body'. Filter purely by type to tolerate both.
+    """
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT type, data, recorded_at, source FROM health_logs "
+        "WHERE type = $1 ORDER BY recorded_at DESC LIMIT $2",
+        "body_composition", limit,
+    )
+    return [dict(r) for r in rows]
