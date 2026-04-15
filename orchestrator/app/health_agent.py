@@ -17,7 +17,7 @@ from langgraph.types import Command
 
 from shared.a2a_clients import get_client
 
-from .llm import build_llm
+from shared.llm import build_llm
 from .state import HealthAgentState, LogEntry, ToolCall
 
 _SYNC_SERVICE_URL = "http://sync-service:8080/sync"
