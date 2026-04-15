@@ -132,23 +132,31 @@ def build_sync_payload(pdf_bytes: bytes) -> dict[str, Any]:
     recorded_at = result["recorded_at"] or datetime.now(timezone.utc)
     date_str = recorded_at.strftime("%Y-%m-%d %H:%M:%S +0000")
 
-    # Map internal keys to Apple Health metric names (reuses map_body_composition)
     mapping = {
         "weight_kg": ("Body Mass", "kg"),
         "body_fat_pct": ("Body Fat Percentage", "%"),
         "bmi": ("Body Mass Index", "count"),
         "skeletal_muscle_kg": ("Skeletal Muscle Mass", "kg"),
         "bone_mass_kg": ("Bone Mass", "kg"),
+        "bmr_kcal": ("Basal Metabolic Rate", "kcal"),
+        "visceral_fat_grade": ("Visceral Fat Grade", "count"),
+        "body_age": ("Body Age", "count"),
+        "body_score": ("Body Score", "count"),
+        "subcutaneous_fat_pct": ("Subcutaneous Fat Percentage", "%"),
+        "protein_kg": ("Protein Mass", "kg"),
+        "body_water_kg": ("Body Water", "kg"),
+        "muscle_kg": ("Muscle Mass", "kg"),
+        "body_fat_kg": ("Body Fat Mass", "kg"),
+        "fat_free_kg": ("Fat Free Body Weight", "kg"),
     }
 
-    # Derive lean body mass from weight - fat if available
-    if "weight_kg" in metrics and "body_fat_kg" in metrics:
+    if "weight_kg" in metrics and "body_fat_kg" in metrics and "lean_mass_kg" not in metrics:
         metrics["lean_mass_kg"] = round(metrics["weight_kg"] - metrics["body_fat_kg"], 2)
     mapping["lean_mass_kg"] = ("Lean Body Mass", "kg")
 
-    data = []
-    for key, (ah_name, units) in mapping.items():
-        if key in metrics:
-            data.append({"date": date_str, "qty": metrics[key], "name": ah_name, "units": units})
-
+    data = [
+        {"date": date_str, "qty": metrics[key], "name": name, "units": units}
+        for key, (name, units) in mapping.items()
+        if key in metrics
+    ]
     return {"data": data}
