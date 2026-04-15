@@ -17,6 +17,20 @@
    claude --version
    ```
 
+## LLM provider
+
+Set `LLM_PROVIDER` in `.env` to one of: `anthropic`, `openrouter`, `gemini`,
+`ollama`, `claude-cli`. Default is `openrouter` with a free model. Set the
+matching API key.
+
+- **OpenRouter / Anthropic / Gemini:** just set the API key. Plain HTTP.
+- **Ollama:** run Ollama on the host; set `OLLAMA_HOST=http://host.docker.internal:11434`.
+- **Claude CLI (subscription):** run `scripts/export-auth.sh` before `docker compose up`
+  to export your OAuth token from macOS Keychain. Token expires every ~8h —
+  re-run the script when you see 401 errors.
+
+Switch providers with a single env change + `docker compose restart`.
+
 ## Start the System
 
 ```bash
