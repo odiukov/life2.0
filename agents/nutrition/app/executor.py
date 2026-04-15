@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import uuid
+from datetime import datetime, timezone
 
 import httpx
 
@@ -13,6 +14,7 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import (
     Artifact,
+    DataPart,
     Message,
     Part,
     Role,
@@ -163,6 +165,8 @@ class NutritionAgentExecutor(AgentExecutor):
                     },
                 )
 
+            if skill_id.startswith("log_"):
+                await _emit_log_entry_artifact(event_queue, task_id, context_id, message)
             await _emit_artifact(event_queue, task_id, context_id, "analysis", output)
             await _emit_status(event_queue, task_id, context_id, TaskState.completed, final=True)
 
@@ -219,6 +223,30 @@ async def _emit_status(
         context_id=context_id,
         status=status,
         final=final,
+    )
+    await event_queue.enqueue_event(evt)
+
+
+async def _emit_log_entry_artifact(
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    summary: str,
+) -> None:
+    artifact = Artifact(
+        artifact_id=str(uuid.uuid4()),
+        name="log_entry",
+        parts=[Part(root=DataPart(data={
+            "summary": summary[:120],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }))],
+    )
+    evt = TaskArtifactUpdateEvent(
+        task_id=task_id,
+        context_id=context_id,
+        artifact=artifact,
+        append=True,
+        last_chunk=False,
     )
     await event_queue.enqueue_event(evt)
 
