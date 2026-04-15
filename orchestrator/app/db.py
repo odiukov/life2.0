@@ -50,7 +50,7 @@ async def get_stats() -> dict:
     agent_type_map = {
         "sleep": ["sleep_session"],
         "workout": ["activity"],
-        "nutrition": ["nutrition_log"],
+        "nutrition": ["meal"],
     }
     agent_stats = {}
     # Build list of 7 day-start timestamps: oldest first (6 days ago → today)
@@ -214,11 +214,11 @@ async def get_health_summary() -> dict:
     workout_map = {r["day"]: round(float(r["minutes"])) for r in workout_daily}
     workout_minutes = [workout_map.get(d.date(), 0) for d in day_starts]
 
-    # Last 7 days nutrition calories/day
+    # Last 7 days nutrition calories/day (meal rows inserted by Yazio sync)
     nutrition_daily = await pool.fetch(
         """SELECT date_trunc('day', recorded_at AT TIME ZONE 'UTC')::date AS day,
-           SUM((data->>'calories')::float) AS calories
-           FROM health_logs WHERE agent='nutrition' AND type='nutrition_log' AND recorded_at >= $1
+           SUM((data->'totals'->>'kcal')::float) AS calories
+           FROM health_logs WHERE agent='nutrition' AND type='meal' AND recorded_at >= $1
            GROUP BY day""",
         day_starts[0]
     )

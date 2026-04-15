@@ -1,58 +1,127 @@
-# sync_service/app/yazio.py
 import asyncio
 import os
 from datetime import date, timedelta
 
 import httpx
 
-BASE_URL = "https://api2.yazio.com"
+BASE_URL = "https://yzapi.yazio.com/v18"
+CLIENT_ID = "1_4hiybetvfksgw40o0sog4s884kwc840wwso8go4k8c04goo4c"
+CLIENT_SECRET = "6rok2m65xuskgkgogw40wkkk8sw0osg84s8cggsc4woos4s8o"
+USER_AGENT = "YAZIO/12.31.0 (com.yazio.android; build:411052340; Android 34) Ktor"
+
+_DAYTIME_TO_INT = {"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
 
 
 def _get_dates(days: int) -> list[str]:
-    """Return ISO date strings for the last N days, ending yesterday."""
-    # Anchor at yesterday: daily cron fires at 06:00 UTC to pull the previous day's diary.
     yesterday = date.today() - timedelta(days=1)
     return [(yesterday - timedelta(days=i)).isoformat() for i in range(days)]
 
 
-def _fetch_sync(days: int) -> dict:
-    """Synchronous Yazio fetch — called via asyncio.to_thread."""
-    email = os.environ["YAZIO_EMAIL"]
-    password = os.environ["YAZIO_PASSWORD"]
+def _enrich_product(entry: dict, product: dict) -> dict:
+    """Build an old-schema entry {meal_type, food{...}} from a consumed-items row + product details.
 
-    with httpx.Client(base_url=BASE_URL, timeout=15.0) as client:
-        # Authenticate
-        auth_resp = client.post(
-            "/auth/token",
-            json={"email": email, "password": password, "grant_type": "password"},
-        )
-        auth_resp.raise_for_status()
-        data = auth_resp.json()
-        token = data.get("access_token")
-        if not token:
-            raise ValueError(f"Yazio auth response missing access_token: {data}")
-        headers = {"Authorization": f"Bearer {token}"}
+    Yazio product `nutrients` are expressed per gram; multiply by `amount` (grams)
+    to get absolute values for the consumed portion.
+    """
+    amount = entry.get("amount") or 0
+    nutrients = product.get("nutrients") or {}
+    return {
+        "meal_type": _DAYTIME_TO_INT.get(entry.get("daytime", "snack"), 3),
+        "food": {
+            "name": product.get("name", ""),
+            "amount": amount,
+            "energy_kcal": amount * nutrients.get("energy.energy", 0.0),
+            "protein": amount * nutrients.get("nutrient.protein", 0.0),
+            "carbohydrates": amount * nutrients.get("nutrient.carb", 0.0),
+            "fat": amount * nutrients.get("nutrient.fat", 0.0),
+        },
+    }
 
-        dates = _get_dates(days)
-        diary: list[tuple[str, list]] = []
-        errors: list[str] = []
 
-        for d in dates:
+async def _fetch_day(
+    client: httpx.AsyncClient,
+    headers: dict,
+    day: str,
+    product_cache: dict[str, dict],
+    errors: list[str],
+) -> list[dict]:
+    """Fetch one day's diary, enrich products, return old-schema entries."""
+    resp = await client.get("/user/consumed-items", params={"date": day}, headers=headers)
+    resp.raise_for_status()
+    diary = resp.json()
+
+    enriched: list[dict] = []
+    for entry in diary.get("products", []) or []:
+        pid = entry.get("product_id")
+        if not pid:
+            continue
+        product = product_cache.get(pid)
+        if product is None:
             try:
-                resp = client.get(
-                    "/v7/user/consumed-food",
-                    params={"date": d},
-                    headers=headers,
-                )
-                resp.raise_for_status()
-                entries = resp.json().get("entries", [])
-                diary.append((d, entries))
+                pr = await client.get(f"/products/{pid}", headers=headers)
+                pr.raise_for_status()
+                product = pr.json()
+                product_cache[pid] = product
             except Exception as e:
-                errors.append(f"diary {d}: {e}")
+                errors.append(f"product {pid}: {e}")
+                continue
+        enriched.append(_enrich_product(entry, product))
 
-    return {"diary": diary, "errors": errors}
+    # simple_products carry nutrients inline (free-form calorie logs, no product_id lookup)
+    for entry in diary.get("simple_products", []) or []:
+        amount = entry.get("amount") or entry.get("serving_quantity") or 1
+        enriched.append({
+            "meal_type": _DAYTIME_TO_INT.get(entry.get("daytime", "snack"), 3),
+            "food": {
+                "name": entry.get("name", "simple"),
+                "amount": amount,
+                "energy_kcal": entry.get("energy", 0),
+                "protein": entry.get("protein", 0),
+                "carbohydrates": entry.get("carb", 0),
+                "fat": entry.get("fat", 0),
+            },
+        })
+
+    # recipe_portions not expanded in v1; record a gap so we notice if user starts using them
+    if diary.get("recipe_portions"):
+        errors.append(f"diary {day}: {len(diary['recipe_portions'])} recipe_portions skipped (not implemented)")
+
+    return enriched
 
 
 async def fetch_diary(days: int = 1) -> dict:
-    """Async wrapper: runs the blocking Yazio client in a thread pool."""
-    return await asyncio.to_thread(_fetch_sync, days)
+    """Fetch the last N days' Yazio diary, enriched with product nutrients.
+
+    Returns {"diary": [(date_str, entries)], "errors": [str]} where each entry
+    matches the old /v7 shape: {meal_type:int, food:{name, amount, energy_kcal, protein, carbohydrates, fat}}.
+    """
+    email = os.environ["YAZIO_EMAIL"]
+    password = os.environ["YAZIO_PASSWORD"]
+
+    headers_base = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    errors: list[str] = []
+    diary_out: list[tuple[str, list]] = []
+
+    async with httpx.AsyncClient(base_url=BASE_URL, headers=headers_base, timeout=20.0) as client:
+        auth = await client.post("/oauth/token", json={
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "grant_type": "password",
+            "username": email,
+            "password": password,
+        })
+        auth.raise_for_status()
+        token = auth.json().get("access_token")
+        if not token:
+            raise ValueError(f"Yazio auth response missing access_token: {auth.json()}")
+        auth_h = {"Authorization": f"Bearer {token}"}
+
+        product_cache: dict[str, dict] = {}
+        for d in _get_dates(days):
+            try:
+                entries = await _fetch_day(client, auth_h, d, product_cache, errors)
+                diary_out.append((d, entries))
+            except Exception as e:
+                errors.append(f"diary {d}: {e}")
+
+    return {"diary": diary_out, "errors": errors}
