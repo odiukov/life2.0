@@ -24,7 +24,9 @@ async def test_executor_happy_path_uses_skill_id_and_emits_completed():
     event_queue = MagicMock()
     event_queue.enqueue_event = AsyncMock()
 
-    with patch("agents.nutrition.app.executor.run_claude", return_value="ok"), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
+    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
          patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
          patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
@@ -64,7 +66,9 @@ async def test_executor_falls_back_to_llm_infer_when_no_skill_id():
     event_queue.enqueue_event = AsyncMock()
 
     fake_prompt = AsyncMock(return_value="prompt")
-    with patch("agents.nutrition.app.executor.run_claude", return_value="ok"), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
+    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
          patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
          patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
@@ -84,7 +88,9 @@ async def test_executor_subprocess_error_marks_failed():
     event_queue = MagicMock()
     event_queue.enqueue_event = AsyncMock()
 
-    with patch("agents.nutrition.app.executor.run_claude", side_effect=RuntimeError("boom")), \
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
+    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
          patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
          patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": AsyncMock(return_value="p")}):
         executor = NutritionAgentExecutor()

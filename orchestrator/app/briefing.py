@@ -7,9 +7,19 @@ import uuid
 import httpx
 from a2a.types import Message, Part, Role, Task, TextPart
 
+from langchain_core.messages import HumanMessage
 from shared.a2a_clients import get_client
-from shared.claude_runner import run_claude
+from shared.llm import build_llm
 from .db import get_yesterday_metrics
+
+_LLM = None  # lazy-initialised on first LLM call; patched in tests
+
+
+def _get_llm():
+    global _LLM
+    if _LLM is None:
+        _LLM = build_llm()
+    return _LLM
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +129,8 @@ async def call_agents_for_briefing(agents: dict, metrics: dict) -> dict[str, str
     return {name: text for name, text in results if text}
 
 
-def generate_insight(metrics: dict, summaries: dict[str, str]) -> str:
-    """Generate a 1-2 sentence cross-domain insight via Claude.
+async def generate_insight(metrics: dict, summaries: dict[str, str]) -> str:
+    """Generate a 1-2 sentence cross-domain insight via the configured LLM.
 
     metrics: output of get_yesterday_metrics()
     summaries: agent briefing summaries keyed by domain name
@@ -135,7 +145,8 @@ def generate_insight(metrics: dict, summaries: dict[str, str]) -> str:
 
 Write a single 1-2 sentence plain-text insight (no markdown, no bullet points) that connects patterns across sleep, workout, and nutrition.
 Focus on the most actionable cross-domain observation for today."""
-    return run_claude(prompt, timeout=60)
+    result = await _get_llm().ainvoke([HumanMessage(prompt)])
+    return result.content if isinstance(result.content, str) else str(result.content)
 
 
 async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> None:
@@ -173,7 +184,7 @@ async def run_briefing(agents: dict, use_today: bool = False) -> dict:
     insight = None
     if summaries:
         try:
-            insight = await asyncio.to_thread(generate_insight, metrics, summaries)
+            insight = await generate_insight(metrics, summaries)
         except Exception as e:
             logger.warning("Briefing insight generation failed: %s — sending metrics only", e)
 

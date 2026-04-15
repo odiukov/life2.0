@@ -28,10 +28,17 @@ from a2a.types import (
 from langchain_core.messages import HumanMessage
 from shared.llm import build_llm
 from shared.peer import fetch_peer_artifacts
-
-_LLM = build_llm()
 from shared.vector import upsert_memory
 from shared.db import insert_task_record
+
+_LLM = None  # lazy-initialised on first LLM call; patched in tests
+
+
+def _get_llm():
+    global _LLM
+    if _LLM is None:
+        _LLM = build_llm()
+    return _LLM
 
 from .skills import PEER_SKILLS, SKILL_PROMPTS
 
@@ -122,7 +129,7 @@ async def _infer_skill_via_llm(message: str) -> str | None:
         f"User message: {message}"
     )
     try:
-        result = await _LLM.ainvoke([HumanMessage(prompt)])
+        result = await _get_llm().ainvoke([HumanMessage(prompt)])
         raw = result.content if isinstance(result.content, str) else str(result.content)
     except Exception as e:
         logger.warning("LLM skill inference failed: %s", e)
@@ -161,7 +168,7 @@ class NutritionAgentExecutor(AgentExecutor):
             params["peer_artifacts"] = peer_artifacts
             prompt_fn = SKILL_PROMPTS[skill_id]
             prompt = await prompt_fn(message, params)
-            result = await _LLM.ainvoke([HumanMessage(prompt)])
+            result = await _get_llm().ainvoke([HumanMessage(prompt)])
             output = result.content if isinstance(result.content, str) else str(result.content)
 
             if skill_id != "briefing":
