@@ -6,11 +6,11 @@ set -euo pipefail
 BODY_URL="${BODY_URL:-http://localhost:8004}"
 
 echo "== AgentCard =="
-curl -fsS "$BODY_URL/.well-known/agent.json" | python -c "import json,sys;c=json.load(sys.stdin);print(c['name'], c['protocol_version'], [s['id'] for s in c['skills']])"
+curl -fsS "$BODY_URL/.well-known/agent.json" | python3 -c "import json,sys;c=json.load(sys.stdin);print(c['name'], c['protocolVersion'], [s['id'] for s in c['skills']])"
 
 echo
 echo "== message/send get_latest_body =="
-PAYLOAD=$(python - <<'PY'
+PAYLOAD=$(python3 - <<'PY'
 import json, uuid
 print(json.dumps({
   "jsonrpc": "2.0",
@@ -29,7 +29,7 @@ PY
 )
 
 RESPONSE=$(curl -fsS -X POST "$BODY_URL/" -H 'Content-Type: application/json' -d "$PAYLOAD")
-echo "$RESPONSE" | python -c "
+echo "$RESPONSE" | python3 -c "
 import json, sys
 r = json.load(sys.stdin)
 result = r.get('result', {})
