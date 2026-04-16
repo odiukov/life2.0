@@ -115,7 +115,7 @@ def _trim(calls: list[ToolCall]) -> list[ToolCall]:
 
 async def _run_peer_tool(
     *,
-    agent: Literal["sleep", "workout", "nutrition"],
+    agent: Literal["sleep", "workout", "nutrition", "body"],
     message: str,
     skill: str,
     tool_name: str,
@@ -208,6 +208,22 @@ async def ask_nutrition_agent(
 
 
 @tool
+async def ask_body_agent(
+    message: str,
+    skill: Literal["get_latest_body", "analyze_body_trend"],
+    config: RunnableConfig,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[HealthAgentState, InjectedState],
+) -> Command:
+    """Call body-agent. Skills: get_latest_body (current weight/fat/muscle snapshot) or
+    analyze_body_trend (dynamics with nutrition/workout correlation)."""
+    return await _run_peer_tool(
+        agent="body", message=message, skill=skill, tool_name="ask_body_agent",
+        config=config, tool_call_id=tool_call_id, state=state,
+    )
+
+
+@tool
 async def sync_health_data() -> str:
     """Synchronize health data from Garmin and Yazio."""
     try:
@@ -236,8 +252,8 @@ async def send_daily_briefing() -> str:
 
 
 _SYSTEM_PROMPT = (
-    "You are a personal health assistant. You have three peer agents: sleep, workout, nutrition. "
-    "Each tool accepts a skill parameter — pick the one that matches intent (log/analyze/recommend). "
+    "You are a personal health assistant. You have four peer agents: sleep, workout, nutrition, body. "
+    "Each tool accepts a skill parameter — pick the one that matches intent (log/analyze/recommend/query). "
     "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
@@ -249,6 +265,7 @@ def create_health_agent():
         ask_sleep_agent,
         ask_workout_agent,
         ask_nutrition_agent,
+        ask_body_agent,
         sync_health_data,
         send_daily_briefing,
     ]

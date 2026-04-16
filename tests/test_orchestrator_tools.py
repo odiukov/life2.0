@@ -98,3 +98,9 @@ async def test_ask_sleep_agent_returns_unavailable_when_url_missing():
             _tool_call({"message": "hi", "skill": "analyze_sleep"})
         )
     assert "unavailable" in cmd.update["messages"][0].content.lower()
+
+
+def test_health_agent_exposes_ask_body_agent():
+    from orchestrator.app.health_agent import ask_body_agent
+    assert ask_body_agent is not None
+    assert ask_body_agent.name == "ask_body_agent"
