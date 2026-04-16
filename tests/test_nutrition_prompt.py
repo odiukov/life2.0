@@ -93,3 +93,26 @@ async def test_build_nutrition_prompt_formats_yazio_logs():
     assert "220" in result   # kcal
     assert "41" in result    # protein
     assert "lunch" in result
+
+
+@pytest.mark.asyncio
+async def test_nutrition_prompt_includes_latest_body_row():
+    from datetime import datetime, timezone
+
+    body_row = {
+        "type": "body_composition",
+        "recorded_at": datetime(2026, 4, 14, 9, 37, 16, tzinfo=timezone.utc),
+        "data": {"weight_kg": 79.6, "bmr_kcal": 1633, "body_fat_pct": 26.5},
+        "source": "vihealth",
+    }
+    with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs, \
+         patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem, \
+         patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[body_row]):
+        mock_logs.return_value = []
+        mock_mem.return_value = []
+
+        from agents.nutrition.app.prompt import build_nutrition_prompt
+        result = await build_nutrition_prompt("get_recommendations", {})
+
+    assert "1633" in result
+    assert "79.6" in result

@@ -1,4 +1,4 @@
-from shared.db import fetch_recent_logs
+from shared.db import fetch_recent_logs, fetch_body_logs
 from shared.vector import search_memories
 
 
@@ -28,6 +28,7 @@ def _format_log(r: dict) -> str:
 async def build_nutrition_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
     nutrition_logs = await fetch_recent_logs("nutrition", limit=10)
     workout_logs = await fetch_recent_logs("workout", limit=3)
+    body_rows = await fetch_body_logs(limit=1)
     memories = await search_memories(task, limit=5)
 
     nutrition_text = "\n".join(_format_log(r) for r in nutrition_logs) or "No recent nutrition logs."
@@ -40,6 +41,16 @@ async def build_nutrition_prompt(task: str, params: dict, peer_artifacts: dict |
     memories_text = "\n".join(
         f"- {m.get('text', '')}" for m in memories
     ) or "No relevant memories."
+
+    if body_rows:
+        d = body_rows[0]["data"]
+        date = body_rows[0]["recorded_at"].date()
+        body_text = (
+            f"- {date} | weight={d.get('weight_kg')}kg "
+            f"| fat={d.get('body_fat_pct')}% | BMR={d.get('bmr_kcal')}kcal"
+        )
+    else:
+        body_text = "No body composition measurements yet."
 
     peer = peer_artifacts or {}
     workout_peer_section = (
@@ -59,6 +70,9 @@ async def build_nutrition_prompt(task: str, params: dict, peer_artifacts: dict |
 ## Recent workouts (last 3):
 {workout_text}
 {workout_peer_section}{sleep_section}
+
+## Latest body composition (cross-context):
+{body_text}
 
 ## Relevant memories:
 {memories_text}
