@@ -1,18 +1,16 @@
 # agents/workout/app/prompt.py
-from shared.db import fetch_recent_logs
+from shared.db import fetch_recent_logs, fetch_body_logs
 from shared.vector import search_memories
 
 
 async def build_workout_prompt(task: str, params: dict, peer_artifacts: dict | None = None) -> str:
-    all_logs = await fetch_recent_logs("workout", limit=20)
+    workout_logs = await fetch_recent_logs("workout", limit=10)
+    body_logs = await fetch_body_logs(limit=5)
     memories = await search_memories(task, limit=5)
-
-    workout_logs = [r for r in all_logs if r["type"] != "body_composition"]
-    body_logs = [r for r in all_logs if r["type"] == "body_composition"]
 
     workout_text = "\n".join(
         f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"
-        for r in workout_logs[:10]
+        for r in workout_logs
     ) or "No recent workout logs."
 
     body_text = "\n".join(
