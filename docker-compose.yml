@@ -118,6 +118,38 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-body:
+    build:
+      context: .
+      dockerfile: agents/body/Dockerfile
+    env_file:
+      - .env
+      - .env.auth
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      QDRANT_HOST: ${QDRANT_HOST}
+      QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SYNC_SERVICE_URL: http://sync-service:8080
+    volumes:
+      - ~/.claude:/root/.claude:ro
+      - ~/.claude.json:/root/.claude.json:ro
+    ports:
+      - "8004:8004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      sync-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   orchestrator:
     build:
       context: .
@@ -127,7 +159,7 @@ services:
       - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003"
+      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004"
     ports:
       - "8000:8000"
     depends_on:
@@ -136,6 +168,8 @@ services:
       agent-workout:
         condition: service_healthy
       agent-nutrition:
+        condition: service_healthy
+      agent-body:
         condition: service_healthy
 
   telegram-bot:
