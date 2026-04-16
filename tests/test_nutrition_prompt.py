@@ -6,11 +6,12 @@ from unittest.mock import AsyncMock, patch
 async def test_build_nutrition_prompt_contains_task_name():
     with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
         with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
-            mock_logs.return_value = []
-            mock_mem.return_value = []
+            with patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[]):
+                mock_logs.return_value = []
+                mock_mem.return_value = []
 
-            from agents.nutrition.app.prompt import build_nutrition_prompt
-            result = await build_nutrition_prompt("log_meal", {"raw_text": "овсянка"})
+                from agents.nutrition.app.prompt import build_nutrition_prompt
+                result = await build_nutrition_prompt("log_meal", {"raw_text": "овсянка"})
 
     assert "log_meal" in result
     assert "nutrition" in result.lower()
@@ -20,11 +21,12 @@ async def test_build_nutrition_prompt_contains_task_name():
 async def test_build_nutrition_prompt_queries_both_agents():
     with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
         with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
-            mock_logs.return_value = []
-            mock_mem.return_value = []
+            with patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[]):
+                mock_logs.return_value = []
+                mock_mem.return_value = []
 
-            from agents.nutrition.app.prompt import build_nutrition_prompt
-            await build_nutrition_prompt("get_recommendations", {})
+                from agents.nutrition.app.prompt import build_nutrition_prompt
+                await build_nutrition_prompt("get_recommendations", {})
 
     assert mock_logs.call_count == 2
     agents_queried = [c.args[0] for c in mock_logs.call_args_list]
@@ -36,11 +38,12 @@ async def test_build_nutrition_prompt_queries_both_agents():
 async def test_build_nutrition_prompt_shows_no_logs_fallback():
     with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
         with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
-            mock_logs.return_value = []
-            mock_mem.return_value = []
+            with patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[]):
+                mock_logs.return_value = []
+                mock_mem.return_value = []
 
-            from agents.nutrition.app.prompt import build_nutrition_prompt
-            result = await build_nutrition_prompt("analyze_nutrition", {})
+                from agents.nutrition.app.prompt import build_nutrition_prompt
+                result = await build_nutrition_prompt("analyze_nutrition", {})
 
     assert "No recent nutrition logs" in result
     assert "No recent workout logs" in result
@@ -50,11 +53,12 @@ async def test_build_nutrition_prompt_shows_no_logs_fallback():
 async def test_build_nutrition_prompt_includes_raw_text_in_params():
     with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
         with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
-            mock_logs.return_value = []
-            mock_mem.return_value = []
+            with patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[]):
+                mock_logs.return_value = []
+                mock_mem.return_value = []
 
-            from agents.nutrition.app.prompt import build_nutrition_prompt
-            result = await build_nutrition_prompt("log_meal", {"raw_text": "греческий йогурт"})
+                from agents.nutrition.app.prompt import build_nutrition_prompt
+                result = await build_nutrition_prompt("log_meal", {"raw_text": "греческий йогурт"})
 
     assert "греческий йогурт" in result
 
@@ -81,13 +85,14 @@ async def test_build_nutrition_prompt_formats_yazio_logs():
 
     with patch("agents.nutrition.app.prompt.fetch_recent_logs", new_callable=AsyncMock) as mock_logs:
         with patch("agents.nutrition.app.prompt.search_memories", new_callable=AsyncMock) as mock_mem:
-            mock_logs.side_effect = lambda agent, limit: (
-                [yazio_log] if agent == "nutrition" else []
-            )
-            mock_mem.return_value = []
+            with patch("agents.nutrition.app.prompt.fetch_body_logs", new_callable=AsyncMock, return_value=[]):
+                mock_logs.side_effect = lambda agent, limit: (
+                    [yazio_log] if agent == "nutrition" else []
+                )
+                mock_mem.return_value = []
 
-            from agents.nutrition.app.prompt import build_nutrition_prompt
-            result = await build_nutrition_prompt("analyze_nutrition", {})
+                from agents.nutrition.app.prompt import build_nutrition_prompt
+                result = await build_nutrition_prompt("analyze_nutrition", {})
 
     assert "Chicken breast" in result
     assert "220" in result   # kcal
