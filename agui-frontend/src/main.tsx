@@ -7,7 +7,7 @@ import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <CopilotKit runtimeUrl="/copilotkit">
+    <CopilotKit runtimeUrl="/copilotkit" agent="default">
       <App />
     </CopilotKit>
   </React.StrictMode>
