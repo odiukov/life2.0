@@ -16,6 +16,29 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./db/migrations:/migrations:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        for f in /migrations/*.sql; do
+          echo "applying $$f"
+          psql -v ON_ERROR_STOP=1 -f "$$f"
+        done
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   qdrant:
     image: qdrant/qdrant:latest
     volumes:
@@ -48,6 +71,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
     healthcheck:
@@ -77,6 +102,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
     healthcheck:
@@ -107,6 +134,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
       sync-service:
@@ -139,6 +168,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
       sync-service:
@@ -221,6 +252,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s

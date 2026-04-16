@@ -10,8 +10,16 @@ ALTER TABLE tasks
     ADD COLUMN IF NOT EXISTS history JSONB,
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
--- Backfill skill_id from legacy task_type column
-UPDATE tasks SET skill_id = task_type WHERE skill_id IS NULL;
+-- Backfill skill_id from legacy task_type column (only if that column still exists)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasks' AND column_name = 'task_type'
+    ) THEN
+        UPDATE tasks SET skill_id = task_type WHERE skill_id IS NULL;
+    END IF;
+END $$;
 
 -- Backfill task_id (generate fresh UUIDs for pre-existing rows)
 UPDATE tasks SET task_id = gen_random_uuid() WHERE task_id IS NULL;
