@@ -5,17 +5,20 @@ from shared.vector import search_memories
 def _format_body(r: dict) -> str:
     date = r["recorded_at"].date()
     d = r.get("data", {})
-    parts = [
-        f"weight={d.get('weight_kg')}kg",
-        f"fat={d.get('body_fat_pct')}%",
-        f"muscle={d.get('muscle_kg')}kg",
-        f"skeletal_muscle={d.get('skeletal_muscle_kg')}kg",
-        f"bmr={d.get('bmr_kcal')}kcal",
-        f"visceral_fat={d.get('visceral_fat_grade')}",
-        f"body_age={d.get('body_age')}",
-        f"body_score={d.get('body_score')}",
+    fields = [
+        ("weight", "kg", d.get("weight_kg")),
+        ("fat", "%", d.get("body_fat_pct")),
+        ("muscle", "kg", d.get("muscle_kg")),
+        ("skeletal_muscle", "kg", d.get("skeletal_muscle_kg")),
+        ("bmr", "kcal", d.get("bmr_kcal")),
+        ("visceral_fat", "", d.get("visceral_fat_grade")),
+        ("body_age", "", d.get("body_age")),
+        ("body_score", "", d.get("body_score")),
     ]
-    return f"- {date} | " + " | ".join(p for p in parts if "None" not in p)
+    parts = [f"{label}={value}{unit}" for label, unit, value in fields if value is not None]
+    if not parts:
+        return f"- {date} | (no metrics)"
+    return f"- {date} | " + " | ".join(parts)
 
 
 def _format_cross(r: dict) -> str:
