@@ -40,6 +40,11 @@ async def cmd_nutrition(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await _reply(update, f"nutrition {text}")
 
 
+async def cmd_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = " ".join(context.args) if context.args else "what's my current body composition"
+    await _reply(update, f"body {text}")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _reply(update, update.message.text)
 
@@ -69,6 +74,7 @@ def main() -> None:
     app.add_handler(CommandHandler("sleep", cmd_sleep))
     app.add_handler(CommandHandler("workout", cmd_workout))
     app.add_handler(CommandHandler("nutrition", cmd_nutrition))
+    app.add_handler(CommandHandler("body", cmd_body))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
