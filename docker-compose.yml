@@ -192,6 +192,33 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-habits:
+    build:
+      context: .
+      dockerfile: agents/habits/Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      QDRANT_HOST: ${QDRANT_HOST}
+      QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8006:8006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   orchestrator:
     build:
       context: .
@@ -200,7 +227,7 @@ services:
       - .env
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005"
+      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006"
     ports:
       - "8000:8000"
     depends_on:
@@ -214,6 +241,8 @@ services:
         condition: service_healthy
       agent-mood:
         condition: service_healthy
+      agent-habits:
+        condition: service_healthy
 
   telegram-bot:
     build:
@@ -224,11 +253,14 @@ services:
     environment:
       ORCHESTRATOR_URL: http://orchestrator:8000
       MOOD_AGENT_URL: http://agent-mood:8005/
+      HABITS_AGENT_URL: http://agent-habits:8006/
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       orchestrator:
         condition: service_started
       agent-mood:
+        condition: service_started
+      agent-habits:
         condition: service_started
     restart: unless-stopped
 
