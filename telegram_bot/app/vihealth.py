@@ -1,7 +1,10 @@
-"""Parse ViHealth PDF reports using Claude Vision.
+"""Parse ViHealth PDF reports via a vision-capable LLM.
 
 Pipeline:
-  PDF bytes → render first page to PNG (pymupdf) → Claude Vision extraction → dict payload
+  PDF bytes → render first page to PNG (pymupdf) → LLM vision extraction → dict payload
+
+Provider/model pinned via VIHEALTH_LLM_PROVIDER / VIHEALTH_LLM_MODEL
+(defaults: openrouter + mistralai/mistral-small-2603 — ~$0.0005 per PDF).
 """
 
 import base64
@@ -17,8 +20,8 @@ from langchain_core.messages import HumanMessage
 from shared.llm import build_llm
 
 
-_VISION_PROVIDER = os.environ.get("VIHEALTH_LLM_PROVIDER", "anthropic")
-_VISION_MODEL = os.environ.get("VIHEALTH_LLM_MODEL", "claude-haiku-4-5-20251001")
+_VISION_PROVIDER = os.environ.get("VIHEALTH_LLM_PROVIDER", "openrouter")
+_VISION_MODEL = os.environ.get("VIHEALTH_LLM_MODEL", "mistralai/mistral-small-2603")
 
 
 _EXTRACTION_PROMPT = """\
