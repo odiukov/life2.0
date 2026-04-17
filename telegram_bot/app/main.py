@@ -1,8 +1,23 @@
 import logging
 import os
 
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+
+_BOT_COMMANDS: list[BotCommand] = [
+    BotCommand("sleep", "Анализ сна / запись"),
+    BotCommand("workout", "Тренировки / запись"),
+    BotCommand("nutrition", "Питание / запись"),
+    BotCommand("body", "Состав тела"),
+    BotCommand("mood", "Записать настроение"),
+    BotCommand("journal", "Свободная запись (как /mood)"),
+    BotCommand("coach", "Коуч-сессия (/coach stop — выход)"),
+]
+
+
+async def _set_commands(app: Application) -> None:
+    await app.bot.set_my_commands(_BOT_COMMANDS)
 
 from .client import ask_orchestrator, sync_body_pdf
 from .vihealth import build_sync_payload
@@ -126,7 +141,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 def main() -> None:
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(_set_commands).build()
     app.add_handler(CommandHandler("sleep", cmd_sleep))
     app.add_handler(CommandHandler("workout", cmd_workout))
     app.add_handler(CommandHandler("nutrition", cmd_nutrition))
