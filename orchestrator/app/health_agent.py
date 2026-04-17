@@ -115,7 +115,7 @@ def _trim(calls: list[ToolCall]) -> list[ToolCall]:
 
 async def _run_peer_tool(
     *,
-    agent: Literal["sleep", "workout", "nutrition", "body"],
+    agent: Literal["sleep", "workout", "nutrition", "body", "mood"],
     message: str,
     skill: str,
     tool_name: str,
@@ -224,6 +224,26 @@ async def ask_body_agent(
 
 
 @tool
+async def ask_mood_agent(
+    message: str,
+    skill: Literal["log_mood", "analyze_mood", "get_recommendations", "coach_session"],
+    config: RunnableConfig,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[HealthAgentState, InjectedState],
+) -> Command:
+    """Call mood-agent. Skills:
+    log_mood (record a new mood entry from free-text or /mood),
+    analyze_mood (trend over the last N days),
+    get_recommendations (short actionable advice),
+    coach_session (record a completed coach session aggregate — usually driven by
+    the telegram bot, not by the orchestrator)."""
+    return await _run_peer_tool(
+        agent="mood", message=message, skill=skill, tool_name="ask_mood_agent",
+        config=config, tool_call_id=tool_call_id, state=state,
+    )
+
+
+@tool
 async def sync_health_data() -> str:
     """Synchronize health data from Garmin and Yazio."""
     try:
@@ -252,9 +272,11 @@ async def send_daily_briefing() -> str:
 
 
 _SYSTEM_PROMPT = (
-    "You are a personal health assistant. You have four peer agents: sleep, workout, nutrition, body. "
-    "Each tool accepts a skill parameter — pick the one that matches intent (log/analyze/recommend/query). "
-    "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
+    "You are a personal health assistant. You have five peer agents: sleep, workout, "
+    "nutrition, body, mood. Each tool accepts a skill parameter — pick the one that "
+    "matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
+    "language to the mood agent. For sync or briefing requests, use the dedicated tools. "
+    "Be concise and actionable."
 )
 
 
@@ -266,6 +288,7 @@ def create_health_agent():
         ask_workout_agent,
         ask_nutrition_agent,
         ask_body_agent,
+        ask_mood_agent,
         sync_health_data,
         send_daily_briefing,
     ]

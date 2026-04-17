@@ -92,3 +92,16 @@ docker compose down
   ↓
 [Postgres :5432] + [Qdrant :6333]
 ```
+
+## Mood agent
+
+Optional per-user behavior flags (all default-off / safe defaults):
+
+- `MOOD_COACH_PROVIDER=groq` — the coach loop is Groq-only by design. Do not point this at a paid provider.
+- `MOOD_COACH_MODEL=llama-3.3-70b-versatile` — Groq model used for coaching.
+- `MAX_COACH_TURNS=6` — hard upper bound on assistant replies per session.
+- `MOOD_EVENING_CHECKIN=true|false` — if true, send one Telegram prompt per day at the configured time.
+- `MOOD_EVENING_CHECKIN_TIME=21:00` — local time (HH:MM) of the check-in.
+- `MOOD_EVENING_CHECKIN_TZ=Europe/Kyiv` — timezone for the check-in.
+
+Coach sessions are ephemeral in-memory state in `telegram_bot` — restarting the bot clears active sessions. When Groq is unavailable, `/coach` replies "unavailable" and does not fall back to a paid provider.

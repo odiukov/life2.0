@@ -38,6 +38,23 @@ def start_scheduler() -> None:
         coalesce=True,
     )
 
+    if os.environ.get("MOOD_EVENING_CHECKIN", "false").lower() == "true":
+        checkin_time = os.environ.get("MOOD_EVENING_CHECKIN_TIME", "21:00")
+        checkin_tz = os.environ.get("MOOD_EVENING_CHECKIN_TZ", "Europe/Kyiv")
+        try:
+            hh, mm = (int(x) for x in checkin_time.split(":", 1))
+        except ValueError:
+            hh, mm = 21, 0
+        scheduler.add_job(
+            _send_mood_checkin,
+            CronTrigger(hour=hh, minute=mm, timezone=checkin_tz),
+            id="mood_evening_checkin",
+            replace_existing=True,
+            misfire_grace_time=grace_seconds,
+            coalesce=True,
+        )
+        logger.info(f"Mood check-in job scheduled at {checkin_time} {checkin_tz}")
+
     scheduler.start()
     logger.info(
         f"Scheduler started: daily sync at {utc_hour:02d}:00 UTC and {local_hour:02d}:00 {local_tz}"
@@ -73,3 +90,19 @@ async def _trigger_briefing(orchestrator_url: str) -> None:
             logger.info(f"Daily briefing triggered: {resp.json()}")
     except Exception as e:
         logger.warning(f"Daily briefing trigger failed: {e}")
+
+
+async def _send_mood_checkin() -> None:
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        logger.warning("Mood check-in skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set")
+        return
+    text = "🌙 Вечерний чек-ин: как прошёл день? Ответь одним сообщением."
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json={"chat_id": chat_id, "text": text})
+            resp.raise_for_status()
+    except Exception as e:
+        logger.warning("Mood check-in send failed: %s", e)

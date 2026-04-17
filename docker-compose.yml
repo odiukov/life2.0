@@ -165,6 +165,33 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-mood:
+    build:
+      context: .
+      dockerfile: agents/mood/Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      QDRANT_HOST: ${QDRANT_HOST}
+      QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   orchestrator:
     build:
       context: .
@@ -173,7 +200,7 @@ services:
       - .env
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004"
+      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005"
     ports:
       - "8000:8000"
     depends_on:
@@ -185,6 +212,8 @@ services:
         condition: service_healthy
       agent-body:
         condition: service_healthy
+      agent-mood:
+        condition: service_healthy
 
   telegram-bot:
     build:
@@ -194,9 +223,12 @@ services:
       - .env
     environment:
       ORCHESTRATOR_URL: http://orchestrator:8000
+      MOOD_AGENT_URL: http://agent-mood:8005/
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       orchestrator:
+        condition: service_started
+      agent-mood:
         condition: service_started
     restart: unless-stopped
 
@@ -233,6 +265,11 @@ services:
       BRIEFING_LOCAL_HOUR: "9"
       BRIEFING_TZ: "Europe/Lisbon"
       ORCHESTRATOR_URL: http://orchestrator:8000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      MOOD_EVENING_CHECKIN: ${MOOD_EVENING_CHECKIN}
+      MOOD_EVENING_CHECKIN_TIME: ${MOOD_EVENING_CHECKIN_TIME}
+      MOOD_EVENING_CHECKIN_TZ: ${MOOD_EVENING_CHECKIN_TZ}
     depends_on:
       postgres:
         condition: service_healthy

@@ -362,9 +362,47 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
             "fat_g": round(nutrition_row["fat_g"] or 0),
         }
 
+    # Mood: aggregate all entries for yesterday (Kyiv day)
+    mood_row = await pool.fetchrow(
+        """
+        SELECT
+            COUNT(*) AS count,
+            AVG((data->>'mood_score')::float) AS avg_score,
+            AVG((data->>'stress')::float) AS avg_stress,
+            AVG((data->>'energy')::float) AS avg_energy,
+            (array_agg(data->>'valence' ORDER BY recorded_at DESC))[1] AS last_valence,
+            (array_agg(data->'tags' ORDER BY recorded_at DESC))[1] AS last_tags,
+            (array_agg((data->>'mood_score')::float ORDER BY recorded_at ASC))[1] AS first_score,
+            (array_agg((data->>'mood_score')::float ORDER BY recorded_at DESC))[1] AS last_score
+        FROM health_logs
+        WHERE type = 'mood'
+          AND recorded_at >= $1 AND recorded_at < $2
+        """,
+        day_start, day_end,
+    )
+    mood = None
+    if mood_row and mood_row["count"] and int(mood_row["count"]) > 0:
+        raw_tags = mood_row["last_tags"]
+        if isinstance(raw_tags, str):
+            try:
+                raw_tags = json.loads(raw_tags)
+            except Exception:
+                raw_tags = []
+        mood = {
+            "count": int(mood_row["count"]),
+            "avg_score": round(float(mood_row["avg_score"]), 1) if mood_row["avg_score"] is not None else None,
+            "avg_stress": round(float(mood_row["avg_stress"]), 1) if mood_row["avg_stress"] is not None else None,
+            "avg_energy": round(float(mood_row["avg_energy"]), 1) if mood_row["avg_energy"] is not None else None,
+            "last_valence": mood_row["last_valence"],
+            "last_tags": raw_tags or [],
+            "first_score": int(mood_row["first_score"]) if mood_row["first_score"] is not None else None,
+            "last_score": int(mood_row["last_score"]) if mood_row["last_score"] is not None else None,
+        }
+
     return {
         "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
         "sleep": sleep,
         "workout": workout,
         "nutrition": nutrition,
+        "mood": mood,
     }
