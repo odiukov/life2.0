@@ -107,7 +107,7 @@ async def get_stats() -> dict:
         "SELECT agent, type, data, recorded_at AS ts FROM health_logs ORDER BY recorded_at DESC LIMIT 20"
     )
     task_rows = await pool.fetch(
-        "SELECT agent, task_type AS type, input, created_at AS ts FROM tasks ORDER BY created_at DESC LIMIT 20"
+        "SELECT agent, skill_id AS type, input, created_at AS ts FROM tasks ORDER BY created_at DESC LIMIT 20"
     )
 
     combined = []
@@ -227,7 +227,7 @@ async def get_health_summary() -> dict:
 
     # Last recommendation from tasks
     rec_row = await pool.fetchrow(
-        "SELECT agent, task_type, output, created_at FROM tasks WHERE output IS NOT NULL AND output != '' ORDER BY created_at DESC LIMIT 1"
+        "SELECT agent, skill_id, output, created_at FROM tasks WHERE output IS NOT NULL AND output != '' ORDER BY created_at DESC LIMIT 1"
     )
     recommendation = None
     if rec_row and rec_row["output"]:
