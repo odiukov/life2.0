@@ -10,7 +10,5 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-./scripts/export-auth.sh
-
 docker compose up -d --build "$@"
 docker compose ps
