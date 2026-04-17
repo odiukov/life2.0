@@ -262,6 +262,11 @@ services:
       BRIEFING_LOCAL_HOUR: "9"
       BRIEFING_TZ: "Europe/Lisbon"
       ORCHESTRATOR_URL: http://orchestrator:8000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      MOOD_EVENING_CHECKIN: ${MOOD_EVENING_CHECKIN}
+      MOOD_EVENING_CHECKIN_TIME: ${MOOD_EVENING_CHECKIN_TIME}
+      MOOD_EVENING_CHECKIN_TZ: ${MOOD_EVENING_CHECKIN_TZ}
     depends_on:
       postgres:
         condition: service_healthy
