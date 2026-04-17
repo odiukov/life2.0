@@ -304,6 +304,15 @@ _SYSTEM_PROMPT = (
     "message starts with '/habit' or a habit inline-button callback payload — free text "
     "like 'I read today' must NOT log a habit. Analyze/streak queries ('my streak', "
     "'how are my habits') → analyze_habit / get_streak_summary. "
+    "\n\n"
+    "You also have live Google Calendar tools (list events, search, get, create, update, "
+    "delete). Use them for \"what's on my calendar\" / \"when am I free\" / \"find me time "
+    "for X\" / \"add X at time T\" intents. "
+    "\n\n"
+    "For destructive calendar operations (create, update, delete), always paraphrase the "
+    "intended action back to the user and wait for explicit confirmation before executing. "
+    "For read-only calendar queries (list, search, get), answer directly without confirmation. "
+    "\n\n"
     "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
