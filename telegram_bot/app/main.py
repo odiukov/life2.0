@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 from telegram import BotCommand, Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -13,13 +14,15 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand("mood", "Записать настроение"),
     BotCommand("journal", "Свободная запись (как /mood)"),
     BotCommand("coach", "Коуч-сессия (/coach stop — выход)"),
+    BotCommand("habits", "Список привычек + отметка"),
+    BotCommand("habit", "Отметка привычки / создание / архив"),
 ]
 
 
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call
 from .vihealth import build_sync_payload
 from .coach import CoachLoop, CoachAlreadyActive, CoachUnavailable, default_llm_call, default_log_mood_call
 
@@ -140,6 +143,108 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await thinking.edit_text(result)
 
 
+_HABIT_VALUE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*([A-Za-z]+)?$")
+
+
+def parse_habit_args(args: list[str]) -> dict:
+    """Parse `/habit <args>` into a structured dict.
+
+    Reserved first-words:
+      - 'new <free text>' → {"action": "new", "text": <free text>}
+      - 'stop <name>'     → {"action": "stop", "name": <name>}
+
+    Otherwise:
+      - 'name'                       → {"name": ...}
+      - 'name VALUEunit'             → {"name": ..., "value": float, "unit": ...}
+      - 'name VALUE unit [note...]'  → {"name": ..., "value": float, "unit": ..., "note": ...}
+    """
+    if not args:
+        return {}
+    if args[0].lower() == "new":
+        return {"action": "new", "text": " ".join(args[1:])}
+    if args[0].lower() == "stop":
+        return {"action": "stop", "name": args[1] if len(args) > 1 else ""}
+
+    name = args[0]
+    if len(args) == 1:
+        return {"name": name}
+
+    # Case "NAME 15min [note...]" — only when value and unit are concatenated (e.g. "15min")
+    m = _HABIT_VALUE_RE.match(args[1])
+    if m and m.group(2):  # unit present in same token
+        value = float(m.group(1))
+        unit = m.group(2)
+        out = {"name": name, "value": value, "unit": unit}
+        if len(args) > 2:
+            out["note"] = " ".join(args[2:])
+        return out
+
+    # Case "NAME 15 min note..."
+    try:
+        value = float(args[1])
+        out = {"name": name, "value": value}
+        if len(args) > 2:
+            out["unit"] = args[2]
+        if len(args) > 3:
+            out["note"] = " ".join(args[3:])
+        return out
+    except ValueError:
+        return {"name": name, "note": " ".join(args[1:])}
+
+
+async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args or []
+    parsed = parse_habit_args(args)
+
+    if not parsed:
+        await update.message.reply_text(
+            "usage: /habit <name> [value unit], /habit new <description>, /habit stop <name>"
+        )
+        return
+
+    if parsed.get("action") == "new":
+        if not parsed.get("text"):
+            await update.message.reply_text("usage: /habit new <description>")
+            return
+        text = await habits_a2a_call(
+            skill="define_habit", message=parsed["text"], params={"source": "telegram"},
+        )
+        await update.message.reply_text(text or "couldn't create habit")
+        return
+
+    if parsed.get("action") == "stop":
+        if not parsed.get("name"):
+            await update.message.reply_text("usage: /habit stop <name>")
+            return
+        text = await habits_a2a_call(
+            skill="archive_habit", message=f"stop {parsed['name']}",
+            params={"name": parsed["name"]},
+        )
+        await update.message.reply_text(text or "archived")
+        return
+
+    # normal log_habit_check
+    log_params = {"source": "telegram", **{k: v for k, v in parsed.items() if k != "name"},
+                  "name": parsed["name"]}
+    text = await habits_a2a_call(
+        skill="log_habit_check",
+        message=f"/habit {' '.join(args)}",
+        params=log_params,
+    )
+    await update.message.reply_text(text or "logged")
+
+
+async def cmd_habits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Builds the inline keyboard — habits_ui module is added in T10.
+    # For T9, a placeholder that tells the user T10 is coming.
+    from .habits_ui import build_habits_keyboard
+    markup, empty_msg = await build_habits_keyboard()
+    if markup is None:
+        await update.message.reply_text(empty_msg)
+    else:
+        await update.message.reply_text("Active habits:", reply_markup=markup)
+
+
 def main() -> None:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(_set_commands).build()
     app.add_handler(CommandHandler("sleep", cmd_sleep))
@@ -149,6 +254,8 @@ def main() -> None:
     app.add_handler(CommandHandler("mood", cmd_mood))
     app.add_handler(CommandHandler("journal", cmd_journal))
     app.add_handler(CommandHandler("coach", cmd_coach))
+    app.add_handler(CommandHandler("habit", cmd_habit))
+    app.add_handler(CommandHandler("habits", cmd_habits))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
