@@ -2,11 +2,7 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install Node.js 22 (via NodeSource) and claude CLI
 RUN apt-get update && apt-get install -y curl ca-certificates && \
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g @anthropic-ai/claude-code && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY orchestrator/requirements.txt .

@@ -88,7 +88,7 @@ docker compose down
   ↓
 [Orchestrator :8000] → classify intent → route via A2A
   ↓
-[Sleep Agent :8001] → build prompt → claude CLI → store in DB/Qdrant
+[Sleep Agent :8001] → build prompt → LLM provider → store in DB/Qdrant
   ↓
 [Postgres :5432] + [Qdrant :6333]
 ```
