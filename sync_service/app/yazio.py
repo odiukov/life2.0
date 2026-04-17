@@ -38,14 +38,52 @@ def _enrich_product(entry: dict, product: dict) -> dict:
     }
 
 
+def _enrich_simple_product(entry: dict) -> dict:
+    """simple_products store absolute nutrients per consumed portion (NOT per gram).
+
+    Used by free-form calorie logs and AI-described meals (`is_ai_generated`).
+    Real shape: `nutrients: {"energy.energy": 368, "nutrient.protein": 27, ...}`.
+    """
+    nutrients = entry.get("nutrients") or {}
+    return {
+        "meal_type": _DAYTIME_TO_INT.get(entry.get("daytime", "snack"), 3),
+        "food": {
+            "name": entry.get("name", "simple"),
+            "amount": entry.get("amount") or entry.get("serving_quantity") or 1,
+            "energy_kcal": nutrients.get("energy.energy", 0.0),
+            "protein": nutrients.get("nutrient.protein", 0.0),
+            "carbohydrates": nutrients.get("nutrient.carb", 0.0),
+            "fat": nutrients.get("nutrient.fat", 0.0),
+        },
+    }
+
+
+def _enrich_recipe_portion(entry: dict, recipe: dict) -> dict:
+    """Recipe `nutrients` are per portion; multiply by diary `portion_count`."""
+    nutrients = recipe.get("nutrients") or {}
+    portions = entry.get("portion_count") or 1
+    return {
+        "meal_type": _DAYTIME_TO_INT.get(entry.get("daytime", "snack"), 3),
+        "food": {
+            "name": recipe.get("name", "recipe"),
+            "amount": portions,
+            "energy_kcal": portions * nutrients.get("energy.energy", 0.0),
+            "protein": portions * nutrients.get("nutrient.protein", 0.0),
+            "carbohydrates": portions * nutrients.get("nutrient.carb", 0.0),
+            "fat": portions * nutrients.get("nutrient.fat", 0.0),
+        },
+    }
+
+
 async def _fetch_day(
     client: httpx.AsyncClient,
     headers: dict,
     day: str,
     product_cache: dict[str, dict],
+    recipe_cache: dict[str, dict],
     errors: list[str],
 ) -> list[dict]:
-    """Fetch one day's diary, enrich products, return old-schema entries."""
+    """Fetch one day's diary, enrich products + simple_products + recipes, return old-schema entries."""
     resp = await client.get("/user/consumed-items", params={"date": day}, headers=headers)
     resp.raise_for_status()
     diary = resp.json()
@@ -67,24 +105,24 @@ async def _fetch_day(
                 continue
         enriched.append(_enrich_product(entry, product))
 
-    # simple_products carry nutrients inline (free-form calorie logs, no product_id lookup)
     for entry in diary.get("simple_products", []) or []:
-        amount = entry.get("amount") or entry.get("serving_quantity") or 1
-        enriched.append({
-            "meal_type": _DAYTIME_TO_INT.get(entry.get("daytime", "snack"), 3),
-            "food": {
-                "name": entry.get("name", "simple"),
-                "amount": amount,
-                "energy_kcal": entry.get("energy", 0),
-                "protein": entry.get("protein", 0),
-                "carbohydrates": entry.get("carb", 0),
-                "fat": entry.get("fat", 0),
-            },
-        })
+        enriched.append(_enrich_simple_product(entry))
 
-    # recipe_portions not expanded in v1; record a gap so we notice if user starts using them
-    if diary.get("recipe_portions"):
-        errors.append(f"diary {day}: {len(diary['recipe_portions'])} recipe_portions skipped (not implemented)")
+    for entry in diary.get("recipe_portions", []) or []:
+        rid = entry.get("recipe_id")
+        if not rid:
+            continue
+        recipe = recipe_cache.get(rid)
+        if recipe is None:
+            try:
+                rr = await client.get(f"/recipes/{rid}", headers=headers)
+                rr.raise_for_status()
+                recipe = rr.json()
+                recipe_cache[rid] = recipe
+            except Exception as e:
+                errors.append(f"recipe {rid}: {e}")
+                continue
+        enriched.append(_enrich_recipe_portion(entry, recipe))
 
     return enriched
 
@@ -117,9 +155,10 @@ async def fetch_diary(days: int = 1) -> dict:
         auth_h = {"Authorization": f"Bearer {token}"}
 
         product_cache: dict[str, dict] = {}
+        recipe_cache: dict[str, dict] = {}
         for d in _get_dates(days):
             try:
-                entries = await _fetch_day(client, auth_h, d, product_cache, errors)
+                entries = await _fetch_day(client, auth_h, d, product_cache, recipe_cache, errors)
                 diary_out.append((d, entries))
             except Exception as e:
                 errors.append(f"diary {d}: {e}")

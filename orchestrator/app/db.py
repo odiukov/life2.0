@@ -283,7 +283,13 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
 
     pool = await get_pool()
 
-    # Sleep: latest sleep_session for yesterday
+    # Sleep: take the most recent sleep_session — that's last night, the one the
+    # user actually woke from this morning. Filtering by yesterday's start-time
+    # window misses it (its recorded_at is yesterday evening UTC = today early
+    # morning Kyiv, so it falls outside the [yesterday 00:00 Kyiv, today 00:00
+    # Kyiv) range and the brief shows two-nights-ago sleep instead).
+    # Cap freshness at ~36h before yesterday's start so we don't surface stale
+    # data when Garmin sync has been silent for days.
     sleep_row = await pool.fetchrow(
         """
         SELECT
@@ -293,11 +299,11 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
             (data->>'score')::int AS score
         FROM health_logs
         WHERE agent = 'sleep' AND type = 'sleep_session'
-          AND recorded_at >= $1 AND recorded_at < $2
+          AND recorded_at >= $1
         ORDER BY recorded_at DESC
         LIMIT 1
         """,
-        day_start, day_end,
+        day_start - timedelta(hours=12),
     )
     sleep = None
     if sleep_row:

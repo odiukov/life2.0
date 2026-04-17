@@ -24,21 +24,26 @@ async def get_pool() -> asyncpg.Pool:
 
 
 async def insert_rows(rows: list[dict]) -> tuple[int, int]:
-    """Insert health_logs rows. Skips duplicates via unique index.
-    Returns (inserted, skipped).
+    """Upsert health_logs rows. Re-sync of an existing (source,type,recorded_at)
+    row replaces its `data` so partial syncs (e.g. missing recipes/AI meals) heal
+    on the next run. Rows whose `data` is identical are left untouched.
+
+    Returns (written, unchanged) — written counts inserts + actual updates.
     """
     if not rows:
         return 0, 0
     pool = await get_pool()
-    inserted = 0
-    skipped = 0
+    written = 0
+    unchanged = 0
     async with pool.acquire() as conn:
         for row in rows:
             result = await conn.execute(
                 """
                 INSERT INTO health_logs (agent, type, data, recorded_at, source)
                 VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (source, type, recorded_at) DO NOTHING
+                ON CONFLICT (source, type, recorded_at) DO UPDATE
+                  SET data = EXCLUDED.data
+                  WHERE health_logs.data IS DISTINCT FROM EXCLUDED.data
                 """,
                 row["agent"],
                 row["type"],
@@ -46,9 +51,9 @@ async def insert_rows(rows: list[dict]) -> tuple[int, int]:
                 row["recorded_at"],
                 row["source"],
             )
-            # result string is "INSERT 0 1" (inserted) or "INSERT 0 0" (skipped)
+            # "INSERT 0 1" → row inserted or updated; "INSERT 0 0" → no-op (data identical)
             if result.endswith("1"):
-                inserted += 1
+                written += 1
             else:
-                skipped += 1
-    return inserted, skipped
+                unchanged += 1
+    return written, unchanged

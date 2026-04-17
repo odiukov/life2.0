@@ -63,6 +63,36 @@ async def test_get_yesterday_metrics_missing_workout():
 
 
 @pytest.mark.asyncio
+async def test_get_yesterday_metrics_sleep_query_drops_end_window():
+    """Sleep query must filter only by lower bound so it can return last night's
+    sleep — the session starts after yesterday-Kyiv-evening, so a strict
+    [yesterday, today) window misses it. Regression test for off-by-one-night bug."""
+    from datetime import timezone
+    captured: dict = {}
+
+    async def fake_fetchrow(sql: str, *args, **kwargs):
+        if "agent = 'sleep'" in sql:
+            captured["sql"] = sql
+            captured["args"] = args
+        return None
+
+    mock_pool = AsyncMock()
+    mock_pool.fetchrow = fake_fetchrow
+
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+        from orchestrator.app.db import get_yesterday_metrics
+        await get_yesterday_metrics()
+
+    sql = captured["sql"]
+    assert "ORDER BY recorded_at DESC" in sql
+    assert "LIMIT 1" in sql
+    # only a lower bound — no upper bound that would cut off last night
+    assert "recorded_at < " not in sql
+    # exactly one bind param (the lower bound)
+    assert len(captured["args"]) == 1
+
+
+@pytest.mark.asyncio
 async def test_get_yesterday_metrics_no_data():
     """Returns all None when no records for yesterday."""
     mock_pool = AsyncMock()

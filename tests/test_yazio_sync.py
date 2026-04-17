@@ -63,3 +63,74 @@ async def test_nutrition_sync_endpoint_dedup():
                 resp = await client.post("/sync/nutrition")
 
     assert resp.json()["skipped"] == 2
+
+
+def test_enrich_simple_product_reads_absolute_nutrients():
+    """simple_products carry totals at entry['nutrients'][...]. AI-generated meals
+    have amount=1 with the kcal living entirely on the nutrients dict."""
+    from sync_service.app.yazio import _enrich_simple_product
+
+    out = _enrich_simple_product({
+        "daytime": "breakfast",
+        "name": "Salmon wrap",
+        "amount": 1,
+        "is_ai_generated": True,
+        "nutrients": {
+            "energy.energy": 368,
+            "nutrient.protein": 27,
+            "nutrient.carb": 17,
+            "nutrient.fat": 21,
+        },
+    })
+
+    assert out["meal_type"] == 0
+    assert out["food"]["name"] == "Salmon wrap"
+    assert out["food"]["energy_kcal"] == 368
+    assert out["food"]["protein"] == 27
+    assert out["food"]["carbohydrates"] == 17
+    assert out["food"]["fat"] == 21
+
+
+def test_enrich_simple_product_missing_nutrients_returns_zero():
+    from sync_service.app.yazio import _enrich_simple_product
+
+    out = _enrich_simple_product({"daytime": "snack", "name": "no-nutrients"})
+    assert out["food"]["energy_kcal"] == 0.0
+    assert out["food"]["protein"] == 0.0
+
+
+def test_enrich_recipe_portion_multiplies_per_portion_by_count():
+    """Recipe nutrients are per portion; diary entry portion_count scales them."""
+    from sync_service.app.yazio import _enrich_recipe_portion
+
+    out = _enrich_recipe_portion(
+        {"daytime": "dinner", "portion_count": 2, "recipe_id": "r1"},
+        {
+            "name": "Banana-peanut muffins",
+            "portion_count": 7,  # recipe yields 7; not used for scaling
+            "nutrients": {
+                "energy.energy": 296.1,
+                "nutrient.protein": 13.07,
+                "nutrient.carb": 15.97,
+                "nutrient.fat": 20.14,
+            },
+        },
+    )
+
+    assert out["meal_type"] == 2
+    assert out["food"]["name"] == "Banana-peanut muffins"
+    assert out["food"]["amount"] == 2
+    assert round(out["food"]["energy_kcal"], 1) == 592.2
+    assert round(out["food"]["protein"], 2) == 26.14
+    assert round(out["food"]["carbohydrates"], 2) == 31.94
+    assert round(out["food"]["fat"], 2) == 40.28
+
+
+def test_enrich_recipe_portion_defaults_count_to_one():
+    from sync_service.app.yazio import _enrich_recipe_portion
+
+    out = _enrich_recipe_portion(
+        {"daytime": "lunch"},
+        {"name": "X", "nutrients": {"energy.energy": 100}},
+    )
+    assert out["food"]["energy_kcal"] == 100
