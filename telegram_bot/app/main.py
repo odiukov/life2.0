@@ -3,7 +3,7 @@ import os
 import re
 
 from telegram import BotCommand, Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters, ContextTypes
 
 
 _BOT_COMMANDS: list[BotCommand] = [
@@ -23,6 +23,7 @@ async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
 from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call
+from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
 from .coach import CoachLoop, CoachAlreadyActive, CoachUnavailable, default_llm_call, default_log_mood_call
 
@@ -256,6 +257,7 @@ def main() -> None:
     app.add_handler(CommandHandler("coach", cmd_coach))
     app.add_handler(CommandHandler("habit", cmd_habit))
     app.add_handler(CommandHandler("habits", cmd_habits))
+    app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")

@@ -59,3 +59,34 @@ async def test_cmd_habit_calls_direct_a2a_on_new():
         await cmd_habit(upd, _Ctx())
     m.assert_called_once()
     assert m.call_args.kwargs["skill"] == "define_habit" or m.call_args.args[0] == "define_habit"
+
+
+@pytest.mark.asyncio
+async def test_on_habit_callback_logs_via_a2a(monkeypatch):
+    from telegram_bot.app import habits_ui
+
+    class _Query:
+        data = "h:abc-123"
+        async def answer(self): self.answered = True
+        async def edit_message_reply_markup(self, reply_markup): self.edited = reply_markup
+        async def edit_message_text(self, t): self.edited_text = t
+    class _Update:
+        callback_query = _Query()
+    class _Ctx: pass
+
+    called = {}
+
+    async def fake_a2a(skill, message, params):
+        called["skill"] = skill
+        called["params"] = params
+        return "checked"
+
+    async def fake_build():
+        return None, "empty"
+
+    monkeypatch.setattr(habits_ui, "habits_a2a_call", fake_a2a)
+    monkeypatch.setattr(habits_ui, "build_habits_keyboard", fake_build)
+
+    await habits_ui.on_habit_callback(_Update(), _Ctx())
+    assert called["skill"] == "log_habit_check"
+    assert called["params"]["habit_id"] == "abc-123"
