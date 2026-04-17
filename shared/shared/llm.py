@@ -3,7 +3,7 @@
 Public surface: a single function `build_llm() -> BaseChatModel`.
 
 Env vars:
-    LLM_PROVIDER — one of: anthropic | openrouter | gemini | groq | ollama | claude-cli
+    LLM_PROVIDER — one of: anthropic | openrouter | gemini | groq | ollama
                    (default: openrouter).
     LLM_MODEL    — optional override. Each provider has a default (see below).
 
@@ -13,7 +13,6 @@ Required key per provider:
     gemini      — GEMINI_API_KEY
     groq        — GROQ_API_KEY
     ollama      — (none; OLLAMA_HOST optional, defaults to http://localhost:11434)
-    claude-cli  — ANTHROPIC_API_KEY  (OAuth token from scripts/export-auth.sh)
 
 Unknown provider → ValueError. Missing required key → ValueError.
 
@@ -33,8 +32,6 @@ from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
-from .chat_claude_cli import ChatClaudeCLI
-
 
 _DEFAULT_MODELS = {
     "anthropic": "claude-sonnet-4-6",
@@ -42,7 +39,6 @@ _DEFAULT_MODELS = {
     "gemini": "gemini-2.0-flash-exp",
     "groq": "llama-3.3-70b-versatile",
     "ollama": "llama3.1:8b",
-    "claude-cli": "claude-sonnet-4-6",
 }
 
 
@@ -64,8 +60,6 @@ def build_llm() -> BaseChatModel:
         return _build_groq(model)
     if provider == "ollama":
         return _build_ollama(model)
-    if provider == "claude-cli":
-        return _build_claude_cli(model)
     raise ValueError(f"unknown provider: {provider!r}")
 
 
@@ -118,8 +112,3 @@ def _build_groq(model: str) -> BaseChatModel:
 def _build_ollama(model: str) -> BaseChatModel:
     host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     return ChatOllama(model=model, temperature=0, base_url=host)
-
-
-def _build_claude_cli(model: str) -> BaseChatModel:
-    _require("ANTHROPIC_API_KEY")
-    return ChatClaudeCLI(model=model)

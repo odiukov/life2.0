@@ -8,7 +8,6 @@ from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
-from shared.chat_claude_cli import ChatClaudeCLI
 from shared.llm import build_llm
 
 
@@ -82,14 +81,6 @@ def test_ollama_branch(monkeypatch):
     assert llm.model == "llama3.1:8b"
 
 
-def test_claude_cli_branch(monkeypatch):
-    monkeypatch.setenv("LLM_PROVIDER", "claude-cli")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-oat-xyz")
-    llm = build_llm()
-    assert isinstance(llm, ChatClaudeCLI)
-    assert llm.model == "claude-sonnet-4-6"
-
-
 def test_llm_model_override(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "anthropic")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
@@ -111,7 +102,6 @@ def test_unknown_provider_raises(monkeypatch):
         ("openrouter", "OPENROUTER_API_KEY"),
         ("gemini", "GEMINI_API_KEY"),
         ("groq", "GROQ_API_KEY"),
-        ("claude-cli", "ANTHROPIC_API_KEY"),
     ],
 )
 def test_missing_api_key_raises(monkeypatch, provider, key):
