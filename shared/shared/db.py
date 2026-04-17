@@ -82,3 +82,14 @@ async def fetch_body_logs(limit: int = 30) -> list[dict]:
         "body_composition", limit,
     )
     return [dict(r) for r in rows]
+
+
+async def fetch_mood_logs(limit: int = 30) -> list[dict]:
+    """Return latest mood rows ordered by recorded_at DESC."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT type, data, recorded_at, source FROM health_logs "
+        "WHERE type = 'mood' ORDER BY recorded_at DESC LIMIT $1",
+        limit,
+    )
+    return [dict(r) for r in rows]
