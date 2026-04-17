@@ -57,15 +57,11 @@ services:
       dockerfile: agents/sleep/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-    volumes:
-      - ~/.claude:/root/.claude:ro
-      - ~/.claude.json:/root/.claude.json:ro
     ports:
       - "8001:8001"
     depends_on:
@@ -88,15 +84,11 @@ services:
       dockerfile: agents/workout/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
-    volumes:
-      - ~/.claude:/root/.claude:ro
-      - ~/.claude.json:/root/.claude.json:ro
     ports:
       - "8002:8002"
     depends_on:
@@ -119,16 +111,12 @@ services:
       dockerfile: agents/nutrition/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       SYNC_SERVICE_URL: http://sync-service:8080
-    volumes:
-      - ~/.claude:/root/.claude:ro
-      - ~/.claude.json:/root/.claude.json:ro
     ports:
       - "8003:8003"
     depends_on:
@@ -153,16 +141,12 @@ services:
       dockerfile: agents/body/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
       SYNC_SERVICE_URL: http://sync-service:8080
-    volumes:
-      - ~/.claude:/root/.claude:ro
-      - ~/.claude.json:/root/.claude.json:ro
     ports:
       - "8004:8004"
     depends_on:
@@ -187,7 +171,6 @@ services:
       dockerfile: orchestrator/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004"
@@ -209,7 +192,6 @@ services:
       dockerfile: telegram_bot/Dockerfile
     env_file:
       - .env
-      - .env.auth
     environment:
       ORCHESTRATOR_URL: http://orchestrator:8000
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
