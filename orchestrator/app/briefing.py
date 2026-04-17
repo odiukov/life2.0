@@ -82,6 +82,24 @@ def format_message(metrics: dict, insight: str | None) -> str:
             f"• Mood: {avg_txt}{trend_part} · {stress_txt}{tag_part}".rstrip(" ·")
         )
 
+    habits = metrics.get("habits")
+    if habits:
+        completed = habits["completed_yesterday"]
+        expected = habits["expected_yesterday"]
+        streak_bits = [f"🔥 {s['name']} {s['streak']}d" for s in habits.get("top_streaks", [])]
+        missed_bit = ""
+        if habits.get("missed_names"):
+            missed_bit = " · missed: " + ", ".join(habits["missed_names"])
+        streak_part = (", " + ", ".join(streak_bits)) if streak_bits else ""
+        lines.append(f"• Habits yesterday: ✅ {completed}/{expected}{streak_part}{missed_bit}")
+        items = habits.get("today_items", [])
+        if items:
+            today_bits = [
+                f"{'✅' if it['done'] else '⬜'} {it['name']}"
+                for it in items
+            ]
+            lines.append("  Today: " + " · ".join(today_bits))
+
     if insight:
         lines.append("")
         lines.append(f"💡 {insight}")

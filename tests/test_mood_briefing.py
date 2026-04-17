@@ -23,7 +23,9 @@ async def test_get_yesterday_metrics_includes_mood_when_present():
     # sleep, workout (None), nutrition (None), mood
     mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, None, None, mood_row])
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -38,7 +40,9 @@ async def test_get_yesterday_metrics_mood_none_when_empty():
     mock_pool = AsyncMock()
     mock_pool.fetchrow = AsyncMock(side_effect=[None, None, None, None])
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 

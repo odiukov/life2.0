@@ -4,6 +4,8 @@ import os
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
+from shared.db import fetch_active_habits, fetch_habit_logs
+
 _pool: asyncpg.Pool | None = None
 
 
@@ -399,10 +401,100 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
             "last_score": int(mood_row["last_score"]) if mood_row["last_score"] is not None else None,
         }
 
+    # Habits: two-piece roll-up (yesterday backward + today todo).
+    habit_defs = await fetch_active_habits()
+    habits = None
+    if habit_defs:
+        yesterday_key = yesterday.isoformat()
+        today_local = now_kyiv.date()
+        today_key = today_local.isoformat()
+        logs = await fetch_habit_logs(days=60)
+        by_habit_day: dict[tuple[str, str], list[dict]] = {}
+        for r in logs:
+            hid = (r.get("data") or {}).get("habit_id")
+            if not hid:
+                continue
+            d_key = r["recorded_at"].astimezone(kyiv).date().isoformat()
+            by_habit_day.setdefault((hid, d_key), []).append(r.get("data") or {})
+
+        _WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+        def _expected_on(h: dict, weekday_idx: int) -> bool:
+            if h["cadence_type"] == "daily":
+                return True
+            return _WEEKDAYS[weekday_idx] in (h.get("cadence_days") or [])
+
+        def _complete(h: dict, rows: list[dict]) -> bool:
+            if not rows:
+                return False
+            if h["kind"] == "boolean":
+                return any(r.get("completed") for r in rows)
+            total = 0.0
+            for r in rows:
+                try:
+                    total += float(r.get("value") or 0)
+                except (TypeError, ValueError):
+                    continue
+            tgt = h.get("target_value") or 0
+            return total >= float(tgt) if tgt > 0 else total > 0
+
+        def _streak(h: dict) -> int:
+            cursor = today_local
+            count = 0
+            for _ in range(400):
+                weekday_idx = (cursor.toordinal() - 1) % 7  # mon=0
+                key = cursor.isoformat()
+                if h["cadence_type"] == "weekly" and not _expected_on(h, weekday_idx):
+                    cursor = cursor - timedelta(days=1)
+                    continue
+                if _complete(h, by_habit_day.get((h["id"], key), [])):
+                    count += 1
+                    cursor = cursor - timedelta(days=1)
+                else:
+                    break
+            return count
+
+        yesterday_weekday = (yesterday.toordinal() - 1) % 7
+        expected_y, completed_y, missed = 0, 0, []
+        for h in habit_defs:
+            if not _expected_on(h, yesterday_weekday):
+                continue
+            expected_y += 1
+            if _complete(h, by_habit_day.get((h["id"], yesterday_key), [])):
+                completed_y += 1
+            else:
+                missed.append(h["name"])
+
+        streaks = sorted(
+            ({"name": h["name"], "streak": _streak(h)} for h in habit_defs),
+            key=lambda x: -x["streak"],
+        )
+        top_streaks = [s for s in streaks if s["streak"] >= 2][:3]
+
+        today_weekday = (today_local.toordinal() - 1) % 7
+        today_items = []
+        for h in habit_defs:
+            if not _expected_on(h, today_weekday):
+                continue
+            today_items.append({
+                "name": h["name"],
+                "done": _complete(h, by_habit_day.get((h["id"], today_key), [])),
+            })
+
+        habits = {
+            "expected_yesterday": expected_y,
+            "completed_yesterday": completed_y,
+            "missed_names": missed,
+            "top_streaks": top_streaks,
+            "today_items": today_items,
+            "today_names": [it["name"] for it in today_items],
+        }
+
     return {
         "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
         "sleep": sleep,
         "workout": workout,
         "nutrition": nutrition,
         "mood": mood,
+        "habits": habits,
     }
