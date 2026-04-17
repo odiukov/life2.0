@@ -59,3 +59,37 @@ async def sync_body_pdf(payload: dict) -> str:
     if synced == 0 and skipped > 0:
         return "Body composition data already up to date (no new measurements)."
     return f"Saved {synced} body composition measurement(s) from ViHealth report."
+
+
+HABITS_AGENT_URL = os.environ.get("HABITS_AGENT_URL", "http://agent-habits:8006/")
+
+
+async def habits_a2a_call(skill: str, message: str, params: dict | None = None) -> str:
+    """Invoke a habits-agent skill directly via A2A JSON-RPC. Returns text artifact content."""
+    import uuid as _uuid
+    from a2a.types import Message, Part, Role, TextPart
+    from shared.a2a_clients import get_client
+
+    client = await get_client(HABITS_AGENT_URL)
+    meta: dict = {"skillId": skill}
+    if params:
+        meta["params"] = params
+    msg = Message(
+        role=Role.user,
+        parts=[Part(root=TextPart(text=message))],
+        message_id=str(_uuid.uuid4()),
+        metadata=meta,
+    )
+    out = ""
+    async for resp in client.send_message(msg):
+        if isinstance(resp, tuple):
+            task, _ = resp
+            for art in task.artifacts or []:
+                if art.name != "analysis":
+                    continue
+                for p in art.parts or []:
+                    root = getattr(p, "root", p)
+                    text = getattr(root, "text", None)
+                    if text:
+                        out = text
+    return out

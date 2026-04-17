@@ -28,7 +28,9 @@ async def test_get_yesterday_metrics_all_domains():
     }[k]
     mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, workout_row, nutrition_row, None])
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -53,7 +55,9 @@ async def test_get_yesterday_metrics_missing_workout():
     }[k]
     mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, None, None, None])
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -79,7 +83,9 @@ async def test_get_yesterday_metrics_sleep_query_drops_end_window():
     mock_pool = AsyncMock()
     mock_pool.fetchrow = fake_fetchrow
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         await get_yesterday_metrics()
 
@@ -98,7 +104,9 @@ async def test_get_yesterday_metrics_no_data():
     mock_pool = AsyncMock()
     mock_pool.fetchrow = AsyncMock(return_value=None)
 
-    with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+        mock_habits.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
