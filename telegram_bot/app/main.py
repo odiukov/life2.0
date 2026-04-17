@@ -6,11 +6,24 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 from .client import ask_orchestrator, sync_body_pdf
 from .vihealth import build_sync_payload
+from .coach import CoachLoop, CoachAlreadyActive, CoachUnavailable, default_llm_call, default_log_mood_call
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+
+_MAX_COACH_TURNS = int(os.environ.get("MAX_COACH_TURNS", "6"))
+
+try:
+    _COACH: CoachLoop | None = CoachLoop(
+        llm_call=default_llm_call(),
+        log_mood_call=default_log_mood_call(),
+        max_turns=_MAX_COACH_TURNS,
+    )
+except Exception as e:
+    logger.warning("Coach disabled at startup: %s", e)
+    _COACH = None
 
 
 async def _reply(update: Update, message: str) -> None:
@@ -55,7 +68,40 @@ async def cmd_journal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await _reply(update, f"mood {text}")
 
 
+async def cmd_coach(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if _COACH is None:
+        await update.message.reply_text("Coach unavailable (GROQ_API_KEY not set).")
+        return
+    chat_id = update.effective_chat.id
+    args = context.args or []
+    if args and args[0].lower() == "stop":
+        reply = await _COACH.stop(chat_id=chat_id)
+        await update.message.reply_text(reply)
+        return
+    if _COACH.has_session(chat_id):
+        await update.message.reply_text("You already have an active session. Use /coach stop to end it.")
+        return
+    try:
+        reply = await _COACH.start(chat_id=chat_id, recent_context="")
+    except CoachAlreadyActive:
+        await update.message.reply_text("You already have an active session.")
+        return
+    except CoachUnavailable:
+        await update.message.reply_text("Coach unavailable right now, try later.")
+        return
+    await update.message.reply_text(reply)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    if _COACH is not None and _COACH.has_session(chat_id):
+        try:
+            reply = await _COACH.continue_(chat_id=chat_id, user_text=update.message.text)
+        except CoachUnavailable:
+            await update.message.reply_text("Coach unavailable. Session closed.")
+            return
+        await update.message.reply_text(reply)
+        return
     await _reply(update, update.message.text)
 
 
@@ -87,6 +133,7 @@ def main() -> None:
     app.add_handler(CommandHandler("body", cmd_body))
     app.add_handler(CommandHandler("mood", cmd_mood))
     app.add_handler(CommandHandler("journal", cmd_journal))
+    app.add_handler(CommandHandler("coach", cmd_coach))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
