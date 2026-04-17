@@ -104,20 +104,12 @@ class CoachLoop:
         sess = self._sessions.get(chat_id)
         if sess is None:
             return "No active coach session. Use /coach to start."
+        sess.turns.append({"role": "user", "content": user_text})
         sess.last_turn_at = datetime.now(timezone.utc)
-        # If we've already hit the cap, finalize instead of producing another turn.
         if sess.turn_count >= self._max_turns:
-            # Still record the user message before finalizing
-            sess.turns.append({"user": user_text})
             return await self.stop(chat_id=chat_id)
-        # Build LLM context from existing turns plus new user message
-        prior = [
-            {"role": "user" if "user" in t else t["role"],
-             "content": t["user"] if "user" in t else t["content"]}
-            for t in sess.turns
-        ]
-        messages = [{"role": "system", "content": _SYSTEM_PROMPT}] + prior + [
-            {"role": "user", "content": user_text},
+        messages = [{"role": "system", "content": _SYSTEM_PROMPT}] + [
+            {"role": t["role"], "content": t["content"]} for t in sess.turns
         ]
         try:
             reply = await self._llm(messages)
@@ -125,9 +117,7 @@ class CoachLoop:
             logger.warning("coach llm continue failed: %s", e)
             self._sessions.pop(chat_id, None)
             raise CoachUnavailable(str(e)) from e
-        # Append assistant reply first, then user entry — so turns[-1] is user
         sess.turns.append({"role": "assistant", "content": reply})
-        sess.turns.append({"user": user_text})
         sess.turn_count += 1
         return reply
 
@@ -136,7 +126,7 @@ class CoachLoop:
         if sess is None:
             return "No active coach session."
         transcript = "\n".join(
-            ("User: " + t["user"]) if "user" in t else ("Coach: " + t["content"])
+            ("User: " if t["role"] == "user" else "Coach: ") + t["content"]
             for t in sess.turns
         )
         messages = [

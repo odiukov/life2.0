@@ -25,7 +25,11 @@ async def test_subsequent_turns_append_and_call_llm():
     r = await loop.continue_(chat_id=42, user_text="tired today")
     assert r == "tell me more"
     assert loop.session(42).turn_count == 2
-    assert loop.session(42).turns[-1]["user"] == "tired today"
+    # turns: [assistant opener, user msg, assistant reply] after 1 continue_
+    assert loop.session(42).turns[-1]["role"] == "assistant"
+    assert loop.session(42).turns[-1]["content"] == "tell me more"
+    assert loop.session(42).turns[-2]["role"] == "user"
+    assert loop.session(42).turns[-2]["content"] == "tired today"
 
 
 @pytest.mark.asyncio
