@@ -99,7 +99,7 @@ async def fetch_active_habits() -> list[dict]:
     """Return active habit definitions ordered by created_at ASC."""
     pool = await get_pool()
     rows = await pool.fetch(
-        "SELECT id, name, kind, cadence_type, cadence_days, target_value, unit, "
+        "SELECT id::text AS id, name, kind, cadence_type, cadence_days, target_value, unit, "
         "created_at FROM habits WHERE archived_at IS NULL "
         "ORDER BY created_at ASC"
     )

@@ -28,12 +28,7 @@ def normalize_name(raw: str) -> str:
 
 
 async def list_active() -> list[dict]:
-    rows = await fetch_active_habits()
-    # Normalize id to str for consistency with create() which returns id::text.
-    for row in rows:
-        if row.get("id") is not None:
-            row["id"] = str(row["id"])
-    return rows
+    return await fetch_active_habits()
 
 
 async def find_by_name(raw_name: str) -> Optional[dict]:

@@ -2,9 +2,6 @@ import os
 import pytest
 import asyncpg
 
-pytestmark = pytest.mark.asyncio
-
-
 def _has_db():
     return bool(os.environ.get("POSTGRES_DSN"))
 
@@ -47,6 +44,7 @@ def test_normalize_name_kebab_case():
     assert normalize_name("") == ""
 
 
+@pytest.mark.asyncio
 async def test_upsert_and_find_by_name():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -63,6 +61,7 @@ async def test_upsert_and_find_by_name():
     assert found["target_value"] == 20
 
 
+@pytest.mark.asyncio
 async def test_find_by_name_returns_none_for_unknown():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -70,6 +69,7 @@ async def test_find_by_name_returns_none_for_unknown():
     assert await registry.find_by_name("reg-test-nonexistent") is None
 
 
+@pytest.mark.asyncio
 async def test_archive_hides_from_list_but_allows_recreate():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -92,6 +92,7 @@ async def test_archive_hides_from_list_but_allows_recreate():
     assert second_id != first_id
 
 
+@pytest.mark.asyncio
 async def test_create_duplicate_active_name_raises():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
