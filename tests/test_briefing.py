@@ -26,7 +26,7 @@ async def test_get_yesterday_metrics_all_domains():
     nutrition_row.__getitem__ = lambda self, k: {
         "kcal": 2850.0, "protein_g": 148.0, "carbs_g": 320.0, "fat_g": 95.0,
     }[k]
-    mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, workout_row, nutrition_row])
+    mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, workout_row, nutrition_row, None])
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
         from orchestrator.app.db import get_yesterday_metrics
@@ -51,7 +51,7 @@ async def test_get_yesterday_metrics_missing_workout():
         "duration_seconds": 26580, "deep_sleep_seconds": 6300,
         "hrv_weekly_avg": None, "score": None,
     }[k]
-    mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, None, None])
+    mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, None, None, None])
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool):
         from orchestrator.app.db import get_yesterday_metrics
