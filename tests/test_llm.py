@@ -95,6 +95,29 @@ def test_unknown_provider_raises(monkeypatch):
         build_llm()
 
 
+def test_kwargs_override_env(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-k")
+    llm = build_llm(provider="anthropic", model="claude-haiku-4-5-20251001")
+    assert isinstance(llm, ChatAnthropic)
+    assert llm.model == "claude-haiku-4-5-20251001"
+
+
+def test_kwarg_provider_ignores_env_model(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.setenv("LLM_MODEL", "some/openrouter-model")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-k")
+    llm = build_llm(provider="anthropic")
+    assert isinstance(llm, ChatAnthropic)
+    assert llm.model == "claude-sonnet-4-6"
+
+
+def test_kwarg_unknown_provider_raises():
+    with pytest.raises(ValueError, match="unknown provider"):
+        build_llm(provider="bogus")
+
+
 @pytest.mark.parametrize(
     "provider,key",
     [

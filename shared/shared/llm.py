@@ -1,11 +1,16 @@
 """LLM provider factory shared by orchestrator and all sub-agents.
 
-Public surface: a single function `build_llm() -> BaseChatModel`.
+Public surface: a single function `build_llm(*, provider=None, model=None) -> BaseChatModel`.
 
-Env vars:
+Env vars (used only when the matching kwarg is None):
     LLM_PROVIDER — one of: anthropic | openrouter | gemini | groq | ollama
                    (default: openrouter).
     LLM_MODEL    — optional override. Each provider has a default (see below).
+
+Kwargs let callers pin a provider/model for a specific task (e.g. vision)
+without touching global env. When `provider` is passed explicitly, the
+LLM_MODEL env var is ignored so an unrelated global override can't leak
+in.
 
 Required key per provider:
     anthropic   — ANTHROPIC_API_KEY
@@ -42,13 +47,15 @@ _DEFAULT_MODELS = {
 }
 
 
-def build_llm() -> BaseChatModel:
-    provider = os.environ.get("LLM_PROVIDER", "openrouter").lower()
+def build_llm(*, provider: str | None = None, model: str | None = None) -> BaseChatModel:
+    env_provider = provider is None
+    provider = (provider or os.environ.get("LLM_PROVIDER", "openrouter")).lower()
     if provider not in _DEFAULT_MODELS:
         raise ValueError(
             f"unknown provider: {provider!r}. Supported: {sorted(_DEFAULT_MODELS)}"
         )
-    model = os.environ.get("LLM_MODEL") or _DEFAULT_MODELS[provider]
+    if model is None:
+        model = (os.environ.get("LLM_MODEL") if env_provider else None) or _DEFAULT_MODELS[provider]
 
     if provider == "anthropic":
         return _build_anthropic(model)

@@ -11,8 +11,14 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-import anthropic
 import pymupdf
+from langchain_core.messages import HumanMessage
+
+from shared.llm import build_llm
+
+
+_VISION_PROVIDER = os.environ.get("VIHEALTH_LLM_PROVIDER", "anthropic")
+_VISION_MODEL = os.environ.get("VIHEALTH_LLM_MODEL", "claude-haiku-4-5-20251001")
 
 
 _EXTRACTION_PROMPT = """\
@@ -77,42 +83,37 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 def parse_vihealth_pdf_vision(pdf_bytes: bytes) -> dict[str, Any]:
-    """Use Claude Vision to extract body composition metrics from a ViHealth PDF.
+    """Use a vision-capable LLM to extract body composition metrics from a ViHealth PDF.
+
+    Provider/model come from VIHEALTH_LLM_PROVIDER / VIHEALTH_LLM_MODEL
+    (defaults: anthropic + claude-haiku-4-5-20251001), so the PDF path stays
+    on a cheap vision model even when the rest of the stack runs on a
+    different LLM_PROVIDER.
 
     Returns:
         { "recorded_at": datetime|None, "metrics": { key: float, ... } }
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
-
     png_bytes = _render_pdf_to_png(pdf_bytes)
     b64_image = base64.standard_b64encode(png_bytes).decode()
 
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=512,
-        messages=[
+    llm = build_llm(provider=_VISION_PROVIDER, model=_VISION_MODEL)
+    response = llm.invoke([
+        HumanMessage(content=[
             {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/png",
-                            "data": b64_image,
-                        },
-                    },
-                    {"type": "text", "text": _EXTRACTION_PROMPT},
-                ],
-            }
-        ],
-    )
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{b64_image}"},
+            },
+            {"type": "text", "text": _EXTRACTION_PROMPT},
+        ])
+    ])
 
-    raw = message.content[0].text.strip()
-    # Strip markdown code fences if present
+    content = response.content
+    if isinstance(content, list):
+        content = "".join(
+            b.get("text", "") for b in content
+            if isinstance(b, dict) and b.get("type") == "text"
+        )
+    raw = content.strip()
     raw = re.sub(r"^```[a-z]*\n?", "", raw)
     raw = re.sub(r"\n?```$", "", raw)
 
