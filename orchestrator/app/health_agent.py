@@ -115,7 +115,7 @@ def _trim(calls: list[ToolCall]) -> list[ToolCall]:
 
 async def _run_peer_tool(
     *,
-    agent: Literal["sleep", "workout", "nutrition", "body", "mood"],
+    agent: Literal["sleep", "workout", "nutrition", "body", "mood", "habits"],
     message: str,
     skill: str,
     tool_name: str,
@@ -244,6 +244,31 @@ async def ask_mood_agent(
 
 
 @tool
+async def ask_habits_agent(
+    message: str,
+    skill: Literal[
+        "define_habit", "log_habit_check", "analyze_habit",
+        "get_streak_summary", "archive_habit",
+    ],
+    config: RunnableConfig,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[HealthAgentState, InjectedState],
+) -> Command:
+    """Call habits-agent. Skills:
+    define_habit (create a new habit from '/habit new ...' free text),
+    log_habit_check (record one check-in; user must use the /habit command — do NOT
+      call this from free text),
+    analyze_habit (adherence summary for a window, default 7 days),
+    get_streak_summary (deterministic one-liner of current streaks per habit),
+    archive_habit (soft-delete a habit)."""
+    return await _run_peer_tool(
+        agent="habits", message=message, skill=skill,
+        tool_name="ask_habits_agent",
+        config=config, tool_call_id=tool_call_id, state=state,
+    )
+
+
+@tool
 async def sync_health_data() -> str:
     """Synchronize health data from Garmin and Yazio."""
     try:
@@ -272,11 +297,14 @@ async def send_daily_briefing() -> str:
 
 
 _SYSTEM_PROMPT = (
-    "You are a personal health assistant. You have five peer agents: sleep, workout, "
-    "nutrition, body, mood. Each tool accepts a skill parameter — pick the one that "
-    "matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
-    "language to the mood agent. For sync or briefing requests, use the dedicated tools. "
-    "Be concise and actionable."
+    "You are a personal health assistant. You have six peer agents: sleep, workout, "
+    "nutrition, body, mood, habits. Each tool accepts a skill parameter — pick the one "
+    "that matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
+    "language to the mood agent. For habits, only invoke log_habit_check when the user "
+    "message starts with '/habit' or a habit inline-button callback payload — free text "
+    "like 'I read today' must NOT log a habit. Analyze/streak queries ('my streak', "
+    "'how are my habits') → analyze_habit / get_streak_summary. "
+    "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
 
@@ -289,6 +317,7 @@ def create_health_agent():
         ask_nutrition_agent,
         ask_body_agent,
         ask_mood_agent,
+        ask_habits_agent,
         sync_health_data,
         send_daily_briefing,
     ]
