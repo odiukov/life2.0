@@ -308,10 +308,13 @@ _SYSTEM_PROMPT = (
 )
 
 
-def create_health_agent():
+async def create_health_agent():
+    """Build the ReAct agent. Async because MCP tool discovery is async."""
     from langgraph.checkpoint.memory import MemorySaver
+    from .mcp_tools import load_mcp_tools
+
     llm = build_llm()
-    tools = [
+    peer_tools = [
         ask_sleep_agent,
         ask_workout_agent,
         ask_nutrition_agent,
@@ -321,6 +324,9 @@ def create_health_agent():
         sync_health_data,
         send_daily_briefing,
     ]
+    mcp_tools = await load_mcp_tools()
+    tools = peer_tools + mcp_tools
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         from langgraph.prebuilt import create_react_agent
