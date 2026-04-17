@@ -223,9 +223,12 @@ services:
       - .env
     environment:
       ORCHESTRATOR_URL: http://orchestrator:8000
+      MOOD_AGENT_URL: http://agent-mood:8005/
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       orchestrator:
+        condition: service_started
+      agent-mood:
         condition: service_started
     restart: unless-stopped
 

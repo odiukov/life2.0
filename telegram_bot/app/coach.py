@@ -190,20 +190,44 @@ def default_llm_call():
 
 
 def default_log_mood_call():
-    """Post to the orchestrator so the mood agent records the session aggregate."""
+    """Call the mood agent's coach_session skill directly via A2A JSON-RPC.
+
+    We bypass the orchestrator ReAct graph here because the graph can't
+    reliably forward arbitrary params (specifically source_skill='coach_session')
+    through free-text routing. Direct A2A keeps the marker intact so the entry
+    lands in health_logs with source_skill='coach_session'.
+    """
+    import uuid
     import httpx
 
-    orchestrator_url = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000")
+    mood_agent_url = os.environ.get("MOOD_AGENT_URL", "http://agent-mood:8005/")
+    if not mood_agent_url.endswith("/"):
+        mood_agent_url += "/"
 
     async def _call(entry: dict) -> None:
-        # Use the /chat/stream so routing goes through the ReAct graph and the
-        # mood agent receives source_skill='coach_session' in params.
-        message = f"mood log session summary: {entry.get('raw_text', '')[:2000]}"
+        transcript = entry.get("raw_text", "")[:4000]
+        payload = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "message/send",
+            "params": {
+                "message": {
+                    "role": "user",
+                    "parts": [{"kind": "text", "text": transcript}],
+                    "messageId": str(uuid.uuid4()),
+                    "metadata": {
+                        "skillId": "coach_session",
+                        "params": {
+                            "source_skill": "coach_session",
+                            "transcript": transcript,
+                            "source": "telegram",
+                        },
+                    },
+                },
+            },
+        }
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                f"{orchestrator_url}/chat/stream",
-                json={"messages": [{"role": "user", "content": message}]},
-            )
+            resp = await client.post(mood_agent_url, json=payload)
             resp.raise_for_status()
 
     return _call

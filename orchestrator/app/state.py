@@ -25,7 +25,7 @@ class ToolCall(TypedDict):
 
 
 class LogEntry(TypedDict):
-    agent: Literal["sleep", "workout", "nutrition"]
+    agent: Literal["sleep", "workout", "nutrition", "body", "mood"]
     skill: str
     summary: str
     timestamp: str
