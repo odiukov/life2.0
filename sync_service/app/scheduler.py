@@ -10,16 +10,38 @@ logger = logging.getLogger(__name__)
 
 
 def start_scheduler() -> None:
-    hour = int(os.environ.get("SYNC_HOUR", "6"))
     scheduler = AsyncIOScheduler()
+
+    # Mac/Docker Desktop pauses containers when the laptop sleeps. Without a
+    # generous misfire_grace_time, APScheduler silently drops runs that came due
+    # while paused (default grace is 1 second). 6h covers an overnight sleep.
+    grace_seconds = 6 * 3600
+
+    utc_hour = int(os.environ.get("SYNC_HOUR", "6"))
     scheduler.add_job(
         _run_daily_sync,
-        CronTrigger(hour=hour, minute=0),
-        id="daily_sync",
+        CronTrigger(hour=utc_hour, minute=0),
+        id="daily_sync_utc",
         replace_existing=True,
+        misfire_grace_time=grace_seconds,
+        coalesce=True,
     )
+
+    local_hour = int(os.environ.get("BRIEFING_LOCAL_HOUR", "9"))
+    local_tz = os.environ.get("BRIEFING_TZ", "Europe/Lisbon")
+    scheduler.add_job(
+        _run_daily_sync,
+        CronTrigger(hour=local_hour, minute=0, timezone=local_tz),
+        id="daily_sync_local",
+        replace_existing=True,
+        misfire_grace_time=grace_seconds,
+        coalesce=True,
+    )
+
     scheduler.start()
-    logger.info(f"Scheduler started: daily sync at {hour:02d}:00 UTC")
+    logger.info(
+        f"Scheduler started: daily sync at {utc_hour:02d}:00 UTC and {local_hour:02d}:00 {local_tz}"
+    )
 
 
 async def _run_daily_sync() -> None:

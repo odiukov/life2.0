@@ -248,6 +248,8 @@ services:
       YAZIO_EMAIL: ${YAZIO_EMAIL}
       YAZIO_PASSWORD: ${YAZIO_PASSWORD}
       SYNC_HOUR: "6"
+      BRIEFING_LOCAL_HOUR: "9"
+      BRIEFING_TZ: "Europe/Lisbon"
       ORCHESTRATOR_URL: http://orchestrator:8000
     depends_on:
       postgres:
