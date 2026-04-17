@@ -45,6 +45,16 @@ async def cmd_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _reply(update, f"body {text}")
 
 
+async def cmd_mood(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = " ".join(context.args) if context.args else "how has my mood been lately"
+    await _reply(update, f"mood {text}")
+
+
+async def cmd_journal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = " ".join(context.args) if context.args else "journal entry placeholder"
+    await _reply(update, f"mood {text}")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _reply(update, update.message.text)
 
@@ -75,6 +85,8 @@ def main() -> None:
     app.add_handler(CommandHandler("workout", cmd_workout))
     app.add_handler(CommandHandler("nutrition", cmd_nutrition))
     app.add_handler(CommandHandler("body", cmd_body))
+    app.add_handler(CommandHandler("mood", cmd_mood))
+    app.add_handler(CommandHandler("journal", cmd_journal))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
