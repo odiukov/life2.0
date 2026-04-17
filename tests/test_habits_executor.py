@@ -257,3 +257,37 @@ async def test_archive_habit_happy_path():
             q,
         )
     assert archived["id"] == "h-42"
+
+
+@pytest.mark.asyncio
+async def test_archive_habit_not_found_completes_gracefully():
+    from agents.habits.app.executor import HabitsAgentExecutor
+
+    async def fake_find(name):
+        return None
+
+    async def fake_archive(habit_id):
+        # should not be called when name is unknown
+        raise AssertionError("archive must not be invoked when habit is missing")
+
+    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")), \
+         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
+         patch("agents.habits.app.executor.registry.find_by_name", new=fake_find), \
+         patch("agents.habits.app.executor.registry.archive", new=fake_archive), \
+         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
+         patch("agents.habits.app.prompt.fetch_active_habits",
+               new=AsyncMock(return_value=[])), \
+         patch("agents.habits.app.prompt.fetch_habit_logs",
+               new=AsyncMock(return_value=[])):
+        q = _Queue()
+        await HabitsAgentExecutor().execute(
+            _Ctx("/habit stop nope", skill="archive_habit",
+                 params={"name": "nope"}),
+            q,
+        )
+
+    states = [e.status.state for e in q.events if hasattr(e, "status")]
+    assert TaskState.completed in states
+    text_artifacts = [e.artifact.parts[0].root.text for e in q.events
+                      if hasattr(e, "artifact") and e.artifact.name == "analysis"]
+    assert any("not found" in t for t in text_artifacts)

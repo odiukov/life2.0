@@ -152,17 +152,6 @@ def _day_start_kyiv(dt: datetime) -> datetime:
     return datetime(local.year, local.month, local.day, tzinfo=_DAY_TZ)
 
 
-def _weekday_short(dt: datetime) -> str:
-    return _WEEKDAYS[dt.astimezone(_DAY_TZ).weekday()]
-
-
-def _expected_today(habit: dict, today_local: datetime) -> bool:
-    if habit["cadence_type"] == "daily":
-        return True
-    days = habit.get("cadence_days") or []
-    return _WEEKDAYS[today_local.weekday()] in days
-
-
 def _day_complete(habit: dict, day_rows: list[dict]) -> bool:
     if not day_rows:
         return False
@@ -348,10 +337,13 @@ class HabitsAgentExecutor(AgentExecutor):
                     ok = await registry.archive(habit_id)
                     output = "archived" if ok else "already archived"
 
-            await insert_task_record(
-                agent="habits", task_id=task_id, context_id=context_id,
-                skill_id=skill_id, input_=params, output=output, state="completed",
-            )
+            try:
+                await insert_task_record(
+                    agent="habits", task_id=task_id, context_id=context_id,
+                    skill_id=skill_id, input_=params, output=output, state="completed",
+                )
+            except Exception as e:
+                logger.warning("insert_task_record failed: %s", e)
             try:
                 await upsert_memory(
                     agent_id="habits",
