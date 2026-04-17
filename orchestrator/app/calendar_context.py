@@ -24,6 +24,14 @@ def _pick_list_tool():
         tool = get_mcp_tool(name)
         if tool is not None:
             return tool
+    # Cache may be empty (no MCP server) — that's the common no-calendar case.
+    # But if the cache has tools yet none match, something shifted upstream.
+    from .mcp_tools import _MCP_TOOLS
+    if _MCP_TOOLS:
+        logger.debug(
+            "no list-events tool candidate matched; MCP cache has: %s",
+            sorted(_MCP_TOOLS.keys()),
+        )
     return None
 
 
