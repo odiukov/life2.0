@@ -200,7 +200,7 @@ async def _build_streak_summary() -> str:
     habits = await registry.list_active()
     if not habits:
         return ""
-    logs = await fetch_habit_logs(days=60)
+    logs = await fetch_habit_logs(days=180)
     rows_by_habit: dict[str, list[dict]] = {}
     for r in logs:
         hid = (r.get("data") or {}).get("habit_id")

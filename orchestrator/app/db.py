@@ -408,7 +408,7 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         yesterday_key = yesterday.isoformat()
         today_local = now_kyiv.date()
         today_key = today_local.isoformat()
-        logs = await fetch_habit_logs(days=60)
+        logs = await fetch_habit_logs(days=180)
         by_habit_day: dict[tuple[str, str], list[dict]] = {}
         for r in logs:
             hid = (r.get("data") or {}).get("habit_id")

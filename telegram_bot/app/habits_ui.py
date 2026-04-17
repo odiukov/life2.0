@@ -22,7 +22,7 @@ def _done_today(habit: dict, logs_today: list[dict]) -> bool:
     if not logs_today:
         return False
     if habit["kind"] == "boolean":
-        return True
+        return any(d.get("completed") for d in logs_today)
     total = 0.0
     for d in logs_today:
         try:
@@ -58,7 +58,7 @@ async def build_habits_keyboard() -> tuple[InlineKeyboardMarkup | None, str]:
     habits = await fetch_active_habits()
     if not habits:
         return None, "no habits yet — `/habit new ...` to create one"
-    logs = await fetch_habit_logs(days=60)
+    logs = await fetch_habit_logs(days=180)
     logs_by_habit: dict[str, list[dict]] = {}
     for r in logs:
         hid = (r.get("data") or {}).get("habit_id")

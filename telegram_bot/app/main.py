@@ -207,9 +207,13 @@ async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not parsed.get("text"):
             await update.message.reply_text("usage: /habit new <description>")
             return
-        text = await habits_a2a_call(
-            skill="define_habit", message=parsed["text"], params={"source": "telegram"},
-        )
+        try:
+            text = await habits_a2a_call(
+                skill="define_habit", message=parsed["text"], params={"source": "telegram"},
+            )
+        except Exception:
+            await update.message.reply_text("habits agent unavailable — try later")
+            return
         await update.message.reply_text(text or "couldn't create habit")
         return
 
@@ -217,29 +221,39 @@ async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not parsed.get("name"):
             await update.message.reply_text("usage: /habit stop <name>")
             return
-        text = await habits_a2a_call(
-            skill="archive_habit", message=f"stop {parsed['name']}",
-            params={"name": parsed["name"]},
-        )
+        try:
+            text = await habits_a2a_call(
+                skill="archive_habit", message=f"stop {parsed['name']}",
+                params={"name": parsed["name"]},
+            )
+        except Exception:
+            await update.message.reply_text("habits agent unavailable — try later")
+            return
         await update.message.reply_text(text or "archived")
         return
 
     # normal log_habit_check
     log_params = {"source": "telegram", **{k: v for k, v in parsed.items() if k != "name"},
                   "name": parsed["name"]}
-    text = await habits_a2a_call(
-        skill="log_habit_check",
-        message=f"/habit {' '.join(args)}",
-        params=log_params,
-    )
+    try:
+        text = await habits_a2a_call(
+            skill="log_habit_check",
+            message=f"/habit {' '.join(args)}",
+            params=log_params,
+        )
+    except Exception:
+        await update.message.reply_text("habits agent unavailable — try later")
+        return
     await update.message.reply_text(text or "logged")
 
 
 async def cmd_habits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Builds the inline keyboard — habits_ui module is added in T10.
-    # For T9, a placeholder that tells the user T10 is coming.
     from .habits_ui import build_habits_keyboard
-    markup, empty_msg = await build_habits_keyboard()
+    try:
+        markup, empty_msg = await build_habits_keyboard()
+    except Exception:
+        await update.message.reply_text("habits agent unavailable — try later")
+        return
     if markup is None:
         await update.message.reply_text(empty_msg)
     else:
