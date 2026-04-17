@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Docker Desktop (or OrbStack / Colima) installed and running
-- Claude Code subscription (logged in via `claude` CLI on your host machine)
+- An API key for one of the supported LLM providers (OpenRouter by default — see `.env.example`)
 
 ## First-time Setup
 
@@ -12,23 +12,15 @@
    ```bash
    cp .env.example .env
    ```
-3. Verify Claude auth is available:
-   ```bash
-   claude --version
-   ```
-
 ## LLM provider
 
 Set `LLM_PROVIDER` in `.env` to one of: `anthropic`, `openrouter`, `gemini`,
-`groq`, `ollama`, `claude-cli`. Default is `openrouter` with a free model. Set the
+`groq`, `ollama`. Default is `openrouter` with a free model. Set the
 matching API key.
 
 - **OpenRouter / Anthropic / Gemini:** just set the API key. Plain HTTP.
 - **Groq:** just set `GROQ_API_KEY`. Free tier is ~30 req/min, ~14 400 req/day across Llama 3.x models — the most generous free option for tool-calling workloads. Get a key at https://console.groq.com/keys.
 - **Ollama:** run Ollama on the host; set `OLLAMA_HOST=http://host.docker.internal:11434`.
-- **Claude CLI (subscription):** run `scripts/export-auth.sh` before `docker compose up`
-  to export your OAuth token from macOS Keychain. Token expires every ~8h —
-  re-run the script when you see 401 errors.
 
 Switch providers with a single env change + `docker compose restart`.
 
