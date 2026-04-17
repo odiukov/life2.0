@@ -9,9 +9,6 @@ cd "$(dirname "$0")/.."
 if [ -f .env ]; then
   set -a; . ./.env; set +a
 fi
-if [ -f .env.auth ]; then
-  set -a; . ./.env.auth; set +a
-fi
 
 python -c '
 import asyncio, time, os
