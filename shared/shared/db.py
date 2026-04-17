@@ -113,17 +113,17 @@ async def fetch_habit_logs(habit_id: str | None = None, days: int = 30) -> list[
         rows = await pool.fetch(
             "SELECT type, data, recorded_at, source FROM health_logs "
             "WHERE type = 'habit' AND data->>'habit_id' = $1 "
-            "  AND recorded_at >= now() - ($2 || ' days')::interval "
+            "  AND recorded_at >= now() - make_interval(days => $2) "
             "ORDER BY recorded_at DESC",
-            habit_id, str(days),
+            habit_id, days,
         )
     else:
         rows = await pool.fetch(
             "SELECT type, data, recorded_at, source FROM health_logs "
             "WHERE type = 'habit' "
-            "  AND recorded_at >= now() - ($1 || ' days')::interval "
+            "  AND recorded_at >= now() - make_interval(days => $1) "
             "ORDER BY recorded_at DESC",
-            str(days),
+            days,
         )
     return [dict(r) for r in rows]
 
