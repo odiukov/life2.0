@@ -1,4 +1,5 @@
-import type { AgentInfo, Selection, StatsResponse } from "../types";
+import type { AgentInfo, Selection, StatsResponse, AgentKey } from "../types";
+import { AGENT_COLORS, TOOL_NODES, peersOf } from "../types";
 import { AgentCard } from "./AgentCard";
 import { StatCard } from "./stats/StatCard";
 import { BarChart } from "./stats/BarChart";
@@ -48,6 +49,53 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function peerLabel(id: string): { emoji: string; text: string } {
+  if (id === "user") return { emoji: "👤", text: "USER" };
+  if (id === "orchestrator") return { emoji: "🤖", text: "orchestrator" };
+  if (id.startsWith("agent:")) {
+    const name = id.slice("agent:".length);
+    const cfg = AGENT_COLORS[name as AgentKey];
+    return { emoji: cfg?.emoji ?? "🤖", text: name };
+  }
+  if (id.startsWith("tool:")) {
+    return { emoji: "🔧", text: id.slice("tool:".length) };
+  }
+  return { emoji: "·", text: id };
+}
+
+function ConnectionsSection({ selected, agents }: { selected: Selection; agents: AgentInfo[] }) {
+  const peers = peersOf(selected, agents, TOOL_NODES);
+  if (peers.size === 0) return null;
+  return (
+    <Section title="Connections">
+      <div data-section="connections" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {Array.from(peers).map(id => {
+          const { emoji, text } = peerLabel(id);
+          return (
+            <span
+              key={id}
+              data-peer-id={id}
+              style={{
+                background: "#1a1a2e",
+                borderRadius: 10,
+                padding: "3px 8px",
+                fontSize: 10,
+                color: "#ccc",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <span>{emoji}</span>
+              <span>{text}</span>
+            </span>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) {
   if (!selected) return null;
 
@@ -70,6 +118,7 @@ export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) 
             </div>
           </Section>
         )}
+        <ConnectionsSection selected={selected} agents={agents} />
         {stats && (
           <ActivityFeed items={stats.activity} filterAgent={selected.name} />
         )}
@@ -97,6 +146,7 @@ export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) 
             Routes user requests to specialist agents and MCP tools.
           </div>
         </div>
+        <ConnectionsSection selected={selected} agents={agents} />
       </div>
     );
   }
@@ -122,6 +172,7 @@ export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) 
           </>
         )}
       </div>
+      <ConnectionsSection selected={selected} agents={agents} />
     </div>
   );
 }

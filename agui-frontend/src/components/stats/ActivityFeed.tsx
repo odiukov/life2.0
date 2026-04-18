@@ -24,7 +24,7 @@ export function ActivityFeed({ items, filterAgent }: Props) {
       </div>
       {visible.length === 0 && <div style={{ color: "#444", fontSize: 10 }}>No activity yet</div>}
       {visible.map((item, i) => {
-        const cfg = AGENT_COLORS[item.agent];
+        const cfg = AGENT_COLORS[item.agent as AgentKey] ?? { emoji: "🤖", label: item.agent, color: "#aaa" };
         const ts = new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         const date = new Date(item.created_at).toLocaleDateString([], { month: "short", day: "numeric" });
         return (

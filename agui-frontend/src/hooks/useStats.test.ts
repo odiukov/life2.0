@@ -30,7 +30,7 @@ describe("useStats", () => {
     const { result } = renderHook(() => useStats());
     expect(result.current.data).toBeNull();
     await waitFor(() => expect(result.current.data).not.toBeNull());
-    expect(result.current.data?.agents.sleep.tasks_week).toBe(5);
+    expect(result.current.data?.agents.sleep?.tasks_week).toBe(5);
     expect(result.current.data?.activity).toHaveLength(1);
   });
 

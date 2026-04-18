@@ -83,4 +83,42 @@ describe("TopologyDetailPane", () => {
     screen.getByRole("button", { name: /×|close/i }).click();
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("lists A2A peers in Connections section when an agent is selected", () => {
+    const { container } = render(
+      <TopologyDetailPane
+        selected={{ kind: "agent", name: "sleep" }}
+        agents={AGENTS}
+        stats={STATS}
+        onClose={() => {}}
+      />,
+    );
+    const section = container.querySelector('[data-section="connections"]');
+    expect(section).not.toBeNull();
+    const peerIds = Array.from(section!.querySelectorAll("[data-peer-id]")).map(el => el.getAttribute("data-peer-id"));
+    expect(peerIds).toContain("orchestrator");
+    expect(peerIds).toContain("agent:workout");
+    expect(peerIds).toContain("agent:nutrition");
+    expect(peerIds).not.toContain("agent:sleep");
+    expect(peerIds).not.toContain("user");
+  });
+
+  it("lists all reachable nodes in Connections section when orchestrator is selected", () => {
+    const { container } = render(
+      <TopologyDetailPane
+        selected={{ kind: "orchestrator" }}
+        agents={AGENTS}
+        stats={STATS}
+        onClose={() => {}}
+      />,
+    );
+    const section = container.querySelector('[data-section="connections"]');
+    expect(section).not.toBeNull();
+    const peerIds = Array.from(section!.querySelectorAll("[data-peer-id]")).map(el => el.getAttribute("data-peer-id"));
+    expect(peerIds).toContain("user");
+    expect(peerIds).toContain("tool:calendar-mcp");
+    expect(peerIds).toContain("agent:sleep");
+    expect(peerIds).toContain("agent:workout");
+    expect(peerIds).toContain("agent:nutrition");
+  });
 });

@@ -6,18 +6,14 @@ export interface AgentStats {
 }
 
 export interface ActivityItem {
-  agent: "sleep" | "workout" | "nutrition";
+  agent: string;
   task_type: string;
   message: string;
   created_at: string;
 }
 
 export interface StatsResponse {
-  agents: {
-    sleep: AgentStats;
-    workout: AgentStats;
-    nutrition: AgentStats;
-  };
+  agents: Partial<Record<string, AgentStats>>;
   activity: ActivityItem[];
 }
 
@@ -116,6 +112,10 @@ export const AGENT_COLORS = {
   sleep:     { emoji: "😴", label: "Sleep",     color: "#4a9eff" },
   workout:   { emoji: "💪", label: "Workout",   color: "#4eff9a" },
   nutrition: { emoji: "🥗", label: "Nutrition", color: "#ffb74a" },
+  body:      { emoji: "🧠", label: "Body",      color: "#c691ff" },
+  mood:      { emoji: "🙂", label: "Mood",      color: "#ff91b5" },
+  habits:    { emoji: "✅", label: "Habits",    color: "#91d8ff" },
+  recovery:  { emoji: "🌿", label: "Recovery",  color: "#7effb5" },
 } as const;
 
 export type AgentKey = keyof typeof AGENT_COLORS;
@@ -125,3 +125,35 @@ export type Selection =
   | { kind: "orchestrator" }
   | { kind: "tool"; name: string }
   | null;
+
+export interface ToolNode {
+  name: string;
+  port: string;
+  description: string;
+}
+
+export const TOOL_NODES: ToolNode[] = [
+  { name: "calendar-mcp", port: ":9100", description: "MCP server exposing calendar read/write tools." },
+];
+
+export function peersOf(
+  selected: Selection,
+  agents: AgentInfo[],
+  tools: ToolNode[],
+): Set<string> {
+  const peers = new Set<string>();
+  if (!selected) return peers;
+  if (selected.kind === "orchestrator") {
+    peers.add("user");
+    for (const a of agents) peers.add(`agent:${a.name}`);
+    for (const t of tools) peers.add(`tool:${t.name}`);
+  } else if (selected.kind === "agent") {
+    peers.add("orchestrator");
+    for (const a of agents) {
+      if (a.name !== selected.name) peers.add(`agent:${a.name}`);
+    }
+  } else if (selected.kind === "tool") {
+    peers.add("orchestrator");
+  }
+  return peers;
+}

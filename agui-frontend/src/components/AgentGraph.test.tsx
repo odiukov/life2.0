@@ -40,14 +40,34 @@ describe("AgentGraph (topology)", () => {
     expect(screen.getByText("nutrition")).toBeInTheDocument();
   });
 
-  it("renders three A2A peer edges between all specialist pairs", () => {
+  it("does not glow any card when nothing is selected", () => {
     const { container } = render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={() => {}} />);
-    const peerEdges = container.querySelectorAll("path[data-peer-edge]");
-    expect(peerEdges).toHaveLength(3);
-    const pairs = Array.from(peerEdges).map(el => el.getAttribute("data-peer-edge"));
-    expect(pairs).toContain("sleep-workout");
-    expect(pairs).toContain("workout-nutrition");
-    expect(pairs).toContain("sleep-nutrition");
+    const glowAttrs = Array.from(container.querySelectorAll("[data-glow]")).map(el => el.getAttribute("data-glow"));
+    expect(glowAttrs.every(v => v === "none")).toBe(true);
+  });
+
+  it("glows the selected agent strong, other agents + orchestrator as peers, tools+user dimmed", () => {
+    const { container } = render(
+      <AgentGraph agents={AGENTS} selected={{ kind: "agent", name: "sleep" }} highlightedAgent={null} onSelect={() => {}} />,
+    );
+    expect(container.querySelector('[data-agent-name="sleep"]')?.getAttribute("data-glow")).toBe("strong");
+    expect(container.querySelector('[data-agent-name="workout"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-agent-name="nutrition"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-node="orchestrator"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-node="tool-calendar-mcp"]')?.getAttribute("data-glow")).toBe("dim");
+    expect(container.querySelector('[data-node="user"]')?.getAttribute("data-glow")).toBe("dim");
+  });
+
+  it("glows orchestrator strong and all connected nodes as peers when orchestrator is selected", () => {
+    const { container } = render(
+      <AgentGraph agents={AGENTS} selected={{ kind: "orchestrator" }} highlightedAgent={null} onSelect={() => {}} />,
+    );
+    expect(container.querySelector('[data-node="orchestrator"]')?.getAttribute("data-glow")).toBe("strong");
+    expect(container.querySelector('[data-node="user"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-node="tool-calendar-mcp"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-agent-name="sleep"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-agent-name="workout"]')?.getAttribute("data-glow")).toBe("peer");
+    expect(container.querySelector('[data-agent-name="nutrition"]')?.getAttribute("data-glow")).toBe("peer");
   });
 
   it("calls onSelect with agent selection when a specialist card is clicked", () => {
