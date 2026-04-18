@@ -68,11 +68,16 @@ export interface HealthSummary {
   recommendation: LastRecommendation | null;
 }
 
+export interface AgentSkill {
+  id: string;
+  name: string;
+}
+
 export interface AgentInfo {
   name: string;
   url: string;
   online: boolean;
-  capabilities: string[];
+  skills: AgentSkill[];
   description: string;
   tasks_today: number;
 }
