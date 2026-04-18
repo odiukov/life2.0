@@ -1,30 +1,11 @@
 import { useState } from "react";
 import type { StatsResponse, ActivityItem, AgentStats } from "../types";
+import { AGENT_COLORS, type AgentKey } from "../types";
+import { StatCard } from "./stats/StatCard";
 
-const AGENT_CONFIG = {
-  sleep:     { emoji: "😴", label: "Sleep",     color: "#4a9eff" },
-  workout:   { emoji: "💪", label: "Workout",   color: "#4eff9a" },
-  nutrition: { emoji: "🥗", label: "Nutrition", color: "#ffb74a" },
-} as const;
-
-type AgentKey = keyof typeof AGENT_CONFIG;
+const AGENT_CONFIG = AGENT_COLORS;
 
 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
-
-function StatCard({ agentKey, stats }: { agentKey: AgentKey; stats: AgentStats }) {
-  const cfg = AGENT_CONFIG[agentKey];
-  const deltaStr = stats.delta > 0 ? `↑ ${stats.delta}` : stats.delta < 0 ? `↓ ${Math.abs(stats.delta)}` : "→ same";
-  const deltaColor = stats.delta > 0 ? "#4eff9a" : stats.delta < 0 ? "#e57373" : "#888";
-  return (
-    <div style={{ background: "#1a1a2e", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div>
-        <div style={{ color: "#555", fontSize: 9, marginBottom: 2 }}>{cfg.emoji} {cfg.label} this week</div>
-        <div style={{ fontSize: 20, fontWeight: "bold", color: cfg.color }}>{stats.tasks_week}</div>
-      </div>
-      <div style={{ fontSize: 9, color: deltaColor }}>{deltaStr}</div>
-    </div>
-  );
-}
 
 function BarChart({ agentKey, stats }: { agentKey: AgentKey; stats: AgentStats }) {
   const cfg = AGENT_CONFIG[agentKey];
