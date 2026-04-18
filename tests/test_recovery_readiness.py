@@ -93,3 +93,37 @@ def test_format_top3_fewer_than_three_metrics_available():
     }
     top3 = format_top3(deltas)
     assert len(top3) == 2
+
+
+# ---------------- baseline_mean ----------------
+
+def test_baseline_mean_averages_non_none_values():
+    from shared.recovery import baseline_mean
+    window = [
+        {"hrv": 40, "rhr": 60, "stress": 30, "bb_max": 80},
+        {"hrv": 50, "rhr": 58, "stress": 40, "bb_max": 90},
+    ]
+    result = baseline_mean(window)
+    assert result["hrv"] == 45
+    assert result["rhr"] == 59
+    assert result["stress"] == 35
+    assert result["bb_max"] == 85
+
+
+def test_baseline_mean_skips_none_values():
+    from shared.recovery import baseline_mean
+    window = [
+        {"hrv": 40, "rhr": None, "stress": None, "bb_max": 80},
+        {"hrv": 50, "rhr": 58, "stress": None, "bb_max": None},
+    ]
+    result = baseline_mean(window)
+    assert result["hrv"] == 45
+    assert result["rhr"] == 58   # only 1 non-None value
+    assert result["stress"] is None  # all None
+    assert result["bb_max"] == 80
+
+
+def test_baseline_mean_empty_window():
+    from shared.recovery import baseline_mean
+    result = baseline_mean([])
+    assert all(v is None for v in result.values())

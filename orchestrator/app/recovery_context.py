@@ -9,17 +9,9 @@ import logging
 from datetime import date
 
 from shared.db import fetch_recovery_metrics
-from shared.recovery import compute_bucket, compute_deltas, format_top3
+from shared.recovery import baseline_mean, compute_bucket, compute_deltas, format_top3
 
 logger = logging.getLogger(__name__)
-
-
-def _baseline_mean(window: list[dict]) -> dict:
-    out = {"hrv": None, "rhr": None, "stress": None, "bb_max": None}
-    for key in out:
-        values = [d[key] for d in window if d.get(key) is not None]
-        out[key] = sum(values) / len(values) if values else None
-    return out
 
 
 async def fetch_recovery_shape(target_date: date) -> dict | None:
@@ -44,7 +36,7 @@ async def fetch_recovery_shape(target_date: date) -> dict | None:
 
     baseline_days = [metrics[k] for k in sorted(metrics.keys(), reverse=True)
                      if k != target_key][:7]
-    baseline = _baseline_mean(baseline_days)
+    baseline = baseline_mean(baseline_days)
 
     bucket = compute_bucket(current, baseline)
     if bucket == "unknown":

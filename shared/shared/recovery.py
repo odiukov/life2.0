@@ -153,3 +153,18 @@ def format_top3(deltas: dict) -> list[dict]:
         })
     candidates.sort(key=lambda m: -_delta_magnitude(m.get("delta")))
     return candidates[:3]
+
+
+def baseline_mean(window: list[dict]) -> dict:
+    """Compute per-metric mean across a baseline window.
+
+    Skips None values per metric. Returns None for metrics with zero
+    non-None observations. Metrics covered: hrv, rhr, stress, bb_max.
+    """
+    out: dict[str, float | None] = {
+        "hrv": None, "rhr": None, "stress": None, "bb_max": None,
+    }
+    for key in out:
+        values = [d[key] for d in window if d.get(key) is not None]
+        out[key] = sum(values) / len(values) if values else None
+    return out

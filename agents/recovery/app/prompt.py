@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
 from shared.db import fetch_recovery_metrics
-from shared.recovery import compute_bucket, compute_deltas
+from shared.recovery import baseline_mean, compute_bucket
 
 _KYIV = ZoneInfo("Europe/Kyiv")
 
@@ -20,19 +20,11 @@ def _format_day(date_key: str, metrics: dict) -> str:
     if metrics.get("stress") is not None:
         bits.append(f"stress={metrics['stress']}")
     if metrics.get("bb_max") is not None:
-        bits.append(f"body_battery={metrics['bb_min']}/{metrics['bb_max']}")
+        bb_min_str = str(metrics['bb_min']) if metrics.get('bb_min') is not None else "?"
+        bits.append(f"body_battery={bb_min_str}/{metrics['bb_max']}")
     if metrics.get("sleep_score") is not None:
         bits.append(f"sleep_score={metrics['sleep_score']}")
     return f"{date_key}: " + ", ".join(bits)
-
-
-def _baseline_mean(window: list[dict]) -> dict:
-    """Mean of non-None values across the baseline window."""
-    out = {"hrv": None, "rhr": None, "stress": None, "bb_max": None}
-    for key in out:
-        values = [d[key] for d in window if d.get(key) is not None]
-        out[key] = sum(values) / len(values) if values else None
-    return out
 
 
 async def build_recovery_prompt(task: str, params: dict) -> str:
@@ -52,10 +44,9 @@ async def build_recovery_prompt(task: str, params: dict) -> str:
     latest_key = sorted_keys[0]
     current = metrics[latest_key]
     baseline_days = [metrics[k] for k in sorted_keys[1:8]]
-    baseline = _baseline_mean(baseline_days)
+    baseline = baseline_mean(baseline_days)
 
     bucket = compute_bucket(current, baseline)
-    deltas = compute_deltas(current, baseline)
 
     # Format recent days for the prompt context.
     history_lines = "\n".join(
