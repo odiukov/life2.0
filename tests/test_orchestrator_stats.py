@@ -37,14 +37,22 @@ async def test_stats_endpoint_shape():
 
 
 @pytest.mark.asyncio
-async def test_agents_endpoint_returns_full_info():
-    """GET /agents returns name, url, online, capabilities, tasks_today."""
+async def test_agents_endpoint_returns_skills():
+    """GET /agents returns name, url, online, skills[{id,name}], tasks_today."""
     with patch("orchestrator.app.main.get_tasks_today", new=AsyncMock(return_value=3)):
         with patch("orchestrator.app.main.check_agent_health", new=AsyncMock(return_value=True)):
             with patch("orchestrator.app.registry._registry", {
                 "sleep": {
                     "url": "http://agent-sleep:8001",
-                    "card": {"name": "sleep-agent", "capabilities": {"streaming": True, "pushNotifications": True}},
+                    "card": {
+                        "name": "sleep-agent",
+                        "description": "Sleep tracker",
+                        "capabilities": {"streaming": True, "pushNotifications": True},
+                        "skills": [
+                            {"id": "log_sleep", "name": "Log sleep", "description": "..."},
+                            {"id": "analyze_sleep", "name": "Analyze sleep"},
+                        ],
+                    },
                     "online": True,
                 }
             }):
@@ -54,7 +62,33 @@ async def test_agents_endpoint_returns_full_info():
     assert resp.status_code == 200
     agents = resp.json()["agents"]
     assert len(agents) == 1
-    assert agents[0]["name"] == "sleep"
-    assert agents[0]["online"] is True
-    assert "capabilities" in agents[0]
-    assert "tasks_today" in agents[0]
+    agent = agents[0]
+    assert agent["name"] == "sleep"
+    assert agent["online"] is True
+    assert agent["tasks_today"] == 3
+    assert "capabilities" not in agent
+    assert agent["skills"] == [
+        {"id": "log_sleep", "name": "Log sleep"},
+        {"id": "analyze_sleep", "name": "Analyze sleep"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_agents_endpoint_handles_missing_skills():
+    """Agents with no skills field return skills: []."""
+    with patch("orchestrator.app.main.get_tasks_today", new=AsyncMock(return_value=0)):
+        with patch("orchestrator.app.main.check_agent_health", new=AsyncMock(return_value=True)):
+            with patch("orchestrator.app.registry._registry", {
+                "mystery": {
+                    "url": "http://agent-mystery:9999",
+                    "card": {"name": "mystery-agent"},
+                    "online": True,
+                }
+            }):
+                from orchestrator.app.main import app
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    resp = await client.get("/agents")
+    assert resp.status_code == 200
+    agents = resp.json()["agents"]
+    assert agents[0]["skills"] == []
+    assert agents[0]["description"] == ""

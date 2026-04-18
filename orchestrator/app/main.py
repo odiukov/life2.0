@@ -135,11 +135,16 @@ async def agents():
         online = await check_agent_health(name)
         tasks_today = await get_tasks_today(name)
         card = entry.get("card", {})
+        skills_raw = card.get("skills") or []
+        skills = [
+            {"id": s.get("id", ""), "name": s.get("name", s.get("id", ""))}
+            for s in skills_raw
+        ]
         result.append({
             "name": name,
             "url": entry["url"],
             "online": online,
-            "capabilities": card.get("capabilities", {}),
+            "skills": skills,
             "description": card.get("description", ""),
             "tasks_today": tasks_today,
         })
