@@ -19,7 +19,7 @@ export function useHealthSummary(intervalMs = 120_000): UseHealthSummaryResult {
 
     async function fetchSummary() {
       try {
-        const resp = await fetch("/health-summary");
+        const resp = await fetch("/api/health-summary");
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const json: HealthSummary = await resp.json();
         if (!cancelled) {

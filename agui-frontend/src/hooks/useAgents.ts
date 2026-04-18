@@ -17,7 +17,7 @@ export function useAgents(intervalMs = 10_000): UseAgentsResult {
 
     async function fetchAgents() {
       try {
-        const resp = await fetch("/agents");
+        const resp = await fetch("/api/agents");
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const json: AgentsResponse = await resp.json();
         if (!cancelled) {

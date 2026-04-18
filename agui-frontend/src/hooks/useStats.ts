@@ -20,7 +20,7 @@ export function useStats(intervalMs = 60_000): UseStatsResult {
 
     async function fetchStats() {
       try {
-        const resp = await fetch("/stats");
+        const resp = await fetch("/api/stats");
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const json: StatsResponse = await resp.json();
         if (!cancelled) {
