@@ -12,6 +12,11 @@ const PEER_EDGES: [string, string][] = [
   ["sleep", "nutrition"],
 ];
 
+const CARD_WIDTH = 100;
+const CARD_GAP = 16;
+const cardCenterX = (i: number) => i * (CARD_WIDTH + CARD_GAP) + CARD_WIDTH / 2;
+const rowWidth = (n: number) => n * CARD_WIDTH + (n - 1) * CARD_GAP;
+
 interface Props {
   agents: AgentInfo[];
   selectedAgent: string | null;
@@ -62,21 +67,17 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
       </div>
 
       {/* Connection lines SVG */}
-      <svg width={agents.length * 120} height={32} style={{ overflow: "visible" }}>
-        {agents.map((_, i) => {
-          const totalW = agents.length * 120;
-          const x = (i + 0.5) * (totalW / agents.length);
-          return (
-            <line
-              key={i}
-              x1={totalW / 2} y1={0}
-              x2={x} y2={32}
-              stroke="#3a5a8a"
-              strokeWidth={1.5}
-              strokeDasharray="4,4"
-            />
-          );
-        })}
+      <svg width={rowWidth(agents.length)} height={32} style={{ overflow: "visible" }}>
+        {agents.map((_, i) => (
+          <line
+            key={i}
+            x1={rowWidth(agents.length) / 2} y1={0}
+            x2={cardCenterX(i)} y2={32}
+            stroke="#3a5a8a"
+            strokeWidth={1.5}
+            strokeDasharray="4,4"
+          />
+        ))}
       </svg>
 
       {/* Agent nodes */}
@@ -119,7 +120,7 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
 
       {/* Peer consult edges — drawn below the agent-nodes row */}
       <svg
-        width={agents.length * 120}
+        width={rowWidth(agents.length)}
         height={48}
         style={{ overflow: "visible", marginTop: -4 }}
       >
@@ -127,9 +128,8 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
           const ia = agents.findIndex(ag => ag.name === a);
           const ib = agents.findIndex(ag => ag.name === b);
           if (ia < 0 || ib < 0) return null;
-          const totalW = agents.length * 120;
-          const xa = (ia + 0.5) * (totalW / agents.length);
-          const xb = (ib + 0.5) * (totalW / agents.length);
+          const xa = cardCenterX(ia);
+          const xb = cardCenterX(ib);
           const midX = (xa + xb) / 2;
           const dip = 16 + Math.abs(ia - ib) * 8;
           return (
