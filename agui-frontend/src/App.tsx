@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import AgentsPage from "./pages/AgentsPage";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const NAV_STYLE: React.CSSProperties = {
   display: "flex",
@@ -43,10 +44,12 @@ export default function App() {
             Agents
           </NavLink>
         </nav>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/agents" element={<AgentsPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/agents" element={<AgentsPage />} />
+          </Routes>
+        </ErrorBoundary>
       </div>
     </BrowserRouter>
   );
