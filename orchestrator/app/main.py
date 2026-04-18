@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
         path="/agui",
     )
     yield
+    from .mcp_tools import close_mcp_sessions
+    await close_mcp_sessions()
 
 
 # Populated by lifespan; must exist at module level so endpoint functions can close over it.

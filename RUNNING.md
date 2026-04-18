@@ -108,9 +108,16 @@ Coach sessions are ephemeral in-memory state in `telegram_bot` — restarting th
 
 ## Google Calendar setup (one-time)
 
-The stack reads Google Calendar via a public MCP server (`calendar-mcp`, pinned to
-`nspady/google-calendar-mcp v2.6.1`). OAuth lives entirely inside that container —
-no credentials table in Postgres, no OAuth code in our repo.
+The stack reads Google Calendar via a local wrapper around
+`nspady/google-calendar-mcp v2.6.1` (see `./calendar-mcp/Dockerfile` — it clones
+that tag and applies a two-line patch in `patches.js` to enable stateful
+sessions + JSON responses). OAuth lives entirely inside that container — no
+credentials table in Postgres, no OAuth code in our repo.
+
+> The patch is required because upstream v2.6.1 runs the HTTP transport in
+> stateless mode, which in MCP TS SDK 1.27 returns 500 on the second request
+> of a session — incompatible with `langchain-mcp-adapters`. If you ever bump
+> the pinned tag, re-validate that `patches.js` still applies cleanly.
 
 ### 1. Create an OAuth Client in Google Cloud Console
 
@@ -184,6 +191,23 @@ Expected: a line like `Loaded N MCP tools: ['list-events', 'create-event', ...]`
 If the line shows `No MCP servers configured` or `MCP tool discovery failed`, the
 server-to-orchestrator wiring has a problem — check `MCP_GOOGLE_CALENDAR_URL` in
 `.env`.
+
+### Restart order (important)
+
+The orchestrator opens one long-lived MCP session at startup and keeps it open
+for the process lifetime (see `orchestrator/app/mcp_tools.py`). The calendar
+server accepts only one session per process, so if you restart the orchestrator
+while `calendar-mcp` stays up, the new session's init is rejected and calendar
+tool calls hang.
+
+**Always recreate both together when touching the orchestrator:**
+
+```bash
+docker compose up -d --force-recreate calendar-mcp orchestrator
+```
+
+Restarting the full stack (`docker compose up -d`) is always safe — the
+`depends_on: service_healthy` ordering handles boot sequencing.
 
 ### Troubleshooting
 

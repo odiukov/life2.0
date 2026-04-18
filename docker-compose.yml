@@ -248,7 +248,7 @@ services:
 
   calendar-mcp:
     build:
-      context: https://github.com/nspady/google-calendar-mcp.git#v2.6.1
+      context: ./calendar-mcp
     environment:
       TRANSPORT: http
       HOST: 0.0.0.0
@@ -259,8 +259,9 @@ services:
       - ./mcp-config/calendar-mcp:/home/nodejs/.config/google-calendar-mcp
     ports:
       - "9100:3000"
+      - "3500-3505:3500-3505"
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -295,7 +296,7 @@ services:
       agent-recovery:
         condition: service_healthy
       calendar-mcp:
-        condition: service_started
+        condition: service_healthy
 
   telegram-bot:
     build:
