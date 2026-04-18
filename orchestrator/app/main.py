@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
-from .checkpointer import close_checkpointer, open_checkpointer
 from .health_agent import create_health_agent
 from .registry import check_agent_health, discover_agents, get_registry
 
@@ -22,6 +21,7 @@ from .registry import check_agent_health, discover_agents, get_registry
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _graph, _pool
+    from .checkpointer import close_checkpointer, open_checkpointer
     await discover_agents()
     _pool, saver = await open_checkpointer()
     _graph = await create_health_agent(checkpointer=saver)
