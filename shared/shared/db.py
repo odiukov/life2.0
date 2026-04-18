@@ -153,3 +153,66 @@ async def archive_habit(habit_id: str) -> bool:
         habit_id,
     )
     return status.endswith(" 1")
+
+
+async def fetch_recovery_metrics(days: int = 7) -> dict[str, dict]:
+    """Return per-day recovery metrics keyed by Kyiv-TZ date ISO string.
+
+    Joins two health_logs types in memory:
+      - 'sleep_session' → hrv_weekly_avg, score
+      - 'daily_stats'   → resting_hr, stress_avg, body_battery_min/max
+
+    Each day's dict has six fields, any of which may be None if that row is
+    missing or the JSON field is absent.
+    """
+    from zoneinfo import ZoneInfo
+    pool = await get_pool()
+    _tz = ZoneInfo("Europe/Kyiv")
+
+    sleep_rows = await pool.fetch(
+        "SELECT recorded_at, "
+        "       (data->>'hrv_weekly_avg')::float AS hrv, "
+        "       (data->>'score')::int AS score "
+        "FROM health_logs "
+        "WHERE type = 'sleep_session' "
+        "  AND recorded_at >= now() - make_interval(days => $1)",
+        days,
+    )
+    stats_rows = await pool.fetch(
+        "SELECT recorded_at, "
+        "       (data->>'resting_hr')::int AS rhr, "
+        "       (data->>'stress_avg')::int AS stress, "
+        "       (data->>'body_battery_min')::int AS bb_min, "
+        "       (data->>'body_battery_max')::int AS bb_max "
+        "FROM health_logs "
+        "WHERE type = 'daily_stats' "
+        "  AND recorded_at >= now() - make_interval(days => $1)",
+        days,
+    )
+
+    out: dict[str, dict] = {}
+    for r in sleep_rows:
+        key = r["recorded_at"].astimezone(_tz).date().isoformat()
+        day = out.setdefault(key, {
+            "hrv": None, "rhr": None, "stress": None,
+            "bb_min": None, "bb_max": None, "sleep_score": None,
+        })
+        if r["hrv"] is not None:
+            day["hrv"] = r["hrv"]
+        if r["score"] is not None:
+            day["sleep_score"] = r["score"]
+    for r in stats_rows:
+        key = r["recorded_at"].astimezone(_tz).date().isoformat()
+        day = out.setdefault(key, {
+            "hrv": None, "rhr": None, "stress": None,
+            "bb_min": None, "bb_max": None, "sleep_score": None,
+        })
+        if r["rhr"] is not None:
+            day["rhr"] = r["rhr"]
+        if r["stress"] is not None:
+            day["stress"] = r["stress"]
+        if r["bb_min"] is not None:
+            day["bb_min"] = r["bb_min"]
+        if r["bb_max"] is not None:
+            day["bb_max"] = r["bb_max"]
+    return out
