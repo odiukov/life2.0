@@ -14,15 +14,17 @@ from pydantic import BaseModel
 
 from .briefing import run_briefing
 from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
+from .checkpointer import close_checkpointer, open_checkpointer
 from .health_agent import create_health_agent
 from .registry import check_agent_health, discover_agents, get_registry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _graph
+    global _graph, _pool
     await discover_agents()
-    _graph = await create_health_agent()
+    _pool, saver = await open_checkpointer()
+    _graph = await create_health_agent(checkpointer=saver)
     # Late-register the AG-UI endpoint now that _graph exists.
     add_langgraph_fastapi_endpoint(
         app,
@@ -33,13 +35,18 @@ async def lifespan(app: FastAPI):
         ),
         path="/agui",
     )
-    yield
-    from .mcp_tools import close_mcp_sessions
-    await close_mcp_sessions()
+    try:
+        yield
+    finally:
+        from .mcp_tools import close_mcp_sessions
+        await close_mcp_sessions()
+        if _pool is not None:
+            await close_checkpointer(_pool)
 
 
-# Populated by lifespan; must exist at module level so endpoint functions can close over it.
+# Populated by lifespan; must exist at module level so endpoint functions can close over them.
 _graph = None
+_pool = None
 
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
 app.add_middleware(
