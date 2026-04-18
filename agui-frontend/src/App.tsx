@@ -41,7 +41,7 @@ export default function App() {
             to="/agents"
             style={({ isActive }) => (isActive ? ACTIVE_STYLE : LINK_STYLE)}
           >
-            Agents
+            Topology
           </NavLink>
         </nav>
         <ErrorBoundary>
