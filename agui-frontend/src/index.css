@@ -1,8 +1,27 @@
 :root {
   --copilot-kit-primary-color: #4a9eff;
-  --copilot-kit-background-color: #0d0d1a;
+  --copilot-kit-background-color: #1a1a2e;
   --copilot-kit-secondary-color: #13131f;
+  --copilot-kit-contrast-color: #e5e7eb;
+  --copilot-kit-secondary-contrast-color: #e5e7eb;
+  --copilot-kit-muted-color: #9ca3af;
+  --copilot-kit-separator-color: rgba(255, 255, 255, 0.1);
+  --copilot-kit-input-background-color: #13131f;
   --copilot-kit-font-family: monospace;
+}
+
+/* CopilotKit's own rule has `height: 100%` commented out, so the chat grows
+   past its parent and the inner .copilotKitMessages scroll area never clamps.
+   Make .copilotKitChat a flex item that fills its flex-col parent and can
+   shrink below its content height — min-height: 0 is the flex-scroll escape
+   hatch so .copilotKitMessages (overflow-y: scroll) actually scrolls. */
+.copilotKitChat {
+  flex: 1;
+  min-height: 0;
+}
+
+.copilotKitMessages {
+  min-height: 0;
 }
 
 body {
