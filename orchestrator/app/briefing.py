@@ -100,6 +100,25 @@ def format_message(metrics: dict, insight: str | None) -> str:
             ]
             lines.append("  Today: " + " · ".join(today_bits))
 
+    recovery = metrics.get("recovery")
+    if recovery:
+        bucket = recovery["bucket"]
+        bits = []
+        for m in recovery.get("top3", []):
+            label = m["label"]
+            value = m["value"]
+            delta = m.get("delta")
+            dir_ = m.get("dir") or ""
+            if delta:
+                bits.append(f"{label} {value} ({dir_}{delta})")
+            else:
+                bits.append(f"{label} {value}")
+        parts = " · ".join(bits)
+        if parts:
+            lines.append(f"🔋 Recovery: {bucket} · {parts}")
+        else:
+            lines.append(f"🔋 Recovery: {bucket}")
+
     calendar = metrics.get("calendar")
     if calendar:
         all_day = calendar.get("all_day_events") or []

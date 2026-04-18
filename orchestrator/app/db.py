@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 from shared.db import fetch_active_habits, fetch_habit_logs
+from .recovery_context import fetch_recovery_shape
 
 _pool: asyncpg.Pool | None = None
 
@@ -490,6 +491,9 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
             "today_names": [it["name"] for it in today_items],
         }
 
+    # Recovery — target = yesterday in Kyiv TZ.
+    recovery = await fetch_recovery_shape(yesterday)
+
     # Calendar — forward-looking (today, not yesterday).
     from .calendar_context import fetch_calendar_shape
     calendar = await fetch_calendar_shape(now_kyiv.date())
@@ -501,5 +505,6 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         "nutrition": nutrition,
         "mood": mood,
         "habits": habits,
+        "recovery": recovery,
         "calendar": calendar,
     }

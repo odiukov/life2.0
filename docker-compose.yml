@@ -219,6 +219,33 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-recovery:
+    build:
+      context: .
+      dockerfile: agents/recovery/Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      QDRANT_HOST: ${QDRANT_HOST}
+      QDRANT_PORT: ${QDRANT_PORT}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "8007:8007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   calendar-mcp:
     build:
       context: https://github.com/nspady/google-calendar-mcp.git#v2.6.1
@@ -247,7 +274,7 @@ services:
       - .env
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006"
+      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007"
       MCP_GOOGLE_CALENDAR_URL: ${MCP_GOOGLE_CALENDAR_URL}
       MCP_GOOGLE_CALENDAR_TRANSPORT: ${MCP_GOOGLE_CALENDAR_TRANSPORT}
     ports:
@@ -264,6 +291,8 @@ services:
       agent-mood:
         condition: service_healthy
       agent-habits:
+        condition: service_healthy
+      agent-recovery:
         condition: service_healthy
       calendar-mcp:
         condition: service_started
