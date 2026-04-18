@@ -33,4 +33,11 @@ describe("AgentStatusBar", () => {
     const { container } = render(<AgentStatusBar />);
     expect(container.firstChild).toBeNull();
   });
+
+  it("hides the bar on 'composing' when no tool calls are running", () => {
+    const { container } = render(
+      <AgentStatusBar currentStep="composing" activeAgent={null} toolCalls={[done]} />
+    );
+    expect(container.firstChild).toBeNull();
+  });
 });

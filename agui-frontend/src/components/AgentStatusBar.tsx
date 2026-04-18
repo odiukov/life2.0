@@ -8,10 +8,12 @@ interface Props {
 
 export function AgentStatusBar({ currentStep, activeAgent, toolCalls }: Props) {
   const running = (toolCalls ?? []).filter((t) => t.status === "running");
-  const hasActivity =
-    running.length > 0 ||
-    (currentStep !== undefined && currentStep !== "idle" && currentStep !== "");
-  if (!hasActivity) return null;
+  // The bar is only meaningful while a peer-agent call is in flight. The
+  // orchestrator leaves currentStep on "composing" after the tool call
+  // completes (it never resets to idle), and the LLM's final answer is
+  // already visible in the chat stream — so showing the bar during that
+  // phase is both redundant and looks stuck.
+  if (running.length === 0) return null;
   return (
     <div
       role="status"
