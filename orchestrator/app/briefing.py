@@ -100,6 +100,30 @@ def format_message(metrics: dict, insight: str | None) -> str:
             ]
             lines.append("  Today: " + " · ".join(today_bits))
 
+    calendar = metrics.get("calendar")
+    if calendar:
+        all_day = calendar.get("all_day_events") or []
+        if all_day:
+            lines.append(f"📅 All day: {', '.join(all_day)}")
+        elif calendar.get("events_count", 0) > 0:
+            am = calendar["morning_count"]
+            pm = calendar["afternoon_count"]
+            ev = calendar["evening_count"]
+            pieces = []
+            if am: pieces.append(f"{am} AM")
+            if pm: pieces.append(f"{pm} PM")
+            if ev: pieces.append(f"{ev} evening")
+            split = " / ".join(pieces) if pieces else ""
+            parts = [f"📅 Today: {calendar['events_count']} meetings ({split})"]
+            if calendar.get("busiest_hour"):
+                parts.append(f"busiest {calendar['busiest_hour']}")
+            if calendar.get("first_free_slot_start") and calendar.get("first_free_slot_len_min"):
+                minutes = calendar["first_free_slot_len_min"]
+                h, m = minutes // 60, minutes % 60
+                slot = f"{h}h{m:02d}m" if h else f"{m}m"
+                parts.append(f"first free slot {calendar['first_free_slot_start']} for {slot}")
+            lines.append(" · ".join(parts))
+
     if insight:
         lines.append("")
         lines.append(f"💡 {insight}")

@@ -304,14 +304,26 @@ _SYSTEM_PROMPT = (
     "message starts with '/habit' or a habit inline-button callback payload — free text "
     "like 'I read today' must NOT log a habit. Analyze/streak queries ('my streak', "
     "'how are my habits') → analyze_habit / get_streak_summary. "
+    "\n\n"
+    "You also have live Google Calendar tools (list events, search, get, create, update, "
+    "delete). Use them for \"what's on my calendar\" / \"when am I free\" / \"find me time "
+    "for X\" / \"add X at time T\" intents. "
+    "\n\n"
+    "For destructive calendar operations (create, update, delete), always paraphrase the "
+    "intended action back to the user and wait for explicit confirmation before executing. "
+    "For read-only calendar queries (list, search, get), answer directly without confirmation. "
+    "\n\n"
     "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
 
-def create_health_agent():
+async def create_health_agent():
+    """Build the ReAct agent. Async because MCP tool discovery is async."""
     from langgraph.checkpoint.memory import MemorySaver
+    from .mcp_tools import load_mcp_tools
+
     llm = build_llm()
-    tools = [
+    peer_tools = [
         ask_sleep_agent,
         ask_workout_agent,
         ask_nutrition_agent,
@@ -321,6 +333,9 @@ def create_health_agent():
         sync_health_data,
         send_daily_briefing,
     ]
+    mcp_tools = await load_mcp_tools()
+    tools = peer_tools + mcp_tools
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         from langgraph.prebuilt import create_react_agent

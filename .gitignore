@@ -12,3 +12,9 @@ build/
 node_modules/
 .superpowers
 docs/
+
+# Google Calendar MCP — OAuth client secret + per-user tokens
+gcp-oauth.keys.json
+mcp-config/**/*.json
+mcp-config/**/*.cache
+!mcp-config/**/.gitkeep

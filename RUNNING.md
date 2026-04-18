@@ -105,3 +105,95 @@ Optional per-user behavior flags (all default-off / safe defaults):
 - `MOOD_EVENING_CHECKIN_TZ=Europe/Kyiv` — timezone for the check-in.
 
 Coach sessions are ephemeral in-memory state in `telegram_bot` — restarting the bot clears active sessions. When Groq is unavailable, `/coach` replies "unavailable" and does not fall back to a paid provider.
+
+## Google Calendar setup (one-time)
+
+The stack reads Google Calendar via a public MCP server (`calendar-mcp`, pinned to
+`nspady/google-calendar-mcp v2.6.1`). OAuth lives entirely inside that container —
+no credentials table in Postgres, no OAuth code in our repo.
+
+### 1. Create an OAuth Client in Google Cloud Console
+
+1. Visit <https://console.cloud.google.com/>.
+2. Create a new project (or reuse an existing one).
+3. Navigate to **APIs & Services → Library**, enable **Google Calendar API**.
+4. **APIs & Services → OAuth consent screen**: configure app (User type: External; app name "life-agents"; scopes: `.../auth/calendar`). On the Testing tab, add your own Google account as a test user.
+5. **APIs & Services → Credentials → Create Credentials → OAuth Client ID**:
+   - Application type: **Desktop app**
+   - Name: whatever you like (e.g. `life-agents-local`)
+   - After creation, click **Download JSON** and save the file to the repo root as `./gcp-oauth.keys.json`.
+
+> **Important:** While your OAuth consent screen stays in "Testing" mode, Google
+> auto-expires refresh tokens after 7 days. For a permanent local setup, publish the
+> app to "Production" from the OAuth consent screen page. Publishing a Desktop-app
+> client does not require Google verification.
+
+### 2. Boot the MCP server alone
+
+```bash
+docker compose up -d calendar-mcp
+docker compose logs --tail 30 calendar-mcp
+```
+
+Expected: container builds (first boot takes 60–90 seconds — it clones and builds
+from the pinned git tag). Then it starts and waits for the first auth.
+
+### 3. Run the one-time auth flow
+
+```bash
+docker compose exec calendar-mcp npm run auth
+```
+
+The command prints a Google consent URL. Open it in any browser on any device,
+pick the Google account you added as a test user in step 1, grant consent.
+The flow completes automatically (the server captures the redirect).
+
+### 4. Verify the token persisted
+
+```bash
+ls -la mcp-config/calendar-mcp/
+```
+
+Expected: at least one `*.json` file (token cache) with non-zero size.
+
+### 5. Verify the server survives restart
+
+```bash
+docker compose restart calendar-mcp
+sleep 10
+docker compose logs --tail 30 calendar-mcp | grep -iE "auth|token|ready|listen"
+```
+
+Expected: logs show the server coming up, using the persisted token — **no**
+"re-auth required" or "token expired" message.
+
+### 6. Boot the rest of the stack
+
+```bash
+docker compose up -d
+```
+
+The orchestrator loads MCP tools from `calendar-mcp` at startup. Check it worked:
+
+```bash
+docker compose logs --tail 50 orchestrator | grep -iE "mcp|calendar"
+```
+
+Expected: a line like `Loaded N MCP tools: ['list-events', 'create-event', ...]`.
+
+If the line shows `No MCP servers configured` or `MCP tool discovery failed`, the
+server-to-orchestrator wiring has a problem — check `MCP_GOOGLE_CALENDAR_URL` in
+`.env`.
+
+### Troubleshooting
+
+- **"gcp-oauth.keys.json: no such file"** in `calendar-mcp` logs: you skipped step 1
+  or placed the file in the wrong location. The file must be at repo root, next to
+  `docker-compose.yml`.
+- **"redirect_uri_mismatch"** during `npm run auth`: your OAuth Client type is wrong.
+  Recreate as **Desktop app** (not Web app).
+- **Token expires after 7 days**: publish the OAuth consent screen to Production mode
+  (see step 1 note).
+- **Orchestrator doesn't see calendar tools**: check `docker compose logs orchestrator`
+  for `MCP tool discovery failed`. If the MCP server is healthy but the URL env is
+  missing, verify `MCP_GOOGLE_CALENDAR_URL=http://calendar-mcp:3000` is in `.env`.

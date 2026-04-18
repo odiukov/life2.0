@@ -219,6 +219,26 @@ services:
       retries: 5
       start_period: 30s
 
+  calendar-mcp:
+    build:
+      context: https://github.com/nspady/google-calendar-mcp.git#v2.6.1
+    environment:
+      TRANSPORT: http
+      HOST: 0.0.0.0
+      PORT: 3000
+      GOOGLE_OAUTH_CREDENTIALS: /app/gcp-oauth.keys.json
+    volumes:
+      - ./gcp-oauth.keys.json:/app/gcp-oauth.keys.json:ro
+      - ./mcp-config/calendar-mcp:/home/nodejs/.config/google-calendar-mcp
+    ports:
+      - "9100:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   orchestrator:
     build:
       context: .
@@ -228,6 +248,8 @@ services:
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006"
+      MCP_GOOGLE_CALENDAR_URL: ${MCP_GOOGLE_CALENDAR_URL}
+      MCP_GOOGLE_CALENDAR_TRANSPORT: ${MCP_GOOGLE_CALENDAR_TRANSPORT}
     ports:
       - "8000:8000"
     depends_on:
@@ -243,6 +265,8 @@ services:
         condition: service_healthy
       agent-habits:
         condition: service_healthy
+      calendar-mcp:
+        condition: service_started
 
   telegram-bot:
     build:

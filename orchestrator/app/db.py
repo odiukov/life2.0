@@ -490,6 +490,10 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
             "today_names": [it["name"] for it in today_items],
         }
 
+    # Calendar — forward-looking (today, not yesterday).
+    from .calendar_context import fetch_calendar_shape
+    calendar = await fetch_calendar_shape(now_kyiv.date())
+
     return {
         "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
         "sleep": sleep,
@@ -497,4 +501,5 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         "nutrition": nutrition,
         "mood": mood,
         "habits": habits,
+        "calendar": calendar,
     }

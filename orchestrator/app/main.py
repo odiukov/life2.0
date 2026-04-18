@@ -20,9 +20,24 @@ from .registry import check_agent_health, discover_agents, get_registry
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _graph
     await discover_agents()
+    _graph = await create_health_agent()
+    # Late-register the AG-UI endpoint now that _graph exists.
+    add_langgraph_fastapi_endpoint(
+        app,
+        LangGraphAgent(
+            name="default",
+            description="Personal health assistant with access to sleep, workout, nutrition, body, mood, habits agents plus live Google Calendar tools",
+            graph=_graph,
+        ),
+        path="/agui",
+    )
     yield
 
+
+# Populated by lifespan; must exist at module level so endpoint functions can close over it.
+_graph = None
 
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
 app.add_middleware(
@@ -30,18 +45,6 @@ app.add_middleware(
     allow_origins=["http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
-)
-
-_graph = create_health_agent()
-
-add_langgraph_fastapi_endpoint(
-    app,
-    LangGraphAgent(
-        name="default",
-        description="Personal health assistant with access to sleep, workout, and nutrition agents",
-        graph=_graph,
-    ),
-    path="/agui",
 )
 
 
