@@ -342,10 +342,17 @@ _SYSTEM_PROMPT = (
 )
 
 
-async def create_health_agent():
-    """Build the ReAct agent. Async because MCP tool discovery is async."""
+async def create_health_agent(checkpointer=None):
+    """Build the ReAct agent. Async because MCP tool discovery is async.
+
+    If `checkpointer` is None, falls back to an in-process MemorySaver.
+    main.lifespan passes in an AsyncPostgresSaver for durable state.
+    """
     from langgraph.checkpoint.memory import MemorySaver
     from .mcp_tools import load_mcp_tools
+
+    if checkpointer is None:
+        checkpointer = MemorySaver()
 
     llm = build_llm()
     peer_tools = [
@@ -370,5 +377,5 @@ async def create_health_agent():
             tools,
             prompt=_SYSTEM_PROMPT,
             state_schema=HealthAgentState,
-            checkpointer=MemorySaver(),
+            checkpointer=checkpointer,
         )
