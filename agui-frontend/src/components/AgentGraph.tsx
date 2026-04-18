@@ -137,10 +137,11 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
               key={`${a}-${b}`}
               data-peer-edge={`${a}-${b}`}
               d={`M ${xa} 0 Q ${midX} ${dip} ${xb} 0`}
-              stroke="#4a5a7a"
-              strokeWidth={1}
+              stroke="#6a7a9a"
+              strokeWidth={1.25}
+              strokeDasharray="2,3"
               fill="none"
-              opacity={0.55}
+              opacity={0.8}
             />
           );
         })}
@@ -148,8 +149,8 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
 
       {/* Legend */}
       <div style={{ display: "flex", gap: 16, fontSize: 9, color: "#555", marginTop: 8 }}>
-        <span>── orchestrator↔agent</span>
-        <span>┄┄ peer consult</span>
+        <span>┄┄ orchestrator→agent</span>
+        <span>┈┈ peer consult</span>
         <span>▫ MCP</span>
       </div>
     </div>
