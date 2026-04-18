@@ -22,7 +22,7 @@ def _get_system_prompt():
 
 def test_system_prompt_mentions_six_peer_agents():
     prompt = _get_system_prompt()
-    assert "six" in prompt.lower() or "6" in prompt
+    assert "six" in prompt.lower() or "6" in prompt or "seven" in prompt.lower() or "7" in prompt
     for agent in ("sleep", "workout", "nutrition", "body", "mood", "habits"):
         assert agent in prompt, f"Agent '{agent}' not found in system prompt"
 

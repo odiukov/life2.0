@@ -115,7 +115,7 @@ def _trim(calls: list[ToolCall]) -> list[ToolCall]:
 
 async def _run_peer_tool(
     *,
-    agent: Literal["sleep", "workout", "nutrition", "body", "mood", "habits"],
+    agent: Literal["sleep", "workout", "nutrition", "body", "mood", "habits", "recovery"],
     message: str,
     skill: str,
     tool_name: str,
@@ -269,6 +269,25 @@ async def ask_habits_agent(
 
 
 @tool
+async def ask_recovery_agent(
+    message: str,
+    skill: Literal["get_readiness", "analyze_recovery_trend", "get_recommendations"],
+    config: RunnableConfig,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[HealthAgentState, InjectedState],
+) -> Command:
+    """Call recovery-agent. Skills:
+    get_readiness (today's bucket + HRV/RHR/stress/body-battery with deltas),
+    analyze_recovery_trend (per-metric 7-day trend + correlations),
+    get_recommendations (2–3 actionable recovery recommendations)."""
+    return await _run_peer_tool(
+        agent="recovery", message=message, skill=skill,
+        tool_name="ask_recovery_agent",
+        config=config, tool_call_id=tool_call_id, state=state,
+    )
+
+
+@tool
 async def sync_health_data() -> str:
     """Synchronize health data from Garmin and Yazio."""
     try:
@@ -297,13 +316,19 @@ async def send_daily_briefing() -> str:
 
 
 _SYSTEM_PROMPT = (
-    "You are a personal health assistant. You have six peer agents: sleep, workout, "
-    "nutrition, body, mood, habits. Each tool accepts a skill parameter — pick the one "
-    "that matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
+    "You are a personal health assistant. You have seven peer agents: sleep, workout, "
+    "nutrition, body, mood, habits, recovery. Each tool accepts a skill parameter — pick "
+    "the one that matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
     "language to the mood agent. For habits, only invoke log_habit_check when the user "
     "message starts with '/habit' or a habit inline-button callback payload — free text "
     "like 'I read today' must NOT log a habit. Analyze/streak queries ('my streak', "
     "'how are my habits') → analyze_habit / get_streak_summary. "
+    "\n\n"
+    "For workout recommendations or training-intensity questions ('should I run today', "
+    "'what should I train'), first call ask_recovery_agent with skill=get_readiness to "
+    "get today's recovery state, then pass that context to ask_workout_agent. For questions "
+    "purely about past workouts (history, total distance, last week's volume), skip recovery "
+    "and go directly to workout-agent. "
     "\n\n"
     "You also have live Google Calendar tools (list events, search, get, create, update, "
     "delete). Use them for \"what's on my calendar\" / \"when am I free\" / \"find me time "
@@ -330,6 +355,7 @@ async def create_health_agent():
         ask_body_agent,
         ask_mood_agent,
         ask_habits_agent,
+        ask_recovery_agent,
         sync_health_data,
         send_daily_briefing,
     ]
