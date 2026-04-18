@@ -111,3 +111,17 @@ export interface HealthAgentState {
   toolCalls?: ToolCall[];
   lastLoggedEntry?: LogEntry | null;
 }
+
+export const AGENT_COLORS = {
+  sleep:     { emoji: "😴", label: "Sleep",     color: "#4a9eff" },
+  workout:   { emoji: "💪", label: "Workout",   color: "#4eff9a" },
+  nutrition: { emoji: "🥗", label: "Nutrition", color: "#ffb74a" },
+} as const;
+
+export type AgentKey = keyof typeof AGENT_COLORS;
+
+export type Selection =
+  | { kind: "agent"; name: AgentKey }
+  | { kind: "orchestrator" }
+  | { kind: "tool"; name: string }
+  | null;
