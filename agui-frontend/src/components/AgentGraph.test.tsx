@@ -4,9 +4,9 @@ import { AgentGraph } from "./AgentGraph";
 import type { AgentInfo } from "../types";
 
 const AGENTS: AgentInfo[] = [
-  { name: "sleep", url: "http://agent-sleep:8001", online: true, capabilities: ["analyze_sleep"], description: "", tasks_today: 2 },
-  { name: "workout", url: "http://agent-workout:8002", online: false, capabilities: ["log_workout"], description: "", tasks_today: 0 },
-  { name: "nutrition", url: "http://agent-nutrition:8003", online: true, capabilities: ["log_meal"], description: "", tasks_today: 1 },
+  { name: "sleep", url: "http://agent-sleep:8001", online: true, skills: [{ id: "analyze_sleep", name: "Analyze sleep" }], description: "", tasks_today: 2 },
+  { name: "workout", url: "http://agent-workout:8002", online: false, skills: [{ id: "log_workout", name: "Log workout" }], description: "", tasks_today: 0 },
+  { name: "nutrition", url: "http://agent-nutrition:8003", online: true, skills: [{ id: "log_meal", name: "Log meal" }], description: "", tasks_today: 1 },
 ];
 
 describe("AgentGraph", () => {

@@ -4,8 +4,8 @@ import { useAgents } from "./useAgents";
 
 const MOCK_AGENTS = {
   agents: [
-    { name: "sleep", url: "http://agent-sleep:8001", online: true, capabilities: ["analyze_sleep"], description: "", tasks_today: 3 },
-    { name: "workout", url: "http://agent-workout:8002", online: false, capabilities: ["log_workout"], description: "", tasks_today: 0 },
+    { name: "sleep", url: "http://agent-sleep:8001", online: true, skills: [{ id: "analyze_sleep", name: "Analyze sleep" }], description: "", tasks_today: 3 },
+    { name: "workout", url: "http://agent-workout:8002", online: false, skills: [{ id: "log_workout", name: "Log workout" }], description: "", tasks_today: 0 },
   ],
 };
 
