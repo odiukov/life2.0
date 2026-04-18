@@ -54,22 +54,24 @@ export function AgentCard({ agent, onClose }: Props) {
         {agent.description && (
           <div style={{ color: "#888", fontSize: 10, marginTop: 4 }}>{agent.description}</div>
         )}
-        <div style={{ marginTop: 8 }}>
-          <div style={{ color: "#555", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Capabilities</div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {agent.capabilities.map(cap => (
-              <span key={cap} style={{
-                background: "#0f3460",
-                borderRadius: 10,
-                padding: "3px 8px",
-                fontSize: 9,
-                color: cfg.color,
-              }}>
-                {cap}
-              </span>
-            ))}
+        {Array.isArray(agent.skills) && agent.skills.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ color: "#555", fontSize: 9, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>Skills</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {agent.skills.map(skill => (
+                <span key={skill.id} style={{
+                  background: "#0f3460",
+                  borderRadius: 10,
+                  padding: "3px 8px",
+                  fontSize: 9,
+                  color: cfg.color,
+                }}>
+                  {skill.id}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
