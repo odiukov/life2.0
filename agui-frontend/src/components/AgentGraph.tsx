@@ -31,18 +31,34 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
       padding: "32px 16px",
       fontFamily: "monospace",
     }}>
-      {/* Orchestrator node */}
-      <div style={{
-        background: "#0f3460",
-        border: "1px solid #4a9eff",
-        borderRadius: 8,
-        padding: "12px 28px",
-        textAlign: "center",
-        color: "#4a9eff",
-      }}>
-        <div style={{ fontSize: 9, opacity: 0.7, marginBottom: 2 }}>orchestrator</div>
-        <div style={{ fontSize: 11, fontWeight: "bold" }}>:8000</div>
-        <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>{onlineCount}/{agents.length} agents online</div>
+      {/* Top tier: orchestrator + MCP services */}
+      <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+        <div style={{
+          background: "#0f3460",
+          border: "1px solid #4a9eff",
+          borderRadius: 8,
+          padding: "12px 28px",
+          textAlign: "center",
+          color: "#4a9eff",
+        }}>
+          <div style={{ fontSize: 9, opacity: 0.7, marginBottom: 2 }}>orchestrator</div>
+          <div style={{ fontSize: 11, fontWeight: "bold" }}>:8000</div>
+          <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>{onlineCount}/{agents.length} agents online</div>
+        </div>
+
+        <div style={{
+          background: "#16213e",
+          border: "1px dashed #666",
+          borderRadius: 8,
+          padding: "12px 20px",
+          textAlign: "center",
+          color: "#888",
+          opacity: 0.85,
+        }}>
+          <div style={{ fontSize: 9, opacity: 0.7, marginBottom: 2 }}>calendar-mcp</div>
+          <div style={{ fontSize: 11, fontWeight: "bold" }}>:9100</div>
+          <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>MCP</div>
+        </div>
       </div>
 
       {/* Connection lines SVG */}
@@ -129,6 +145,13 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
           );
         })}
       </svg>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 16, fontSize: 9, color: "#555", marginTop: 8 }}>
+        <span>── orchestrator↔agent</span>
+        <span>┄┄ peer consult</span>
+        <span>▫ MCP</span>
+      </div>
     </div>
   );
 }

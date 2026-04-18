@@ -12,7 +12,7 @@ const AGENTS: AgentInfo[] = [
 describe("AgentGraph", () => {
   it("renders orchestrator node", () => {
     render(<AgentGraph agents={AGENTS} selectedAgent={null} onSelect={() => {}} />);
-    expect(screen.getByText(/orchestrator/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/orchestrator/i).length).toBeGreaterThan(0);
   });
 
   it("renders all agent names", () => {
@@ -30,5 +30,18 @@ describe("AgentGraph", () => {
     expect(pairs).toContain("sleep-workout");
     expect(pairs).toContain("workout-nutrition");
     expect(pairs).toContain("sleep-nutrition");
+  });
+
+  it("renders a calendar-mcp node with port label", () => {
+    render(<AgentGraph agents={AGENTS} selectedAgent={null} onSelect={() => {}} />);
+    expect(screen.getByText("calendar-mcp")).toBeInTheDocument();
+    expect(screen.getByText(":9100")).toBeInTheDocument();
+    expect(screen.getByText("MCP")).toBeInTheDocument();
+  });
+
+  it("renders a legend describing edge styles", () => {
+    render(<AgentGraph agents={AGENTS} selectedAgent={null} onSelect={() => {}} />);
+    expect(screen.getByText(/peer consult/i)).toBeInTheDocument();
+    expect(screen.getByText(/orchestrator.*agent/i)).toBeInTheDocument();
   });
 });
