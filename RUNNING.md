@@ -68,6 +68,25 @@ docker compose exec postgres psql -U lifeagents -d lifeagents \
   -c "SELECT agent, task_type, output, created_at FROM tasks ORDER BY created_at DESC LIMIT 3;"
 ```
 
+### LangGraph checkpoints
+
+The orchestrator persists in-flight conversation state (per `threadId`) to
+four LangGraph-managed tables: `checkpoints`, `checkpoint_blobs`,
+`checkpoint_writes`, `checkpoint_migrations`. LangGraph owns the schema —
+`AsyncPostgresSaver.setup()` creates them on first orchestrator startup.
+
+This means `docker compose restart orchestrator` **preserves** an ongoing
+conversation: sending a follow-up message on the same `threadId` resumes
+from the last checkpoint instead of starting fresh. Quick verification:
+
+```bash
+./scripts/smoke-checkpointer.sh
+```
+
+The AG-UI frontend still loses `threadId` on page reload — refreshing the
+tab starts a new conversation by design. Persisting it on the client is a
+separate follow-up.
+
 ## Logs
 
 ```bash
