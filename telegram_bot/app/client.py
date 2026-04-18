@@ -35,6 +35,36 @@ async def ask_orchestrator(message: str) -> str:
     return "".join(parts) or "(empty response)"
 
 
+async def trigger_full_sync() -> str:
+    """Kick off the full daily pipeline (Garmin + Yazio + briefing) manually."""
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(f"{SYNC_SERVICE_URL}/sync/all")
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.RequestError as e:
+        return f"Sync service unavailable: {e}"
+    except httpx.HTTPStatusError as e:
+        return f"Sync error {e.response.status_code}: {e.response.text[:200]}"
+
+    lines = ["✅ Sync complete"]
+    garmin = data.get("garmin") or {}
+    yazio = data.get("yazio") or {}
+    if garmin:
+        lines.append(
+            f"• Garmin: +{garmin.get('synced', 0)} new, {garmin.get('skipped', 0)} dup"
+        )
+    if yazio:
+        lines.append(
+            f"• Yazio: +{yazio.get('synced', 0)} new, {yazio.get('skipped', 0)} dup"
+        )
+    errors = list(data.get("errors") or []) + list(garmin.get("errors") or []) + list(yazio.get("errors") or [])
+    if errors:
+        lines.append("⚠️ " + "; ".join(errors[:3]))
+    lines.append("📨 Briefing queued…")
+    return "\n".join(lines)
+
+
 async def sync_body_pdf(payload: dict) -> str:
     """POST extracted body composition payload to sync service, return human-readable result."""
     try:

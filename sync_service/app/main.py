@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .scheduler import start_scheduler
+from .scheduler import run_daily_sync, start_scheduler
 from .sync import do_sync, do_nutrition_sync, do_body_sync
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,12 @@ async def sync():
 @app.post("/sync/nutrition")
 async def sync_nutrition():
     return await do_nutrition_sync()
+
+
+@app.post("/sync/all")
+async def sync_all():
+    """Run Garmin + Yazio sync and fire the briefing (fire-and-forget)."""
+    return await run_daily_sync()
 
 
 class BodyPayload(BaseModel):

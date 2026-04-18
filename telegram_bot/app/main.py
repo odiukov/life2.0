@@ -16,13 +16,14 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand("coach", "Коуч-сессия (/coach stop — выход)"),
     BotCommand("habits", "Список привычек + отметка"),
     BotCommand("habit", "Отметка привычки / создание / архив"),
+    BotCommand("sync", "Запустить утренний синк + бриф вручную"),
 ]
 
 
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
 from .coach import CoachLoop, CoachAlreadyActive, CoachUnavailable, default_llm_call, default_log_mood_call
@@ -247,6 +248,15 @@ async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(text or "logged")
 
 
+async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    thinking = await update.message.reply_text("Syncing Garmin + Yazio…")
+    result = await trigger_full_sync()
+    try:
+        await thinking.edit_text(result)
+    except Exception:
+        await update.message.reply_text(result)
+
+
 async def cmd_habits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from .habits_ui import build_habits_keyboard
     try:
@@ -271,6 +281,7 @@ def main() -> None:
     app.add_handler(CommandHandler("coach", cmd_coach))
     app.add_handler(CommandHandler("habit", cmd_habit))
     app.add_handler(CommandHandler("habits", cmd_habits))
+    app.add_handler(CommandHandler("sync", cmd_sync))
     app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
