@@ -6,6 +6,12 @@ const AGENT_CONFIG: Record<string, { emoji: string; color: string }> = {
   nutrition: { emoji: "🥗", color: "#ffb74a" },
 };
 
+const PEER_EDGES: [string, string][] = [
+  ["sleep", "workout"],
+  ["workout", "nutrition"],
+  ["sleep", "nutrition"],
+];
+
 interface Props {
   agents: AgentInfo[];
   selectedAgent: string | null;
@@ -94,6 +100,35 @@ export function AgentGraph({ agents, selectedAgent, highlightedAgent, onSelect }
           );
         })}
       </div>
+
+      {/* Peer consult edges — drawn below the agent-nodes row */}
+      <svg
+        width={agents.length * 120}
+        height={48}
+        style={{ overflow: "visible", marginTop: -4 }}
+      >
+        {PEER_EDGES.map(([a, b]) => {
+          const ia = agents.findIndex(ag => ag.name === a);
+          const ib = agents.findIndex(ag => ag.name === b);
+          if (ia < 0 || ib < 0) return null;
+          const totalW = agents.length * 120;
+          const xa = (ia + 0.5) * (totalW / agents.length);
+          const xb = (ib + 0.5) * (totalW / agents.length);
+          const midX = (xa + xb) / 2;
+          const dip = 16 + Math.abs(ia - ib) * 8;
+          return (
+            <path
+              key={`${a}-${b}`}
+              data-peer-edge={`${a}-${b}`}
+              d={`M ${xa} 0 Q ${midX} ${dip} ${xb} 0`}
+              stroke="#4a5a7a"
+              strokeWidth={1}
+              fill="none"
+              opacity={0.55}
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 }

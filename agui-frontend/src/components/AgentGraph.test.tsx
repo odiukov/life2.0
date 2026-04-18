@@ -21,4 +21,14 @@ describe("AgentGraph", () => {
     expect(screen.getByText("workout")).toBeInTheDocument();
     expect(screen.getByText("nutrition")).toBeInTheDocument();
   });
+
+  it("renders peer consult edges between sleep, workout, nutrition", () => {
+    const { container } = render(<AgentGraph agents={AGENTS} selectedAgent={null} onSelect={() => {}} />);
+    const peerEdges = container.querySelectorAll('path[data-peer-edge]');
+    expect(peerEdges).toHaveLength(3);
+    const pairs = Array.from(peerEdges).map(el => el.getAttribute("data-peer-edge"));
+    expect(pairs).toContain("sleep-workout");
+    expect(pairs).toContain("workout-nutrition");
+    expect(pairs).toContain("sleep-nutrition");
+  });
 });
