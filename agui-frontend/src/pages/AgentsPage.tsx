@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { AgentGraph } from "../components/AgentGraph";
-import { AgentCard } from "../components/AgentCard";
-import { AgentStatsPanel } from "../components/AgentStatsPanel";
+import { TopologyDetailPane } from "../components/TopologyDetailPane";
 import { useAgents } from "../hooks/useAgents";
 import { useStats } from "../hooks/useStats";
-import type { AgentInfo } from "../types";
+import type { Selection } from "../types";
 
 export default function AgentsPage() {
   const { agents, loading, error } = useAgents();
   const { data: stats } = useStats();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Selection>(null);
   const location = useLocation();
   const highlighted: string | null =
     (location.state as { highlighted?: string } | null)?.highlighted ?? null;
-
-  const selectedAgent: AgentInfo | undefined = agents.find(a => a.name === selected);
 
   if (loading) {
     return <div style={{ padding: 32, color: "#555", fontFamily: "monospace" }}>Discovering agents...</div>;
@@ -27,20 +24,22 @@ export default function AgentsPage() {
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 41px)", overflow: "hidden" }}>
-      <AgentStatsPanel stats={stats} />
-      <div style={{ flex: 1, overflowY: "auto", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+      <TopologyDetailPane
+        selected={selected}
+        agents={agents}
+        stats={stats}
+        onClose={() => setSelected(null)}
+      />
+      <div style={{ flex: 1, overflow: "auto", padding: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
         <h2 style={{ color: "#e0e0e0", fontFamily: "monospace", fontWeight: "normal", margin: 0 }}>
-          Agent Topology
+          Topology
         </h2>
         <AgentGraph
           agents={agents}
-          selectedAgent={selected}
+          selected={selected}
           highlightedAgent={highlighted}
           onSelect={setSelected}
         />
-        {selectedAgent && (
-          <AgentCard agent={selectedAgent} onClose={() => setSelected(null)} />
-        )}
       </div>
     </div>
   );
