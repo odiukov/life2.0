@@ -16,13 +16,16 @@ export function AgentStatusBar({ currentStep, activeAgent, toolCalls }: Props) {
     <div
       role="status"
       style={{
-        padding: "6px 10px",
-        fontSize: 13,
-        background: "#eef2ff",
-        borderTop: "1px solid #c7d2fe",
+        padding: "6px 12px",
+        fontSize: 11,
+        fontFamily: "monospace",
+        background: "#13131f",
+        color: "#9ca3af",
+        borderTop: "1px solid #1e1e30",
       }}
     >
-      <span>🔄 {currentStep ?? "working"}</span>
+      <span style={{ color: "#4a9eff" }}>🔄</span>{" "}
+      <span>{currentStep ?? "working"}</span>
       {activeAgent && (
         <span style={{ marginLeft: 8, opacity: 0.7 }}>· agent: {activeAgent}</span>
       )}
