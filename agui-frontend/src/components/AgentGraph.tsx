@@ -60,15 +60,15 @@ function DownArrow({ id, color, dashed }: { id: string; color: string; dashed?: 
   return (
     <svg width={14} height={28} style={{ overflow: "visible" }}>
       <defs>
-        <marker id={id} viewBox="0 0 10 10" refX="5" refY="8" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M0,0 L10,0 L5,10 z" fill={color} />
+        <marker id={id} viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill={color} />
         </marker>
       </defs>
       <line
         x1={7}
         y1={0}
         x2={7}
-        y2={22}
+        y2={24}
         stroke={color}
         strokeWidth={1.5}
         strokeDasharray={dashed ? "4,3" : undefined}
