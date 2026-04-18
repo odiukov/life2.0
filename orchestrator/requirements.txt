@@ -6,3 +6,5 @@ ag-ui-langgraph==0.0.32
 a2a-sdk>=0.2.5
 copilotkit>=0.1.39,<0.2
 langchain-mcp-adapters>=0.1,<1
+langgraph-checkpoint-postgres>=2
+psycopg[binary,pool]>=3.2
