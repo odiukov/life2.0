@@ -55,8 +55,9 @@ async def _reply(update: Update, message: str) -> None:
     thread_id = compute_thread_id(update.effective_chat.id)
     thinking = await update.message.reply_text("...")
     output = await ask_orchestrator(message, thread_id)
+    _MARKER = "\n[truncated]"
     if len(output) > 4096:
-        output = output[:4090] + "\n[truncated]"
+        output = output[: 4096 - len(_MARKER)] + _MARKER
     try:
         await thinking.edit_text(output)
     except Exception:
@@ -131,7 +132,7 @@ async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await thinking.edit_text(f"Dashboard unavailable: {e}")
         return
     if len(text) > 4096:
-        text = text[:4090] + "\n[truncated]"
+        text = text[: 4096 - len(_MARKER)] + _MARKER
     try:
         await thinking.edit_text(text)
     except Exception:
