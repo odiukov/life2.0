@@ -26,7 +26,7 @@ _BOT_COMMANDS: list[BotCommand] = [
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard, medication_a2a_call, upload_finance_csv
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard, medication_a2a_call, upload_finance_pdf
 from .threads import bump_reset_count, compute_thread_id
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
@@ -152,30 +152,48 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await _reply(update, update.message.text)
 
 
-async def handle_finance_csv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    doc = update.message.document
-    if not doc:
-        return
-    thinking = await update.message.reply_text("Обрабатываю CSV…")
-    tg_file = await doc.get_file()
-    blob = bytes(await tg_file.download_as_bytearray())
-    result = await upload_finance_csv(blob, filename=doc.file_name or "payoneer.csv")
-    if "error" in result:
-        await thinking.edit_text(result["error"])
-        return
-    await thinking.edit_text(result.get("summary", "(empty summary)"))
+def _looks_like_payoneer(pdf_bytes: bytes) -> bool:
+    """Content-sniff the first page. Payoneer statements have a real text
+    layer containing 'Account Statement' + 'Payoneer'; Lescale/ViHealth PDFs
+    are image-only so get_text() returns an empty string — that asymmetry is
+    the dispatcher's whole basis.
+    """
+    try:
+        import pymupdf
+        doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            first = doc[0].get_text() if len(doc) else ""
+        finally:
+            doc.close()
+    except Exception:
+        return False
+    return "Payoneer" in first or "Account Statement" in first
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Single PDF dispatcher: route Payoneer statements to finance, everything
+    else (default = Lescale/ViHealth) to the body-composition sync path."""
     doc = update.message.document
     if not doc or not doc.file_name or not doc.file_name.lower().endswith(".pdf"):
-        await update.message.reply_text("Send a ViHealth PDF report to import body composition data.")
+        await update.message.reply_text(
+            "Send a PDF — Payoneer monthly statement (for finance) "
+            "or a Lescale/ViHealth body-composition report."
+        )
         return
 
-    thinking = await update.message.reply_text("Analysing ViHealth report...")
     tg_file = await doc.get_file()
     pdf_bytes = bytes(await tg_file.download_as_bytearray())
 
+    if _looks_like_payoneer(pdf_bytes):
+        thinking = await update.message.reply_text("Обрабатываю выписку Payoneer…")
+        result = await upload_finance_pdf(pdf_bytes, filename=doc.file_name)
+        if "error" in result:
+            await thinking.edit_text(result["error"])
+            return
+        await thinking.edit_text(result.get("summary", "(empty summary)"))
+        return
+
+    thinking = await update.message.reply_text("Analysing ViHealth report...")
     try:
         payload = build_sync_payload(pdf_bytes)
     except Exception as e:
@@ -415,12 +433,6 @@ def main() -> None:
     app.add_handler(CommandHandler("dashboard", cmd_dashboard))
     app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(
-        MessageHandler(
-            filters.Document.MimeType("text/csv") | filters.Document.FileExtension("csv"),
-            handle_finance_csv,
-        )
-    )
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
     app.run_polling()

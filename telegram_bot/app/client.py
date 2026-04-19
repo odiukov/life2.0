@@ -171,13 +171,18 @@ async def medication_a2a_call(skill: str, message: str, params: dict | None = No
     return out
 
 
-async def upload_finance_csv(csv_bytes: bytes, filename: str = "payoneer.csv") -> dict:
-    """POST CSV bytes to orchestrator /finance/upload. Returns the JSON body."""
+async def upload_finance_pdf(pdf_bytes: bytes, filename: str = "payoneer.pdf") -> dict:
+    """POST Payoneer PDF bytes to orchestrator /finance/upload.
+
+    Returns the JSON body on success, or {"error": "<message>"} on HTTP /
+    network failure. The form-field name remains `csv` for backwards compat
+    with the orchestrator endpoint alias.
+    """
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 f"{ORCHESTRATOR_URL}/finance/upload",
-                files={"csv": (filename, csv_bytes, "text/csv")},
+                files={"csv": (filename, pdf_bytes, "application/pdf")},
             )
             resp.raise_for_status()
             return resp.json()
