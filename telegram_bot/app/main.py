@@ -16,6 +16,7 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand("coach", "Коуч-сессия (/coach stop — выход)"),
     BotCommand("habits", "Список привычек + отметка"),
     BotCommand("habit", "Отметка привычки / создание / архив"),
+    BotCommand("med", "Приём лекарств / создание / архив / список"),
     BotCommand("sync", "Запустить утренний синк + бриф вручную"),
     BotCommand("new", "Начать новый разговор (сбросить контекст)"),
     BotCommand("dashboard", "Полный обзор (on-demand)"),
@@ -25,7 +26,7 @@ _BOT_COMMANDS: list[BotCommand] = [
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard, medication_a2a_call
 from .threads import bump_reset_count, compute_thread_id
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
@@ -273,6 +274,93 @@ async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(text or "logged")
 
 
+def parse_med_args(args: list[str]) -> dict:
+    """Parse /med args.
+
+    Reserved first-words: new | stop | list.
+    Otherwise: <name> [dose_override] [note...]
+    """
+    if not args:
+        return {}
+    head = args[0].lower()
+    if head == "new":
+        return {"action": "new", "text": " ".join(args[1:])}
+    if head == "stop":
+        return {"action": "stop", "name": args[1] if len(args) > 1 else ""}
+    if head == "list":
+        return {"action": "list"}
+    name = args[0]
+    if len(args) == 1:
+        return {"name": name}
+    out: dict = {"name": name, "dose_override": args[1]}
+    if len(args) > 2:
+        out["note"] = " ".join(args[2:])
+    return out
+
+
+async def cmd_med(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    args = context.args or []
+    parsed = parse_med_args(args)
+
+    if not parsed:
+        await update.message.reply_text(
+            "usage: /med <name> [dose] [note], /med new <desc>, /med stop <name>, /med list"
+        )
+        return
+
+    if parsed.get("action") == "new":
+        if not parsed.get("text"):
+            await update.message.reply_text("usage: /med new <description>")
+            return
+        try:
+            text = await medication_a2a_call(
+                skill="define_medication", message=parsed["text"], params={"source": "telegram"},
+            )
+        except Exception:
+            await update.message.reply_text("medication agent unavailable — try later")
+            return
+        await update.message.reply_text(text or "couldn't create medication")
+        return
+
+    if parsed.get("action") == "stop":
+        if not parsed.get("name"):
+            await update.message.reply_text("usage: /med stop <name>")
+            return
+        try:
+            text = await medication_a2a_call(
+                skill="archive_medication", message=f"stop {parsed['name']}",
+                params={"name": parsed["name"]},
+            )
+        except Exception:
+            await update.message.reply_text("medication agent unavailable — try later")
+            return
+        await update.message.reply_text(text or "archived")
+        return
+
+    if parsed.get("action") == "list":
+        try:
+            text = await medication_a2a_call(
+                skill="list_active", message="list", params={},
+            )
+        except Exception:
+            await update.message.reply_text("medication agent unavailable — try later")
+            return
+        await update.message.reply_text(text or "no active medications")
+        return
+
+    # normal log_taken
+    log_params = {"source": "telegram", **{k: v for k, v in parsed.items() if k != "name"},
+                  "name": parsed["name"]}
+    try:
+        text = await medication_a2a_call(
+            skill="log_taken", message=f"/med {' '.join(args)}", params=log_params,
+        )
+    except Exception:
+        await update.message.reply_text("medication agent unavailable — try later")
+        return
+    await update.message.reply_text(text or "logged")
+
+
 async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     thinking = await update.message.reply_text("Syncing Garmin + Yazio…")
     result = await trigger_full_sync()
@@ -305,6 +393,7 @@ def main() -> None:
     app.add_handler(CommandHandler("journal", cmd_journal))
     app.add_handler(CommandHandler("coach", cmd_coach))
     app.add_handler(CommandHandler("habit", cmd_habit))
+    app.add_handler(CommandHandler("med", cmd_med))
     app.add_handler(CommandHandler("habits", cmd_habits))
     app.add_handler(CommandHandler("sync", cmd_sync))
     app.add_handler(CommandHandler("new", cmd_new))

@@ -135,3 +135,37 @@ async def fetch_dashboard() -> str:
         resp = await client.get(url)
         resp.raise_for_status()
         return resp.text
+
+
+MEDICATION_AGENT_URL = os.environ.get("MEDICATION_AGENT_URL", "http://agent-medication:8008/")
+
+
+async def medication_a2a_call(skill: str, message: str, params: dict | None = None) -> str:
+    """Invoke a medication-agent skill directly via A2A JSON-RPC. Returns text artifact content."""
+    import uuid as _uuid
+    from a2a.types import Message, Part, Role, TextPart
+    from shared.a2a_clients import get_client
+
+    client = await get_client(MEDICATION_AGENT_URL)
+    meta: dict = {"skillId": skill}
+    if params:
+        meta["params"] = params
+    msg = Message(
+        role=Role.user,
+        parts=[Part(root=TextPart(text=message))],
+        message_id=str(_uuid.uuid4()),
+        metadata=meta,
+    )
+    out = ""
+    async for resp in client.send_message(msg):
+        if isinstance(resp, tuple):
+            task, _ = resp
+            for art in task.artifacts or []:
+                if art.name != "analysis":
+                    continue
+                for p in art.parts or []:
+                    root = getattr(p, "root", p)
+                    text = getattr(root, "text", None)
+                    if text:
+                        out = text
+    return out
