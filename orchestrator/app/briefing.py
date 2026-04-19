@@ -69,7 +69,6 @@ def format_message(metrics: dict, insight: str | None) -> str:
         avg = mood.get("avg_score")
         stress = mood.get("avg_stress")
         tags = mood.get("last_tags") or []
-        tag_part = f" · {', '.join(tags[:3])}" if tags else ""
         trend_part = ""
         first = mood.get("first_score")
         last = mood.get("last_score")
@@ -77,10 +76,12 @@ def format_message(metrics: dict, insight: str | None) -> str:
             arrow = "→" if first == last else ("↑" if last > first else "↓")
             trend_part = f" ({first}{arrow}{last})"
         avg_txt = f"{avg}/10" if avg is not None else "—"
-        stress_txt = f"stress {stress}/10" if stress is not None else ""
-        lines.append(
-            f"• Mood: {avg_txt}{trend_part} · {stress_txt}{tag_part}".rstrip(" ·")
-        )
+        parts = [f"{avg_txt}{trend_part}"]
+        if stress is not None:
+            parts.append(f"stress {stress}/10")
+        if tags:
+            parts.append(", ".join(tags[:3]))
+        lines.append("• Mood: " + " · ".join(parts))
 
     habits = metrics.get("habits")
     if habits:
