@@ -98,3 +98,23 @@ def test_body_weight_gain_silent_when_no_body():
     latest = {"weight_kg": None, "body_fat_pct": None,
               "lean_mass_kg": None, "bmi": None, "recorded_at": now}
     assert body_weight_gain_rule(_body_metrics(latest, [])) is None
+
+
+def test_body_weight_gain_picks_closest_candidate_in_window():
+    """Two candidates in ±2d window at different distances from the 7-day
+    mark — rule must pick the closer one (d=0) so delta=+1.0 kg is below
+    threshold and NO alert fires. If the farther one (d=2d) wins instead,
+    delta=+3.0 kg and the rule would wrongly fire."""
+    from orchestrator.app.briefing_rules import body_weight_gain_rule
+    now = datetime.now(timezone.utc)
+    latest = {"weight_kg": 82.0, "body_fat_pct": None,
+              "lean_mass_kg": None, "bmi": None, "recorded_at": now}
+    near = {"weight_kg": 81.0, "body_fat_pct": None,
+            "lean_mass_kg": None, "bmi": None,
+            "recorded_at": now - timedelta(days=7)}
+    far = {"weight_kg": 79.0, "body_fat_pct": None,
+           "lean_mass_kg": None, "bmi": None,
+           "recorded_at": now - timedelta(days=5)}
+    # Pass `far` first so the loop has to prefer `near` by distance, not by
+    # list position.
+    assert body_weight_gain_rule(_body_metrics(latest, [far, near])) is None

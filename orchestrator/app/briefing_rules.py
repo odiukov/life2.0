@@ -75,17 +75,15 @@ def body_weight_gain_rule(metrics: dict) -> Alert | None:
     rows = body.get("recent_90d") or []
     if not latest or latest.get("weight_kg") is None:
         return None
-    latest_ts = latest["recorded_at"]
-    target = latest_ts - timedelta(days=7)
-    ref = None
-    best_delta = timedelta(days=3)  # strictly-less sentinel = matches < 3 days
+    target = latest["recorded_at"] - timedelta(days=7)
+    ref, best_delta = None, None
     for r in rows:
+        if r is latest:
+            continue
         if r.get("weight_kg") is None:
             continue
-        if r["recorded_at"] == latest_ts:
-            continue
         d = abs(r["recorded_at"] - target)
-        if d <= timedelta(days=2) and d < best_delta:
+        if d <= timedelta(days=2) and (best_delta is None or d < best_delta):
             ref, best_delta = r, d
     if ref is None:
         return None
