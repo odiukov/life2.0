@@ -26,7 +26,12 @@ _POOL_KWARGS = {"autocommit": True, "prepare_threshold": 0}
 async def open_checkpointer() -> tuple[AsyncConnectionPool, AsyncPostgresSaver]:
     """Open the psycopg3 pool, build the saver, run setup(). Raises on failure."""
     dsn = os.environ["POSTGRES_DSN"]
-    pool = AsyncConnectionPool(conninfo=dsn, max_size=20, kwargs=_POOL_KWARGS, open=False)
+    pool = AsyncConnectionPool(
+        conninfo=dsn,
+        max_size=int(os.environ.get("CHECKPOINTER_POOL_MAX", "5")),
+        kwargs=_POOL_KWARGS,
+        open=False,
+    )
     await pool.open()
     saver = AsyncPostgresSaver(pool)
     await saver.setup()

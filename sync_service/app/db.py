@@ -18,7 +18,10 @@ async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
         _pool = await asyncpg.create_pool(
-            os.environ["POSTGRES_DSN"], init=_set_json_codec
+            os.environ["POSTGRES_DSN"],
+            init=_set_json_codec,
+            min_size=1,
+            max_size=int(os.environ.get("PG_POOL_MAX", "3")),
         )
     return _pool
 
