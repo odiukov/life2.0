@@ -536,3 +536,22 @@ def test_build_dashboard_body_block_omitted_when_none():
     msg = build_dashboard(metrics, insight=None)
     assert "⚖️" not in msg
     assert "Body" not in msg
+
+
+def test_build_dashboard_body_block_skipped_when_all_submetrics_none():
+    """Latest row exists but every sub-metric is None → entire block suppressed."""
+    from orchestrator.app.briefing import build_dashboard
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": None, "body_fat_pct": None,
+                "lean_mass_kg": None, "bmi": None,
+                "recorded_at": datetime.now(timezone.utc),
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️" not in msg
+    assert "Body" not in msg

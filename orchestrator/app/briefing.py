@@ -97,7 +97,7 @@ def build_dashboard(metrics: dict, insight: str | None) -> str:
         if lt.get("lean_mass_kg") is not None:
             bits.append(f"lean {lt['lean_mass_kg']:.1f} kg")
         if bits:
-            age_days = (datetime.now(timezone.utc) - lt["recorded_at"]).days
+            age_days = max(0, (datetime.now(timezone.utc) - lt["recorded_at"]).days)
             tail = "today" if age_days == 0 else f"{age_days}d ago"
             lines.append(f"⚖️ Body: {' · '.join(bits)} (updated {tail})")
 
