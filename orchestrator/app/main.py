@@ -208,34 +208,39 @@ async def dashboard_endpoint():
 
 
 @app.post("/finance/upload")
-async def finance_upload(csv: UploadFile = File(...)):
-    """Parse a Payoneer CSV upload, UPSERT rows, categorize new ones,
-    return a summary string.
+async def finance_upload(file: UploadFile = File(..., alias="csv")):
+    """Parse a Payoneer PDF monthly statement, UPSERT rows, categorize new
+    ones, return a summary string.
+
+    Historically this endpoint accepted CSV; Payoneer no longer exports CSV,
+    so the field name `csv` is kept only as a form-field alias for
+    backwards-compatibility with earlier telegram-bot builds. The actual
+    expected payload is a Payoneer monthly statement PDF.
 
     Errors:
-      415 if the uploaded file is not a CSV (by content-type or filename).
-      422 if the header doesn't match the Payoneer fingerprint.
+      415 if the upload is not a PDF (by content-type or filename).
+      422 if the PDF doesn't look like a Payoneer Account Statement.
     """
-    from .payoneer_csv import parse_payoneer_csv, PayoneerCsvFormatError
+    from .payoneer_pdf import parse_payoneer_pdf, PayoneerPdfFormatError
     from .finance_ingest import (
         ingest_rows, categorize_new, build_upload_summary,
     )
     from .finance_queries import income_for_month, spending_by_category
     from decimal import Decimal
 
-    ct = (csv.content_type or "").lower()
-    name = (csv.filename or "").lower()
-    if "csv" not in ct and not name.endswith(".csv"):
-        raise HTTPException(status_code=415, detail="expected text/csv upload")
+    ct = (file.content_type or "").lower()
+    name = (file.filename or "").lower()
+    if "pdf" not in ct and not name.endswith(".pdf"):
+        raise HTTPException(status_code=415, detail="expected application/pdf upload")
 
-    blob = await csv.read()
+    blob = await file.read()
     if len(blob) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="csv > 50 MB")
+        raise HTTPException(status_code=413, detail="pdf > 50 MB")
 
     try:
-        rows, parse_skipped = parse_payoneer_csv(blob)
-    except PayoneerCsvFormatError as e:
-        raise HTTPException(status_code=422, detail=f"bad csv header: {e}")
+        rows, parse_skipped = parse_payoneer_pdf(blob)
+    except PayoneerPdfFormatError as e:
+        raise HTTPException(status_code=422, detail=f"bad payoneer pdf: {e}")
 
     ingest_result = await ingest_rows(rows)
     await categorize_new(ingest_result["uncategorized_ids"])
