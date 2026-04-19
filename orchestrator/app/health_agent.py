@@ -338,6 +338,17 @@ _SYSTEM_PROMPT = (
     "intended action back to the user and wait for explicit confirmation before executing. "
     "For read-only calendar queries (list, search, get), answer directly without confirmation. "
     "\n\n"
+    "You also have live Home Assistant tools exposed via MCP. GetLiveContext is read-only "
+    "— use it for questions like \"what's the temperature in the bedroom\" or \"is the "
+    "hallway light on\" and answer directly without confirmation. "
+    "\n\n"
+    "For state-changing Home Assistant tools (HassTurnOn, HassTurnOff, HassLightSet, "
+    "HassClimateSetTemperature, HassListAddItem, and any other mutation Hass* tool), always "
+    "paraphrase the intended action back to the user in their language (e.g. \"включу свет "
+    "в гостиной, ок?\") and wait for explicit confirmation (\"да\", \"ок\", \"ага\") before "
+    "invoking the tool. Only entities the user has exposed via HA Settings → Voice assistants "
+    "will be visible; if a requested entity isn't available, say so. "
+    "\n\n"
     "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
