@@ -240,3 +240,40 @@ Restarting the full stack (`docker compose up -d`) is always safe — the
 - **Orchestrator doesn't see calendar tools**: check `docker compose logs orchestrator`
   for `MCP tool discovery failed`. If the MCP server is healthy but the URL env is
   missing, verify `MCP_GOOGLE_CALENDAR_URL=http://calendar-mcp:3000` is in `.env`.
+
+## Medication Agent
+
+Peer-agent on port 8008. Records medication/supplement schedules + intake
+logs, surfaces adherence alerts via `BRIEFING_MODE=alerts`.
+
+### Commands
+
+- `/med new <free-text>` — e.g. `/med new магний 200мг каждый вечер в 21:00`
+- `/med <name> [dose] [note]` — log a dose taken
+- `/med list` — active medications
+- `/med stop <name>` — archive
+
+Smoke check: `./scripts/smoke-medication.sh` exercises all 5 skills via A2A.
+
+## Briefing modes + /dashboard
+
+The orchestrator picks the morning brief format via the `BRIEFING_MODE`
+env var on the orchestrator service:
+
+- **`dashboard` (default)** — full multi-block dump (sleep, workout, nutrition,
+  mood, habits, recovery, calendar). Same as before.
+- **`alerts`** — short alert-only brief: must-see lines (sleep yesterday +
+  calendar today) + fresh Alerts from per-category rules. Throttled per rule
+  via the `alert_emissions` Postgres table so the same alert isn't re-sent
+  within its `throttle_hours` window.
+
+Switch via `.env` + `docker compose up -d --force-recreate orchestrator`.
+
+The `/dashboard` Telegram command always returns the full dump regardless of
+mode (on-demand view). The orchestrator also exposes `GET /dashboard` as a
+plain-text HTTP endpoint.
+
+Current alert rules (in `orchestrator/app/briefing_rules.py`):
+- `sleep.no_data.1d` — info, when yesterday has no sleep_session rows.
+- `medication.missed.2d` — warn, when an active medication has no
+  `log_taken` event in the last 2 days.
