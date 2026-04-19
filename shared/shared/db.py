@@ -238,3 +238,89 @@ async def upsert_alert_emission(rule_id: str, when) -> None:
         "ON CONFLICT (rule_id) DO UPDATE SET last_emitted = EXCLUDED.last_emitted",
         rule_id, when,
     )
+
+
+# --- medications (0005) ---
+import re as _re_meds
+
+_MED_NAME_NON_ALNUM = _re_meds.compile(r"[^a-z0-9]+")
+
+
+def _normalize_med_name(raw: str) -> str:
+    if not raw:
+        return ""
+    return _MED_NAME_NON_ALNUM.sub("-", raw.strip().lower()).strip("-")
+
+
+async def insert_medication(
+    name: str, dose: str | None, schedule: str, notes: str | None = None,
+) -> str:
+    """Insert a new medication row. Returns the UUID as string. Raises on unique-name conflict."""
+    canonical = _normalize_med_name(name)
+    if not canonical:
+        raise ValueError("medication name cannot be empty")
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "INSERT INTO medications (name, dose, schedule, notes) "
+        "VALUES ($1, $2, $3, $4) RETURNING id::text",
+        canonical, dose, schedule, notes,
+    )
+    return row["id"]
+
+
+async def fetch_active_medications() -> list[dict]:
+    """Return active medication definitions ordered by created_at ASC."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT id::text AS id, name, dose, schedule, notes, created_at "
+        "FROM medications WHERE archived_at IS NULL ORDER BY created_at ASC"
+    )
+    return [dict(r) for r in rows]
+
+
+async def find_medication_by_name(raw: str) -> dict | None:
+    """Find an active medication by name (canonicalizes input). Returns None if not found."""
+    canonical = _normalize_med_name(raw)
+    if not canonical:
+        return None
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT id::text AS id, name, dose, schedule, notes, created_at "
+        "FROM medications WHERE name = $1 AND archived_at IS NULL",
+        canonical,
+    )
+    return dict(row) if row else None
+
+
+async def archive_medication(med_id: str) -> bool:
+    """Soft-delete a medication. Returns True if a row was updated."""
+    pool = await get_pool()
+    status = await pool.execute(
+        "UPDATE medications SET archived_at = now() "
+        "WHERE id = $1::uuid AND archived_at IS NULL",
+        med_id,
+    )
+    return status.endswith(" 1")
+
+
+async def fetch_medication_logs(med_name: str | None = None, days: int = 30) -> list[dict]:
+    """health_logs rows where type='medication_taken'. Optional filter by name (denormalized in data)."""
+    pool = await get_pool()
+    if med_name:
+        canonical = _normalize_med_name(med_name)
+        rows = await pool.fetch(
+            "SELECT id, recorded_at, data, source FROM health_logs "
+            "WHERE type = 'medication_taken' AND data->>'name' = $1 "
+            "  AND recorded_at > now() - ($2::text || ' days')::interval "
+            "ORDER BY recorded_at DESC",
+            canonical, str(days),
+        )
+    else:
+        rows = await pool.fetch(
+            "SELECT id, recorded_at, data, source FROM health_logs "
+            "WHERE type = 'medication_taken' "
+            "  AND recorded_at > now() - ($1::text || ' days')::interval "
+            "ORDER BY recorded_at DESC",
+            str(days),
+        )
+    return [dict(r) for r in rows]
