@@ -307,6 +307,8 @@ services:
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007,http://agent-medication:8008"
       MCP_GOOGLE_CALENDAR_URL: ${MCP_GOOGLE_CALENDAR_URL}
       MCP_GOOGLE_CALENDAR_TRANSPORT: ${MCP_GOOGLE_CALENDAR_TRANSPORT}
+      HA_BASE_URL: ${HA_BASE_URL}
+      HA_TOKEN: ${HA_TOKEN}
     ports:
       - "8000:8000"
     depends_on:
