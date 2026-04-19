@@ -199,7 +199,7 @@ def build_upload_summary(
 ) -> str:
     """Build Telegram-ready summary string from ingest + query outputs."""
     parts: list[str] = []
-    parts.append(f"✓ CSV обработан ({inserted} новых, {skipped} пропущено)")
+    parts.append(f"✓ Выписка обработана ({inserted} новых, {skipped} пропущено)")
 
     if income_by_currency:
         items = [_fmt_amount(c, v, sign="+") for c, v in sorted(income_by_currency.items())]
