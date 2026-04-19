@@ -486,3 +486,53 @@ async def test_get_yesterday_metrics_body_none_when_no_rows():
         result = await get_yesterday_metrics()
 
     assert result["body"] is None
+
+
+def test_build_dashboard_body_block_full():
+    from orchestrator.app.briefing import build_dashboard
+    now = datetime.now(timezone.utc)
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": 82.3, "body_fat_pct": 18.4,
+                "lean_mass_kg": 62.1, "bmi": 24.1,
+                "recorded_at": now,
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️ Body" in msg
+    assert "82.3 kg" in msg
+    assert "fat 18.4%" in msg
+    assert "lean 62.1 kg" in msg
+    assert "today" in msg
+
+
+def test_build_dashboard_body_block_partial_weight_only():
+    from orchestrator.app.briefing import build_dashboard
+    now = datetime.now(timezone.utc) - timedelta(days=3)
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": 80.0, "body_fat_pct": None,
+                "lean_mass_kg": None, "bmi": None,
+                "recorded_at": now,
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️ Body: 80.0 kg (updated 3d ago)" in msg
+    assert "fat" not in msg
+    assert "lean" not in msg
+
+
+def test_build_dashboard_body_block_omitted_when_none():
+    from orchestrator.app.briefing import build_dashboard
+    metrics = {"date": "2026-04-18", "body": None}
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️" not in msg
+    assert "Body" not in msg
