@@ -73,14 +73,23 @@ async def load_mcp_tools() -> list[BaseTool]:
 
     stack = AsyncExitStack()
     all_tools: list[BaseTool] = []
+
     try:
         client = MultiServerMCPClient(servers)
-        for server_name in servers:
+    except Exception as e:
+        logger.warning("MCP client init failed: %s", e)
+        return []
+
+    for server_name in servers:
+        try:
             session = await stack.enter_async_context(client.session(server_name))
             tools = await _adapter_load_tools(session, server_name=server_name)
             all_tools.extend(tools)
-    except Exception as e:
-        logger.warning("MCP tool discovery failed: %s", e)
+        except Exception as e:
+            logger.warning("MCP server '%s' discovery failed: %s", server_name, e)
+            continue
+
+    if not all_tools:
         await stack.aclose()
         return []
 
