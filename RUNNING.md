@@ -305,7 +305,7 @@ for the integration — check HA System Information.
   Groq Llama 3.3 70B (recommended), this is rare but possible. File an
   issue and consider a stricter gate.
 
-## Payoneer Finance CSV
+## Payoneer Finance PDF
 
 **One-time setup:**
 
@@ -320,9 +320,17 @@ for the integration — check HA System Information.
 
 **Ingest workflow:**
 
-Drop a Payoneer CSV (filename ending `.csv` or MIME `text/csv`) in the
-Telegram chat. Orchestrator parses, UPSERTs by `Transaction ID` (re-uploads
-are idempotent), and categorizes new rows via LLM with a description-cache
+Drop a Payoneer monthly-statement PDF in the Telegram chat. The single PDF
+handler content-sniffs page 1: if the text layer contains "Account Statement"
+or "Payoneer" it's routed to `POST /finance/upload`, otherwise (image-only
+PDFs like Lescale/ViHealth) it falls through to the body-composition vision
+path.
+
+Orchestrator parses the PDF deterministically via pymupdf text extraction
+(5-line groups anchored on the "Date/Description/Amount/Currency/Running
+Balance" table header), synthesizes a `txn_id` via
+`sha256(period|date|desc|amount|currency|running_balance)`, UPSERTs on
+conflict, and LLM-categorizes new rows with a description cache
 (`finance_category_cache`).
 
 Chat queries use three ReAct tools:
@@ -332,14 +340,11 @@ Chat queries use three ReAct tools:
 
 **Smoke:**
 ```bash
-bash scripts/smoke-finance-csv.sh
+bash scripts/smoke-finance-pdf.sh
 ```
-
-**Known limitation:** the parser header is pinned against a synthetic sample
-for now (see spec `docs/superpowers/specs/2026-04-19-payoneer-finance-design.md`,
-§9). Swap `tests/fixtures/payoneer_sample.csv` + `_EXPECTED_HEADER` in
-`orchestrator/app/payoneer_csv.py` when the real Payoneer export header
-lands.
+The smoke script builds a synthetic Payoneer-shaped PDF at runtime via
+pymupdf and POSTs it to `/finance/upload`, so it needs no real statement
+file on disk.
 
 ## Medication Agent
 
