@@ -539,6 +539,8 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
                 "bmi": d.get("bmi"),
                 "recorded_at": r["recorded_at"],
             })
+        # "recent_90d" is aspirational — shape is up-to-60 most-recent rows, no
+        # time filter (see fetch_body_logs). Real window is cadence-dependent.
         body = {"latest": recent[0], "recent_90d": recent}
 
     return {
