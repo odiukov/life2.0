@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
-from shared.db import fetch_active_habits, fetch_habit_logs, fetch_active_medications, fetch_medication_logs
+from shared.db import fetch_active_habits, fetch_habit_logs, fetch_active_medications, fetch_medication_logs, fetch_body_logs
 from .recovery_context import fetch_recovery_shape
 
 _pool: asyncpg.Pool | None = None
@@ -520,6 +520,21 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         if med_active else None
     )
 
+    body_rows_raw = await fetch_body_logs(limit=60)
+    body = None
+    if body_rows_raw:
+        recent = []
+        for r in body_rows_raw:
+            d = r.get("data") or {}
+            recent.append({
+                "weight_kg": d.get("weight_kg"),
+                "body_fat_pct": d.get("body_fat_pct"),
+                "lean_mass_kg": d.get("lean_mass_kg"),
+                "bmi": d.get("bmi"),
+                "recorded_at": r["recorded_at"],
+            })
+        body = {"latest": recent[0], "recent_90d": recent}
+
     return {
         "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
         "sleep": sleep,
@@ -530,4 +545,5 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         "recovery": recovery,
         "calendar": calendar,
         "medication": medication,
+        "body": body,
     }
