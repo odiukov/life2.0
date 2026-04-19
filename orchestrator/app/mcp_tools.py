@@ -43,6 +43,14 @@ def _servers_from_env() -> dict[str, dict]:
             "url": url,
             "transport": os.environ.get("MCP_GOOGLE_CALENDAR_TRANSPORT", "streamable_http"),
         }
+    ha_base = os.environ.get("HA_BASE_URL")
+    ha_token = os.environ.get("HA_TOKEN")
+    if ha_base and ha_token:
+        servers["home-assistant"] = {
+            "url": f"{ha_base.rstrip('/')}/mcp_server/sse",
+            "transport": "sse",
+            "headers": {"Authorization": f"Bearer {ha_token}"},
+        }
     # Future: MCP_GMAIL_URL, MCP_GITHUB_URL, etc. added here.
     return servers
 
