@@ -241,6 +241,70 @@ Restarting the full stack (`docker compose up -d`) is always safe — the
   for `MCP tool discovery failed`. If the MCP server is healthy but the URL env is
   missing, verify `MCP_GOOGLE_CALENDAR_URL=http://calendar-mcp:3000` is in `.env`.
 
+## Home Assistant MCP setup (one-time)
+
+The orchestrator reads live state and performs confirm-gated actions on
+Home Assistant via HA's native Model Context Protocol Server integration
+(available since HA 2025.2). No custom MCP server or Dockerfile — HA itself
+hosts the endpoint at `/mcp_server/sse`.
+
+### 1. Install the integration in HA
+
+HA UI → **Settings → Devices & Services → Add Integration** → search
+**Model Context Protocol Server** → **Submit**. By default it uses the Assist
+pipeline configuration already on your instance.
+
+### 2. Issue a long-lived access token
+
+HA UI → click your avatar (bottom-left) → **Security** → **Long-Lived Access
+Tokens** → **Create Token** → name it `life-agents` → copy the token. Paste
+into `.env` as `HA_TOKEN=...`. The token is shown once; re-issue if lost.
+
+### 3. Expose entities to Assist
+
+HA UI → **Settings → Voice assistants → Expose**. Only exposed entities are
+visible to MCP tools. Start with one sensor for a smoke check — e.g.,
+`sensor.temperature_bedroom`. Add more as you use them.
+
+### 4. Restart the orchestrator to pick up the env
+
+```bash
+docker compose up -d --force-recreate orchestrator
+docker compose logs --tail 50 orchestrator | grep -E "(MCP|Hass)"
+```
+
+Expected: `Loaded N MCP tools: [..., GetLiveContext, HassTurnOn, ...]`.
+If you see `No MCP servers configured` or the HA tools are missing, verify
+`HA_BASE_URL` and `HA_TOKEN` are both set in `.env` and the container was
+recreated (not just restarted — `docker compose restart` does not re-read
+env_file).
+
+### 5. Smoke test from the host
+
+```bash
+source .env
+bash scripts/smoke-ha-mcp.sh
+```
+
+Step 1 should print `{"message":"API running."}`; step 2 should list the
+discovered `Hass*` tools. If step 1 fails with 401, the token is wrong or
+expired. If step 2 fails with SSE handshake errors, HA 2025.2+ is required
+for the integration — check HA System Information.
+
+### Troubleshooting
+
+- **"0 tools discovered" but step 1 OK**: the integration is installed but
+  no entities are exposed. Go to step 3.
+- **orchestrator log shows `MCP tool discovery failed`**: typical causes —
+  HA is on a different LAN segment from Docker host, or Docker bridge
+  network can't reach `192.168.1.85` (on macOS this usually just works).
+  Try `docker compose exec orchestrator curl http://192.168.1.85:8123/api/`
+  with the Bearer header to confirm reachability.
+- **Mutations fire without confirmation**: the safety clause is in
+  `_SYSTEM_PROMPT` but LLMs sometimes ignore it on smaller models. If using
+  Groq Llama 3.3 70B (recommended), this is rare but possible. File an
+  issue and consider a stricter gate.
+
 ## Medication Agent
 
 Peer-agent on port 8008. Records medication/supplement schedules + intake
