@@ -246,6 +246,35 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-medication:
+    build:
+      context: .
+      dockerfile: agents/medication/Dockerfile
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      QDRANT_HOST: ${QDRANT_HOST}
+      LLM_PROVIDER: ${LLM_PROVIDER}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      MEDICATION_AGENT_URL: http://agent-medication:8008/
+    ports:
+      - "8008:8008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   calendar-mcp:
     build:
       context: ./calendar-mcp
@@ -275,7 +304,7 @@ services:
       - .env
     environment:
       POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007"
+      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007,http://agent-medication:8008"
       MCP_GOOGLE_CALENDAR_URL: ${MCP_GOOGLE_CALENDAR_URL}
       MCP_GOOGLE_CALENDAR_TRANSPORT: ${MCP_GOOGLE_CALENDAR_TRANSPORT}
     ports:
@@ -295,6 +324,8 @@ services:
         condition: service_healthy
       agent-recovery:
         condition: service_healthy
+      agent-medication:
+        condition: service_healthy
       calendar-mcp:
         condition: service_healthy
 
@@ -308,6 +339,7 @@ services:
       ORCHESTRATOR_URL: http://orchestrator:8000
       MOOD_AGENT_URL: http://agent-mood:8005/
       HABITS_AGENT_URL: http://agent-habits:8006/
+      MEDICATION_AGENT_URL: http://agent-medication:8008/
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
     depends_on:
       orchestrator:
@@ -315,6 +347,8 @@ services:
       agent-mood:
         condition: service_started
       agent-habits:
+        condition: service_started
+      agent-medication:
         condition: service_started
     restart: unless-stopped
 
