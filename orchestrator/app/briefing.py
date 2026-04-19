@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 import uuid
+from datetime import datetime, timezone
 
 import httpx
 from a2a.types import Message, Part, Role, Task, TextPart
@@ -85,6 +86,21 @@ def build_dashboard(metrics: dict, insight: str | None) -> str:
             parts.append(", ".join(tags[:3]))
         lines.append("• Mood: " + " · ".join(parts))
 
+    body = metrics.get("body")
+    if body and body.get("latest"):
+        lt = body["latest"]
+        bits = []
+        if lt.get("weight_kg") is not None:
+            bits.append(f"{lt['weight_kg']:.1f} kg")
+        if lt.get("body_fat_pct") is not None:
+            bits.append(f"fat {lt['body_fat_pct']:.1f}%")
+        if lt.get("lean_mass_kg") is not None:
+            bits.append(f"lean {lt['lean_mass_kg']:.1f} kg")
+        if bits:
+            age_days = max(0, (datetime.now(timezone.utc) - lt["recorded_at"]).days)
+            tail = "today" if age_days == 0 else f"{age_days}d ago"
+            lines.append(f"⚖️ Body: {' · '.join(bits)} (updated {tail})")
+
     habits = metrics.get("habits")
     if habits:
         completed = habits["completed_yesterday"]
@@ -105,7 +121,6 @@ def build_dashboard(metrics: dict, insight: str | None) -> str:
 
     medication = metrics.get("medication")
     if medication and medication.get("active"):
-        from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
         last_by_name: dict[str, datetime] = {}
         for r in medication.get("logs") or []:

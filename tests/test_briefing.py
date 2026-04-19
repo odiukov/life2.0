@@ -29,8 +29,10 @@ async def test_get_yesterday_metrics_all_domains():
     mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, workout_row, nutrition_row, None])
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
-         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
         mock_habits.return_value = []
+        mock_body.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -56,8 +58,10 @@ async def test_get_yesterday_metrics_missing_workout():
     mock_pool.fetchrow = AsyncMock(side_effect=[sleep_row, None, None, None])
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
-         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
         mock_habits.return_value = []
+        mock_body.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -84,8 +88,10 @@ async def test_get_yesterday_metrics_sleep_query_drops_end_window():
     mock_pool.fetchrow = fake_fetchrow
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
-         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
         mock_habits.return_value = []
+        mock_body.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         await get_yesterday_metrics()
 
@@ -105,8 +111,10 @@ async def test_get_yesterday_metrics_no_data():
     mock_pool.fetchrow = AsyncMock(return_value=None)
 
     with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
-         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits:
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
         mock_habits.return_value = []
+        mock_body.return_value = []
         from orchestrator.app.db import get_yesterday_metrics
         result = await get_yesterday_metrics()
 
@@ -426,3 +434,124 @@ async def test_post_briefing_endpoint_returns_skipped():
 
     assert resp.status_code == 200
     assert resp.json()["status"] == "skipped"
+
+
+from datetime import datetime, timedelta, timezone
+
+
+@pytest.mark.asyncio
+async def test_get_yesterday_metrics_body_latest_and_recent():
+    """metrics['body'] = {latest: {...}, recent_90d: [...]} from fetch_body_logs."""
+    now = datetime(2026, 4, 18, 7, 15, tzinfo=timezone.utc)
+    rows = [
+        {"type": "body_composition", "recorded_at": now,
+         "data": {"weight_kg": 82.3, "body_fat_pct": 18.4,
+                  "lean_mass_kg": 62.1, "bmi": 24.1}, "source": "garmin"},
+        {"type": "body_composition", "recorded_at": now - timedelta(days=7),
+         "data": {"weight_kg": 80.5, "body_fat_pct": 17.9,
+                  "lean_mass_kg": 61.8, "bmi": 23.7}, "source": "garmin"},
+    ]
+    mock_pool = AsyncMock()
+    mock_pool.fetchrow = AsyncMock(side_effect=[None, None, None, None])
+
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
+        mock_habits.return_value = []
+        mock_body.return_value = rows
+        from orchestrator.app.db import get_yesterday_metrics
+        result = await get_yesterday_metrics()
+
+    body = result["body"]
+    assert body is not None
+    assert body["latest"]["weight_kg"] == 82.3
+    assert body["latest"]["body_fat_pct"] == 18.4
+    assert body["latest"]["recorded_at"] == now
+    assert len(body["recent_90d"]) == 2
+    assert body["recent_90d"][1]["weight_kg"] == 80.5
+
+
+@pytest.mark.asyncio
+async def test_get_yesterday_metrics_body_none_when_no_rows():
+    """metrics['body'] is None when fetch_body_logs returns []."""
+    mock_pool = AsyncMock()
+    mock_pool.fetchrow = AsyncMock(side_effect=[None, None, None, None])
+
+    with patch("orchestrator.app.db.get_pool", return_value=mock_pool), \
+         patch("orchestrator.app.db.fetch_active_habits", new_callable=AsyncMock) as mock_habits, \
+         patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock) as mock_body:
+        mock_habits.return_value = []
+        mock_body.return_value = []
+        from orchestrator.app.db import get_yesterday_metrics
+        result = await get_yesterday_metrics()
+
+    assert result["body"] is None
+
+
+def test_build_dashboard_body_block_full():
+    from orchestrator.app.briefing import build_dashboard
+    now = datetime.now(timezone.utc)
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": 82.3, "body_fat_pct": 18.4,
+                "lean_mass_kg": 62.1, "bmi": 24.1,
+                "recorded_at": now,
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️ Body" in msg
+    assert "82.3 kg" in msg
+    assert "fat 18.4%" in msg
+    assert "lean 62.1 kg" in msg
+    assert "today" in msg
+
+
+def test_build_dashboard_body_block_partial_weight_only():
+    from orchestrator.app.briefing import build_dashboard
+    now = datetime.now(timezone.utc) - timedelta(days=3)
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": 80.0, "body_fat_pct": None,
+                "lean_mass_kg": None, "bmi": None,
+                "recorded_at": now,
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️ Body: 80.0 kg (updated 3d ago)" in msg
+    assert "fat" not in msg
+    assert "lean" not in msg
+
+
+def test_build_dashboard_body_block_omitted_when_none():
+    from orchestrator.app.briefing import build_dashboard
+    metrics = {"date": "2026-04-18", "body": None}
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️" not in msg
+    assert "Body" not in msg
+
+
+def test_build_dashboard_body_block_skipped_when_all_submetrics_none():
+    """Latest row exists but every sub-metric is None → entire block suppressed."""
+    from orchestrator.app.briefing import build_dashboard
+    metrics = {
+        "date": "2026-04-18",
+        "body": {
+            "latest": {
+                "weight_kg": None, "body_fat_pct": None,
+                "lean_mass_kg": None, "bmi": None,
+                "recorded_at": datetime.now(timezone.utc),
+            },
+            "recent_90d": [],
+        },
+    }
+    msg = build_dashboard(metrics, insight=None)
+    assert "⚖️" not in msg
+    assert "Body" not in msg
