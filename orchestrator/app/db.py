@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
-from shared.db import fetch_active_habits, fetch_habit_logs
+from shared.db import fetch_active_habits, fetch_habit_logs, fetch_active_medications, fetch_medication_logs
 from .recovery_context import fetch_recovery_shape
 
 _pool: asyncpg.Pool | None = None
@@ -498,6 +498,28 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
     from .calendar_context import fetch_calendar_shape
     calendar = await fetch_calendar_shape(now_kyiv.date())
 
+    # Medication: current active list + last 7d of taken events
+    med_active = []
+    med_logs = []
+    try:
+        med_rows = await fetch_active_medications()
+        med_active = [{"name": m["name"], "schedule": m["schedule"]} for m in med_rows]
+        log_rows = await fetch_medication_logs(days=7)
+        med_logs = [
+            {"name": (r.get("data") or {}).get("name"),
+             "recorded_at": r.get("recorded_at")}
+            for r in log_rows
+        ]
+    except Exception as e:
+        # don't fail the whole briefing if medication query breaks
+        import logging
+        logging.getLogger(__name__).warning("medication metrics failed: %s", e)
+
+    medication = (
+        {"active": med_active, "logs": med_logs}
+        if med_active else None
+    )
+
     return {
         "date": f"{yesterday.strftime('%a')} {yesterday.day} {yesterday.strftime('%b')}",  # e.g. "Mon 14 Apr"
         "sleep": sleep,
@@ -507,4 +529,5 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         "habits": habits,
         "recovery": recovery,
         "calendar": calendar,
+        "medication": medication,
     }

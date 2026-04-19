@@ -3,6 +3,7 @@ Alert | None. Rules are registered in RULES and aggregated by collect_alerts.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from .alerts import Alert
@@ -32,3 +33,37 @@ def collect_alerts(metrics: dict) -> list[Alert]:
         if a is not None:
             out.append(a)
     return out
+
+
+def medication_missed_rule(metrics: dict) -> Alert | None:
+    med = metrics.get("medication") or {}
+    active = med.get("active") or []
+    if not active:
+        return None
+    logs = med.get("logs") or []
+    now = datetime.now(timezone.utc)
+    last_by_name: dict[str, datetime] = {}
+    for r in logs:
+        name = r.get("name")
+        ts = r.get("recorded_at")
+        if name and ts and (name not in last_by_name or ts > last_by_name[name]):
+            last_by_name[name] = ts
+    missed: list[str] = []
+    for m in active:
+        n = m.get("name")
+        last = last_by_name.get(n)
+        if last is None or (now - last) >= timedelta(days=2):
+            missed.append(n)
+    if not missed:
+        return None
+    msg = "missed " + ", ".join(missed) + " for 2+ days"
+    return Alert(
+        rule_id="medication.missed.2d",
+        severity="warn",
+        message=msg,
+        category="wellness",
+        throttle_hours=24,
+    )
+
+
+RULES.append(medication_missed_rule)
