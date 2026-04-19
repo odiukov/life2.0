@@ -126,3 +126,12 @@ async def habits_a2a_call(skill: str, message: str, params: dict | None = None) 
                     if text:
                         out = text
     return out
+
+
+async def fetch_dashboard() -> str:
+    """GET /dashboard from orchestrator → string body."""
+    url = ORCHESTRATOR_URL.rstrip("/") + "/dashboard"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        return resp.text

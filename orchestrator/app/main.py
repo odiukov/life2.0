@@ -8,12 +8,12 @@ from contextlib import asynccontextmanager
 from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
-from .briefing import run_briefing
-from .db import clear_activity, get_health_summary, get_stats, get_tasks_today
+from .briefing import build_dashboard, run_briefing
+from .db import clear_activity, get_health_summary, get_stats, get_tasks_today, get_yesterday_metrics
 from .health_agent import create_health_agent
 from .registry import check_agent_health, discover_agents, get_registry
 
@@ -161,6 +161,12 @@ async def agents():
 @app.post("/briefing")
 async def briefing(debug: bool = False):
     return await run_briefing(get_registry(), use_today=debug)
+
+
+@app.get("/dashboard", response_class=PlainTextResponse)
+async def dashboard_endpoint():
+    metrics = await get_yesterday_metrics()
+    return build_dashboard(metrics, insight=None)
 
 
 @app.get("/health")

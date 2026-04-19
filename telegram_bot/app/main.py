@@ -18,13 +18,14 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand("habit", "Отметка привычки / создание / архив"),
     BotCommand("sync", "Запустить утренний синк + бриф вручную"),
     BotCommand("new", "Начать новый разговор (сбросить контекст)"),
+    BotCommand("dashboard", "Полный обзор (on-demand)"),
 ]
 
 
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard
 from .threads import bump_reset_count, compute_thread_id
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
@@ -119,6 +120,21 @@ async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Reset the current Telegram conversation thread for this chat."""
     bump_reset_count(update.effective_chat.id)
     await update.message.reply_text("Новый разговор начат ✨")
+
+
+async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    thinking = await update.message.reply_text("Собираю дашборд...")
+    try:
+        text = await fetch_dashboard()
+    except Exception as e:
+        await thinking.edit_text(f"Dashboard unavailable: {e}")
+        return
+    if len(text) > 4096:
+        text = text[:4090] + "\n[truncated]"
+    try:
+        await thinking.edit_text(text)
+    except Exception:
+        await update.message.reply_text(text)
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -292,6 +308,7 @@ def main() -> None:
     app.add_handler(CommandHandler("habits", cmd_habits))
     app.add_handler(CommandHandler("sync", cmd_sync))
     app.add_handler(CommandHandler("new", cmd_new))
+    app.add_handler(CommandHandler("dashboard", cmd_dashboard))
     app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
