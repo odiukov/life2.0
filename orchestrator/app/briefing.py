@@ -11,6 +11,10 @@ from langchain_core.messages import HumanMessage
 from shared.a2a_clients import get_client
 from shared.llm import build_llm
 from .db import get_yesterday_metrics
+from .alerts import Alert
+from .alert_registry import AlertRegistry
+from .briefing_rules import collect_alerts
+from shared.db import fetch_alert_last_emitted, upsert_alert_emission
 
 _LLM = None  # lazy-initialised on first LLM call; patched in tests
 
@@ -282,6 +286,14 @@ async def send_telegram_message(bot_token: str, chat_id: str, text: str) -> None
         resp.raise_for_status()
 
 
+async def _get_registry_for_alerts() -> AlertRegistry | None:
+    """Hook so tests can stub registry wiring. In prod returns a real registry."""
+    return AlertRegistry(
+        fetch_last=fetch_alert_last_emitted,
+        upsert_last=upsert_alert_emission,
+    )
+
+
 async def run_briefing(agents: dict, use_today: bool = False) -> dict:
     """Top-level briefing orchestrator.
 
@@ -304,17 +316,35 @@ async def run_briefing(agents: dict, use_today: bool = False) -> dict:
         logger.warning("Briefing skipped: no health data for yesterday")
         return {"status": "skipped", "reason": "no data for yesterday"}
 
-    summaries = await call_agents_for_briefing(agents, metrics)
+    mode = os.environ.get("BRIEFING_MODE", "dashboard").lower()
 
+    if mode == "alerts":
+        raw_alerts = collect_alerts(metrics)
+        registry = await _get_registry_for_alerts()
+        fresh_alerts = (
+            await registry.filter_fresh(raw_alerts)
+            if registry is not None else raw_alerts
+        )
+        message = compose_alert_brief(metrics, fresh_alerts)
+        try:
+            await send_telegram_message(bot_token, chat_id, message)
+            if registry is not None:
+                await registry.mark_emitted(fresh_alerts)
+            logger.info("Alert brief sent (%d alerts)", len(fresh_alerts))
+            return {"status": "sent"}
+        except Exception as e:
+            logger.error("Briefing Telegram send failed: %s", e)
+            return {"status": "error", "reason": str(e)}
+
+    # Legacy dashboard path — unchanged
+    summaries = await call_agents_for_briefing(agents, metrics)
     insight = None
     if summaries:
         try:
             insight = await generate_insight(metrics, summaries)
         except Exception as e:
-            logger.warning("Briefing insight generation failed: %s — sending metrics only", e)
-
-    message = format_message(metrics, insight)
-
+            logger.warning("Briefing insight generation failed: %s", e)
+    message = build_dashboard(metrics, insight)
     try:
         await send_telegram_message(bot_token, chat_id, message)
         logger.info("Daily briefing sent to Telegram")

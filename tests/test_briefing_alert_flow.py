@@ -55,3 +55,34 @@ def test_build_dashboard_includes_all_shapes():
     assert "Sleep:" in text
     assert "Morning Run" in text
     assert "Nutrition:" in text
+
+
+from unittest.mock import AsyncMock, patch
+
+
+@pytest.mark.asyncio
+async def test_run_briefing_uses_alert_flow_when_env_set(monkeypatch):
+    monkeypatch.setenv("BRIEFING_MODE", "alerts")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "c")
+
+    fake_metrics = {
+        "date": "2026-04-18",
+        "sleep": {"duration_seconds": 25200, "deep_sleep_seconds": 5400, "hrv": 54},
+        "calendar": None,
+    }
+    with patch("orchestrator.app.briefing.get_yesterday_metrics",
+               AsyncMock(return_value=fake_metrics)), \
+         patch("orchestrator.app.briefing.call_agents_for_briefing",
+               AsyncMock(return_value={})), \
+         patch("orchestrator.app.briefing.send_telegram_message",
+               AsyncMock()) as send, \
+         patch("orchestrator.app.briefing._get_registry_for_alerts",
+               AsyncMock(return_value=None)):
+        from orchestrator.app.briefing import run_briefing
+        result = await run_briefing(agents={}, use_today=False)
+
+    assert result["status"] == "sent"
+    sent_text = send.await_args.args[2]
+    assert "Brief —" in sent_text
+    assert "Sleep:" in sent_text
