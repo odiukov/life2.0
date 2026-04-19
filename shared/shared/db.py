@@ -332,3 +332,144 @@ async def fetch_medication_logs(med_name: str | None = None, days: int = 30) -> 
             str(days),
         )
     return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Finance helpers (Payoneer CSV ingest + category cache + queries)
+# ---------------------------------------------------------------------------
+
+async def upsert_finance_rows(rows: list[dict]) -> tuple[int, int]:
+    """Insert rows into finance_transactions keyed on txn_id. Returns
+    (inserted, skipped). Skipped = rows that conflicted and were ignored."""
+    if not rows:
+        return 0, 0
+    pool = await get_pool()
+    inserted = 0
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for r in rows:
+                res = await conn.execute(
+                    """
+                    INSERT INTO finance_transactions
+                      (txn_id, ts, direction, amount, currency, description, raw)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (txn_id) DO NOTHING
+                    """,
+                    r["txn_id"], r["ts"], r["direction"],
+                    r["amount"], r["currency"], r.get("description"),
+                    r.get("raw") or {},
+                )
+                # asyncpg execute returns "INSERT 0 1" on success, "INSERT 0 0" on
+                # ON CONFLICT DO NOTHING. Parse the trailing count.
+                if res.split()[-1] == "1":
+                    inserted += 1
+    return inserted, len(rows) - inserted
+
+
+async def fetch_uncategorized_ids() -> list[str]:
+    """Return txn_ids of rows that still have category IS NULL."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT txn_id FROM finance_transactions WHERE category IS NULL"
+    )
+    return [r["txn_id"] for r in rows]
+
+
+async def fetch_descriptions_for(txn_ids: list[str]) -> dict[str, str]:
+    """txn_id → description (may be empty string). Only called for categorize_new."""
+    if not txn_ids:
+        return {}
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT txn_id, description FROM finance_transactions WHERE txn_id = ANY($1::text[])",
+        txn_ids,
+    )
+    return {r["txn_id"]: (r["description"] or "") for r in rows}
+
+
+async def set_transaction_categories(updates: dict[str, str]) -> None:
+    """Bulk UPDATE finance_transactions SET category for txn_id → category mapping."""
+    if not updates:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for tid, cat in updates.items():
+                await conn.execute(
+                    "UPDATE finance_transactions SET category = $1 WHERE txn_id = $2",
+                    cat, tid,
+                )
+
+
+async def upsert_category_cache(entries: dict[str, str]) -> None:
+    """desc_key → category, idempotent upsert."""
+    if not entries:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for k, v in entries.items():
+                await conn.execute(
+                    """
+                    INSERT INTO finance_category_cache (desc_key, category, updated_at)
+                    VALUES ($1, $2, now())
+                    ON CONFLICT (desc_key) DO UPDATE
+                    SET category = EXCLUDED.category, updated_at = now()
+                    """,
+                    k, v,
+                )
+
+
+async def get_category_cache(desc_keys: list[str]) -> dict[str, str]:
+    """Look up cached categories for a batch of desc_keys."""
+    if not desc_keys:
+        return {}
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT desc_key, category FROM finance_category_cache WHERE desc_key = ANY($1::text[])",
+        desc_keys,
+    )
+    return {r["desc_key"]: r["category"] for r in rows}
+
+
+async def finance_rows_for_month(month_str: str) -> list[dict]:
+    """Return all rows for a given calendar month (YYYY-MM), ordered by ts."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT txn_id, ts, direction, amount, currency, description, category
+        FROM finance_transactions
+        WHERE to_char(ts, 'YYYY-MM') = $1
+        ORDER BY ts
+        """,
+        month_str,
+    )
+    return [dict(r) for r in rows]
+
+
+async def finance_rows_in_window(days: int) -> list[dict]:
+    """Return rows from (now - `days`) to now, ordered by ts ASC."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT txn_id, ts, direction, amount, currency, description, category
+        FROM finance_transactions
+        WHERE ts >= now() - make_interval(days => $1)
+        ORDER BY ts
+        """,
+        days,
+    )
+    return [dict(r) for r in rows]
+
+
+async def finance_rows_all() -> list[dict]:
+    """Return every row. Used by current_balance (sum across full history)."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT txn_id, ts, direction, amount, currency, description, category
+        FROM finance_transactions
+        ORDER BY ts
+        """,
+    )
+    return [dict(r) for r in rows]
