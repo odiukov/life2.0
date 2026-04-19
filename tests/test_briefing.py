@@ -126,7 +126,7 @@ def test_format_message_all_domains():
         "nutrition": {"kcal": 2850, "protein_g": 148, "carbs_g": 320, "fat_g": 95},
     }
     msg = format_message(metrics, insight="Take it easy today.")
-    assert "🌅" in msg
+    assert "📊" in msg
     assert "Mon 14 Apr" in msg
     assert "Sleep:" in msg
     assert "Workout:" in msg
@@ -374,7 +374,7 @@ async def test_run_briefing_sends_metrics_only_when_claude_fails():
     # Message was sent despite Claude failing
     mock_send.assert_called_once()
     sent_text = mock_send.call_args[0][2]
-    assert "🌅" in sent_text
+    assert "📊" in sent_text
     assert "💡" not in sent_text  # no insight since Claude failed
 
 

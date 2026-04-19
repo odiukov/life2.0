@@ -31,12 +31,10 @@ def _fmt_duration(seconds: int) -> str:
     return f"{h}h {m}m"
 
 
-def format_message(metrics: dict, insight: str | None) -> str:
+def build_dashboard(metrics: dict, insight: str | None) -> str:
     """Assemble the final Telegram briefing message from metrics and optional insight."""
     lines = [
-        "🌅 Good morning! Here's your health brief.",
-        "",
-        f"📊 Yesterday — {metrics['date']}",
+        "📊 Dashboard — " + metrics.get("date", ""),
     ]
 
     sleep = metrics.get("sleep")
@@ -148,6 +146,53 @@ def format_message(metrics: dict, insight: str | None) -> str:
         lines.append("")
         lines.append(f"💡 {insight}")
 
+    return "\n".join(lines)
+
+
+format_message = build_dashboard
+
+
+def _must_see_lines(metrics: dict) -> list[str]:
+    """Extract the always-shown lines for the alert-only brief: sleep yesterday
+    + calendar today. Returns [] if nothing to show."""
+    lines: list[str] = []
+    sleep = metrics.get("sleep")
+    if sleep:
+        dur = _fmt_duration(sleep["duration_seconds"])
+        deep = _fmt_duration(sleep["deep_sleep_seconds"])
+        hrv_part = f" · HRV {sleep['hrv']} ms" if sleep.get("hrv") else ""
+        lines.append(f"• Sleep: {dur} · Deep {deep}{hrv_part}")
+    calendar = metrics.get("calendar")
+    if calendar:
+        all_day = calendar.get("all_day_events") or []
+        if all_day:
+            lines.append(f"📅 All day: {', '.join(all_day)}")
+        elif calendar.get("events_count", 0) > 0:
+            am = calendar["morning_count"]
+            pm = calendar["afternoon_count"]
+            ev = calendar["evening_count"]
+            pieces = []
+            if am: pieces.append(f"{am} AM")
+            if pm: pieces.append(f"{pm} PM")
+            if ev: pieces.append(f"{ev} evening")
+            split = " / ".join(pieces) if pieces else ""
+            lines.append(f"📅 Today: {calendar['events_count']} meetings ({split})")
+    return lines
+
+
+def compose_alert_brief(metrics: dict, alerts: list) -> str:
+    """Short morning brief: must-see lines + fresh alerts, or a 1-line all-quiet."""
+    lines = [f"🌅 Brief — {metrics.get('date', '')}"]
+    must = _must_see_lines(metrics)
+    lines.extend(must)
+    if alerts:
+        lines.append("")
+        lines.append("⚠️ Alerts:")
+        for a in alerts:
+            emoji = {"info": "•", "warn": "⚠️", "crit": "🔴"}.get(a.severity, "•")
+            lines.append(f"{emoji} {a.message}")
+    elif not must:
+        lines.append("All quiet — nothing to flag.")
     return "\n".join(lines)
 
 
