@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from ag_ui_langgraph import LangGraphAgent, add_langgraph_fastapi_endpoint
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
@@ -205,6 +205,69 @@ async def briefing(debug: bool = False):
 async def dashboard_endpoint():
     metrics = await get_yesterday_metrics()
     return build_dashboard(metrics, insight=None)
+
+
+@app.post("/finance/upload")
+async def finance_upload(csv: UploadFile = File(...)):
+    """Parse a Payoneer CSV upload, UPSERT rows, categorize new ones,
+    return a summary string.
+
+    Errors:
+      415 if the uploaded file is not a CSV (by content-type or filename).
+      422 if the header doesn't match the Payoneer fingerprint.
+    """
+    from .payoneer_csv import parse_payoneer_csv, PayoneerCsvFormatError
+    from .finance_ingest import (
+        ingest_rows, categorize_new, build_upload_summary,
+    )
+    from .finance_queries import income_for_month, spending_by_category
+    from decimal import Decimal
+
+    ct = (csv.content_type or "").lower()
+    name = (csv.filename or "").lower()
+    if "csv" not in ct and not name.endswith(".csv"):
+        raise HTTPException(status_code=415, detail="expected text/csv upload")
+
+    blob = await csv.read()
+    if len(blob) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="csv > 50 MB")
+
+    try:
+        rows, parse_skipped = parse_payoneer_csv(blob)
+    except PayoneerCsvFormatError as e:
+        raise HTTPException(status_code=422, detail=f"bad csv header: {e}")
+
+    ingest_result = await ingest_rows(rows)
+    await categorize_new(ingest_result["uncategorized_ids"])
+
+    # Build income/spending summary for the months represented in this upload.
+    months = sorted({r["ts"].strftime("%Y-%m") for r in rows}) or [""]
+    income_total: dict[str, Decimal] = {}
+    spending_total: dict[str, Decimal] = {}
+    top_categories: list[tuple[str, Decimal, str]] = []
+    for m in months:
+        inc = await income_for_month(m)
+        for cur, amt in inc.items():
+            income_total[cur] = income_total.get(cur, Decimal("0")) + amt
+        spend = await spending_by_category(m)
+        for cat, cur, amt in spend:
+            spending_total[cur] = spending_total.get(cur, Decimal("0")) + amt
+            # build_upload_summary expects (name, amount, currency)
+            top_categories.append((cat, amt, cur))
+    top_categories.sort(key=lambda t: t[1], reverse=True)
+
+    summary = build_upload_summary(
+        inserted=ingest_result["inserted"],
+        skipped=ingest_result["skipped"] + parse_skipped,
+        income_by_currency=income_total,
+        spending_by_currency=spending_total,
+        top_categories=top_categories[:3],
+    )
+    return {
+        "summary": summary,
+        "inserted": ingest_result["inserted"],
+        "skipped": ingest_result["skipped"] + parse_skipped,
+    }
 
 
 @app.get("/health")
