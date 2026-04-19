@@ -112,10 +112,11 @@ export const AGENT_COLORS = {
   sleep:     { emoji: "😴", label: "Sleep",     color: "#4a9eff" },
   workout:   { emoji: "💪", label: "Workout",   color: "#4eff9a" },
   nutrition: { emoji: "🥗", label: "Nutrition", color: "#ffb74a" },
-  body:      { emoji: "🧠", label: "Body",      color: "#c691ff" },
-  mood:      { emoji: "🙂", label: "Mood",      color: "#ff91b5" },
-  habits:    { emoji: "✅", label: "Habits",    color: "#91d8ff" },
-  recovery:  { emoji: "🌿", label: "Recovery",  color: "#7effb5" },
+  body:       { emoji: "🦍", label: "Body",       color: "#c691ff" },
+  mood:       { emoji: "🙂", label: "Mood",       color: "#ff91b5" },
+  habits:     { emoji: "✅", label: "Habits",     color: "#91d8ff" },
+  recovery:   { emoji: "🌿", label: "Recovery",   color: "#7effb5" },
+  medication: { emoji: "💊", label: "Medication", color: "#ff9a9a" },
 } as const;
 
 export type AgentKey = keyof typeof AGENT_COLORS;
