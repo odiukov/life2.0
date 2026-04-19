@@ -16,7 +16,7 @@ from a2a.types import (
 )
 from langchain_core.messages import HumanMessage
 
-from shared.db import insert_task_record
+from shared.db import insert_log, insert_task_record, fetch_medication_logs
 from shared.llm import build_llm
 from shared.vector import upsert_memory
 
@@ -156,7 +156,75 @@ class MedicationAgentExecutor(AgentExecutor):
                         output = f"medication '{validated['name']}' already tracked"
                         logger.warning("registry.create failed: %s", e)
 
-            # Other branches land in Task 16
+            elif skill_id == "log_taken":
+                name = params.get("name") or message
+                med = await registry.find_by_name(name)
+                if med is None:
+                    output = (
+                        "medication not found — `/med list` shows active ones, "
+                        "`/med new ...` creates one"
+                    )
+                else:
+                    data = {
+                        "name": med["name"],
+                        "medication_id": med["id"],
+                        "dose_at_time": params.get("dose_override") or med.get("dose"),
+                        "note": params.get("note"),
+                        "raw_text": message,
+                        "source_skill": "log_taken",
+                    }
+                    await insert_log(
+                        agent="medication", type_="medication_taken",
+                        data=data, source=params.get("source", "telegram"),
+                    )
+                    dose_bit = f" ({data['dose_at_time']})" if data["dose_at_time"] else ""
+                    output = f"taken '{med['name']}'{dose_bit}"
+
+            elif skill_id == "list_active":
+                meds = await registry.list_active()
+                if not meds:
+                    output = "no active medications"
+                else:
+                    parts = []
+                    for m in meds:
+                        dose = f" {m['dose']}" if m.get("dose") else ""
+                        parts.append(f"• {m['name']}{dose} · {m['schedule']}")
+                    output = "\n".join(parts)
+
+            elif skill_id == "archive_medication":
+                name = params.get("name") or message
+                med = await registry.find_by_name(name)
+                if med is None:
+                    output = "medication not found"
+                else:
+                    ok = await registry.archive(med["id"])
+                    output = "archived" if ok else "already archived"
+
+            elif skill_id == "analyze_adherence":
+                window_days = int(params.get("window_days", 14))
+                meds = await registry.list_active()
+                if not meds:
+                    output = "no active medications to analyse"
+                else:
+                    logs = await fetch_medication_logs(days=window_days)
+                    by_name: dict[str, int] = {}
+                    for r in logs:
+                        n = (r.get("data") or {}).get("name")
+                        if n:
+                            by_name[n] = by_name.get(n, 0) + 1
+                    summary_rows = [
+                        {"name": m["name"], "schedule": m["schedule"],
+                         "actual_logs": by_name.get(m["name"], 0)}
+                        for m in meds
+                    ]
+                    prompt_text = await SKILL_PROMPTS[skill_id](
+                        message,
+                        {**params, "window_days": window_days,
+                         "data": json.dumps(summary_rows, ensure_ascii=False)},
+                    )
+                    result = await _get_llm().ainvoke([HumanMessage(prompt_text)])
+                    output = result.content if isinstance(result.content, str) else str(result.content)
+
             else:
                 output = f"skill '{skill_id}' not implemented yet"
 
