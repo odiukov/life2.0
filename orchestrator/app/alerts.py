@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 _VALID_SEVERITY = {"info", "warn", "crit"}
 _VALID_CATEGORY = {"wellness", "productivity", "lifestyle"}

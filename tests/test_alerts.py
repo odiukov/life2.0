@@ -1,3 +1,7 @@
+import dataclasses
+
+import pytest
+
 from orchestrator.app.alerts import Alert
 
 
@@ -11,29 +15,20 @@ def test_alert_has_required_fields():
     assert a.rule_id == "medication.missed.2d"
     assert a.severity == "warn"
     assert a.category == "wellness"
-    assert a.throttle_hours == 12  # default
+    assert a.throttle_hours == 12
 
 
 def test_alert_immutable():
     a = Alert(rule_id="x", severity="info", message="m", category="wellness")
-    try:
+    with pytest.raises(dataclasses.FrozenInstanceError):
         a.severity = "crit"
-        assert False, "Alert should be frozen"
-    except Exception:
-        pass
 
 
 def test_alert_severity_validates():
-    try:
+    with pytest.raises(ValueError, match="severity"):
         Alert(rule_id="x", severity="panic", message="m", category="wellness")
-        assert False
-    except ValueError:
-        pass
 
 
 def test_alert_category_validates():
-    try:
+    with pytest.raises(ValueError, match="category"):
         Alert(rule_id="x", severity="warn", message="m", category="random")
-        assert False
-    except ValueError:
-        pass
