@@ -4,6 +4,7 @@ from __future__ import annotations
 import uuid
 import warnings
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated, Literal
 
 import httpx
@@ -315,6 +316,76 @@ async def send_daily_briefing() -> str:
         return f"Briefing failed: {e}"
 
 
+@tool
+async def query_finance_summary(month: str) -> str:
+    """Return income + spending summary for a given month (YYYY-MM, e.g. '2026-04').
+    Use for 'сколько пришло в апреле', 'how much did I earn in march', etc.
+    Currencies are never converted — each currency is reported separately.
+    """
+    from . import finance_queries
+
+    income = await finance_queries.income_for_month(month)
+    spending = await finance_queries.spending_by_category(month)
+
+    if not income and not spending:
+        return f"За {month} транзакций нет."
+
+    lines = [f"Финансы за {month}:"]
+    if income:
+        bits = [f"+{amt} {cur}" for cur, amt in sorted(income.items())]
+        lines.append("• Пришло: " + ", ".join(bits))
+    spend_by_cur: dict[str, Decimal] = {}
+    for _cat, cur, amt in spending:
+        spend_by_cur[cur] = spend_by_cur.get(cur, Decimal("0")) + amt
+    if spend_by_cur:
+        bits = [f"−{amt} {cur}" for cur, amt in sorted(spend_by_cur.items())]
+        lines.append("• Ушло: " + ", ".join(bits))
+    if spending:
+        top = spending[:3]
+        lines.append("• Топ категорий: " + " · ".join(
+            f"{name} {amt} {cur}" for name, cur, amt in top
+        ))
+    return "\n".join(lines)
+
+
+@tool
+async def query_finance_categories(month: str) -> str:
+    """Return spending breakdown by category for a month (YYYY-MM).
+    Use for 'куда ушли деньги в апреле', 'where did money go'.
+    """
+    from . import finance_queries
+    rows = await finance_queries.spending_by_category(month)
+    if not rows:
+        return f"За {month} нет затрат с категорией."
+    lines = [f"Траты по категориям за {month}:"]
+    for name, cur, amt in rows:
+        lines.append(f"• {name}: {amt} {cur}")
+    return "\n".join(lines)
+
+
+@tool
+async def query_finance_runway() -> str:
+    """Return current balance + average daily burn + runway in days, per currency.
+    Use for 'хватит ли до конца месяца', 'how many days I have left', etc.
+    """
+    from . import finance_queries
+    data = await finance_queries.runway(avg_window_days=30)
+    if not data:
+        return "Нет данных по транзакциям."
+    lines = []
+    for cur, info in sorted(data.items()):
+        bal = info["balance"]
+        burn = info["avg_daily_burn"]
+        days = info["days"]
+        if days is None:
+            lines.append(f"• {cur}: баланс {bal}, расходов за 30 дней нет.")
+        else:
+            lines.append(
+                f"• {cur}: баланс {bal}, средний расход {burn}/день, хватит на ~{days} дней."
+            )
+    return "\n".join(lines)
+
+
 _SYSTEM_PROMPT = (
     "You are a personal health assistant. You have seven peer agents: sleep, workout, "
     "nutrition, body, mood, habits, recovery. Each tool accepts a skill parameter — pick "
@@ -349,6 +420,10 @@ _SYSTEM_PROMPT = (
     "invoking the tool. Only entities the user has exposed via HA Settings → Voice assistants "
     "will be visible; if a requested entity isn't available, say so. "
     "\n\n"
+    "You also have finance tools (query_finance_summary, query_finance_categories, "
+    "query_finance_runway). Use them for questions about income, spending, or cash "
+    "runway. Month format is YYYY-MM. "
+    "\n\n"
     "For sync or briefing requests, use the dedicated tools. Be concise and actionable."
 )
 
@@ -376,6 +451,9 @@ async def create_health_agent(checkpointer=None):
         ask_recovery_agent,
         sync_health_data,
         send_daily_briefing,
+        query_finance_summary,
+        query_finance_categories,
+        query_finance_runway,
     ]
     mcp_tools = await load_mcp_tools()
     tools = peer_tools + mcp_tools
