@@ -216,3 +216,25 @@ async def fetch_recovery_metrics(days: int = 7) -> dict[str, dict]:
         if r["bb_max"] is not None:
             day["bb_max"] = r["bb_max"]
     return out
+
+
+# --- alert emission throttling (0004) ---
+
+async def fetch_alert_last_emitted(rule_id: str):
+    """Return last-emitted TIMESTAMPTZ (UTC) for rule_id, or None if never."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        "SELECT last_emitted FROM alert_emissions WHERE rule_id = $1",
+        rule_id,
+    )
+    return row["last_emitted"] if row else None
+
+
+async def upsert_alert_emission(rule_id: str, when) -> None:
+    """Idempotent upsert of (rule_id, when) into alert_emissions."""
+    pool = await get_pool()
+    await pool.execute(
+        "INSERT INTO alert_emissions (rule_id, last_emitted) VALUES ($1, $2) "
+        "ON CONFLICT (rule_id) DO UPDATE SET last_emitted = EXCLUDED.last_emitted",
+        rule_id, when,
+    )
