@@ -520,7 +520,13 @@ async def get_yesterday_metrics(use_today: bool = False) -> dict:
         if med_active else None
     )
 
-    body_rows_raw = await fetch_body_logs(limit=60)
+    try:
+        body_rows_raw = await fetch_body_logs(limit=60)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("body metrics fetch failed: %s", e)
+        body_rows_raw = []
+
     body = None
     if body_rows_raw:
         recent = []
