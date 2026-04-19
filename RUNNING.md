@@ -305,6 +305,42 @@ for the integration — check HA System Information.
   Groq Llama 3.3 70B (recommended), this is rare but possible. File an
   issue and consider a stricter gate.
 
+## Payoneer Finance CSV
+
+**One-time setup:**
+
+1. Apply migration 0006:
+   ```bash
+   docker compose exec -T postgres psql -U lifeagents -d lifeagents < db/migrations/0006_finance.sql
+   ```
+2. Rebuild orchestrator + telegram-bot after code changes:
+   ```bash
+   docker compose up -d --build orchestrator telegram-bot
+   ```
+
+**Ingest workflow:**
+
+Drop a Payoneer CSV (filename ending `.csv` or MIME `text/csv`) in the
+Telegram chat. Orchestrator parses, UPSERTs by `Transaction ID` (re-uploads
+are idempotent), and categorizes new rows via LLM with a description-cache
+(`finance_category_cache`).
+
+Chat queries use three ReAct tools:
+- `query_finance_summary("2026-04")` — income + spending snapshot
+- `query_finance_categories("2026-04")` — breakdown
+- `query_finance_runway()` — balance + runway per currency
+
+**Smoke:**
+```bash
+bash scripts/smoke-finance-csv.sh
+```
+
+**Known limitation:** the parser header is pinned against a synthetic sample
+for now (see spec `docs/superpowers/specs/2026-04-19-payoneer-finance-design.md`,
+§9). Swap `tests/fixtures/payoneer_sample.csv` + `_EXPECTED_HEADER` in
+`orchestrator/app/payoneer_csv.py` when the real Payoneer export header
+lands.
+
 ## Medication Agent
 
 Peer-agent on port 8008. Records medication/supplement schedules + intake
