@@ -27,10 +27,12 @@ describe("AgentGraph (topology)", () => {
     expect(screen.getByText("A2A")).toBeInTheDocument();
   });
 
-  it("renders TOOLS cluster with calendar-mcp", () => {
+  it("renders TOOLS cluster with calendar-mcp and home-assistant", () => {
     render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={() => {}} />);
     expect(screen.getByText("calendar-mcp")).toBeInTheDocument();
     expect(screen.getByText(":9100")).toBeInTheDocument();
+    expect(screen.getByText("home-assistant")).toBeInTheDocument();
+    expect(screen.getByText("lan:8123")).toBeInTheDocument();
   });
 
   it("renders all specialist agent names in the AGENTS cluster", () => {

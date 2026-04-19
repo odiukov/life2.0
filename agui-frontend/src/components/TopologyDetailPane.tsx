@@ -154,6 +154,7 @@ export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) 
   // kind === "tool"
   const TOOL_META: Record<string, { port: string; description: string }> = {
     "calendar-mcp": { port: ":9100", description: "MCP server exposing calendar read/write tools." },
+    "home-assistant": { port: "lan:8123", description: "HA native MCP server — live state (GetLiveContext) + confirm-gated Hass* mutations." },
   };
   const meta = TOOL_META[selected.name];
   return (

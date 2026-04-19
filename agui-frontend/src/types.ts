@@ -135,6 +135,7 @@ export interface ToolNode {
 
 export const TOOL_NODES: ToolNode[] = [
   { name: "calendar-mcp", port: ":9100", description: "MCP server exposing calendar read/write tools." },
+  { name: "home-assistant", port: "lan:8123", description: "HA native MCP server — live state (GetLiveContext) + confirm-gated Hass* mutations." },
 ];
 
 export function peersOf(
