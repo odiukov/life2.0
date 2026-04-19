@@ -118,3 +118,57 @@ def test_body_weight_gain_picks_closest_candidate_in_window():
     # Pass `far` first so the loop has to prefer `near` by distance, not by
     # list position.
     assert body_weight_gain_rule(_body_metrics(latest, [far, near])) is None
+
+
+def test_body_fat_high_fires_at_p90_boundary():
+    from orchestrator.app.briefing_rules import body_fat_high_rule
+    now = datetime.now(timezone.utc)
+    # 10 points; statistics.quantiles(n=10) returns 9 cut-points; index 8 = p90.
+    # For sample [14..23] step 1: Python 3.13 exclusive method gives p90 = 22.9.
+    # Set latest = 22.9 to hit boundary.
+    fats = [14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0]
+    rows = []
+    for i, v in enumerate(fats):
+        rows.append({"weight_kg": None, "body_fat_pct": v,
+                     "lean_mass_kg": None, "bmi": None,
+                     "recorded_at": now - timedelta(days=i)})
+    latest = {"weight_kg": None, "body_fat_pct": 22.9,
+              "lean_mass_kg": None, "bmi": None, "recorded_at": now}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest, *rows]}}
+    alert = body_fat_high_rule(metrics)
+    assert alert is not None
+    assert alert.rule_id == "body.fat_pct_high.90d"
+    assert alert.severity == "warn"
+    assert alert.throttle_hours == 168
+    assert "22.9" in alert.message
+
+
+def test_body_fat_high_silent_when_fewer_than_10_points():
+    from orchestrator.app.briefing_rules import body_fat_high_rule
+    now = datetime.now(timezone.utc)
+    fats = [18.0] * 9  # only 9 points
+    rows = [{"weight_kg": None, "body_fat_pct": v,
+             "lean_mass_kg": None, "bmi": None,
+             "recorded_at": now - timedelta(days=i)} for i, v in enumerate(fats)]
+    latest = {"weight_kg": None, "body_fat_pct": 25.0,
+              "lean_mass_kg": None, "bmi": None, "recorded_at": now}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest, *rows]}}
+    assert body_fat_high_rule(metrics) is None
+
+
+def test_body_fat_high_silent_when_below_p90():
+    from orchestrator.app.briefing_rules import body_fat_high_rule
+    now = datetime.now(timezone.utc)
+    fats = [14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0]
+    rows = [{"weight_kg": None, "body_fat_pct": v,
+             "lean_mass_kg": None, "bmi": None,
+             "recorded_at": now - timedelta(days=i)} for i, v in enumerate(fats)]
+    latest = {"weight_kg": None, "body_fat_pct": 20.0,
+              "lean_mass_kg": None, "bmi": None, "recorded_at": now}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest, *rows]}}
+    assert body_fat_high_rule(metrics) is None
+
+
+def test_body_fat_high_silent_when_no_body():
+    from orchestrator.app.briefing_rules import body_fat_high_rule
+    assert body_fat_high_rule({"body": None}) is None

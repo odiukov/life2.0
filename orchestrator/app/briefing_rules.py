@@ -3,6 +3,7 @@ Alert | None. Rules are registered in RULES and aggregated by collect_alerts.
 """
 from __future__ import annotations
 
+import statistics
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
@@ -102,3 +103,29 @@ def body_weight_gain_rule(metrics: dict) -> Alert | None:
 
 
 RULES.append(body_weight_gain_rule)
+
+
+def body_fat_high_rule(metrics: dict) -> Alert | None:
+    body = metrics.get("body") or {}
+    latest = body.get("latest") or {}
+    rows = body.get("recent_90d") or []
+    # Exclude the latest row itself so p90 reflects the historical distribution.
+    fats = [r["body_fat_pct"] for r in rows
+            if r is not latest and r.get("body_fat_pct") is not None]
+    if len(fats) < 10:
+        return None
+    p90 = statistics.quantiles(fats, n=10)[8]
+    latest_fat = latest.get("body_fat_pct")
+    if latest_fat is None or latest_fat < p90:
+        return None
+    msg = f"body fat {latest_fat:.1f}% ≥ p90 over last 90 days ({p90:.1f}%)"
+    return Alert(
+        rule_id="body.fat_pct_high.90d",
+        severity="warn",
+        message=msg,
+        category="wellness",
+        throttle_hours=168,
+    )
+
+
+RULES.append(body_fat_high_rule)
