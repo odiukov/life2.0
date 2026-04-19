@@ -125,6 +125,7 @@ export type Selection =
   | { kind: "agent"; name: AgentKey }
   | { kind: "orchestrator" }
   | { kind: "tool"; name: string }
+  | { kind: "data"; name: string }
   | null;
 
 export interface ToolNode {
@@ -138,10 +139,25 @@ export const TOOL_NODES: ToolNode[] = [
   { name: "home-assistant", port: "lan:8123", description: "HA native MCP server — live state (GetLiveContext) + confirm-gated Hass* mutations." },
 ];
 
+export interface DataNode {
+  name: string;
+  port: string;
+  description: string;
+}
+
+export const DATA_NODES: DataNode[] = [
+  {
+    name: "payoneer-finance",
+    port: "csv/sql",
+    description: "CSV upload → finance_transactions. Tools: query_finance_summary / categories / runway.",
+  },
+];
+
 export function peersOf(
   selected: Selection,
   agents: AgentInfo[],
   tools: ToolNode[],
+  data: DataNode[] = DATA_NODES,
 ): Set<string> {
   const peers = new Set<string>();
   if (!selected) return peers;
@@ -149,12 +165,15 @@ export function peersOf(
     peers.add("user");
     for (const a of agents) peers.add(`agent:${a.name}`);
     for (const t of tools) peers.add(`tool:${t.name}`);
+    for (const d of data) peers.add(`data:${d.name}`);
   } else if (selected.kind === "agent") {
     peers.add("orchestrator");
     for (const a of agents) {
       if (a.name !== selected.name) peers.add(`agent:${a.name}`);
     }
   } else if (selected.kind === "tool") {
+    peers.add("orchestrator");
+  } else if (selected.kind === "data") {
     peers.add("orchestrator");
   }
   return peers;

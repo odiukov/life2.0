@@ -99,4 +99,28 @@ describe("AgentGraph (topology)", () => {
     expect(workoutCard).not.toBeNull();
     expect(workoutCard.style.outline).toMatch(/#4a9eff/);
   });
+
+  it("renders the DATA cluster with payoneer-finance", () => {
+    render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={() => {}} />);
+    expect(screen.getByText("DATA")).toBeInTheDocument();
+    expect(screen.getByText("SQL")).toBeInTheDocument();
+    expect(screen.getByText("payoneer-finance")).toBeInTheDocument();
+    expect(screen.getByText("csv/sql")).toBeInTheDocument();
+  });
+
+  it("calls onSelect with data selection when payoneer-finance is clicked", () => {
+    const onSelect = vi.fn();
+    render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={onSelect} />);
+    screen.getByText("payoneer-finance").click();
+    expect(onSelect).toHaveBeenCalledWith({ kind: "data", name: "payoneer-finance" });
+  });
+
+  it("highlights payoneer-finance as peer when orchestrator is selected", () => {
+    const { container } = render(
+      <AgentGraph agents={AGENTS} selected={{ kind: "orchestrator" }} highlightedAgent={null} onSelect={() => {}} />,
+    );
+    expect(
+      container.querySelector('[data-node="data-payoneer-finance"]')?.getAttribute("data-glow"),
+    ).toBe("peer");
+  });
 });

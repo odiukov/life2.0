@@ -121,4 +121,18 @@ describe("TopologyDetailPane", () => {
     expect(peerIds).toContain("agent:workout");
     expect(peerIds).toContain("agent:nutrition");
   });
+
+  it("renders data-node detail pane with name/port/description", () => {
+    render(
+      <TopologyDetailPane
+        selected={{ kind: "data", name: "payoneer-finance" }}
+        agents={[]}
+        stats={null}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText(/payoneer-finance/)).toBeInTheDocument();
+    expect(screen.getByText("csv/sql")).toBeInTheDocument();
+    expect(screen.getByText(/CSV upload/)).toBeInTheDocument();
+  });
 });

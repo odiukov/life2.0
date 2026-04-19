@@ -1,5 +1,5 @@
 import type { AgentInfo, Selection, StatsResponse, AgentKey } from "../types";
-import { AGENT_COLORS, TOOL_NODES, peersOf } from "../types";
+import { AGENT_COLORS, TOOL_NODES, DATA_NODES, peersOf } from "../types";
 import { AgentCard } from "./AgentCard";
 import { StatCard } from "./stats/StatCard";
 import { BarChart } from "./stats/BarChart";
@@ -60,11 +60,14 @@ function peerLabel(id: string): { emoji: string; text: string } {
   if (id.startsWith("tool:")) {
     return { emoji: "🔧", text: id.slice("tool:".length) };
   }
+  if (id.startsWith("data:")) {
+    return { emoji: "💾", text: id.slice("data:".length) };
+  }
   return { emoji: "·", text: id };
 }
 
 function ConnectionsSection({ selected, agents }: { selected: Selection; agents: AgentInfo[] }) {
-  const peers = peersOf(selected, agents, TOOL_NODES);
+  const peers = peersOf(selected, agents, TOOL_NODES, DATA_NODES);
   if (peers.size === 0) return null;
   return (
     <Section title="Connections">
@@ -145,6 +148,29 @@ export function TopologyDetailPane({ selected, agents, stats, onClose }: Props) 
           <div style={{ color: "#888", fontSize: 10, marginTop: 4 }}>
             Routes user requests to specialist agents and MCP tools.
           </div>
+        </div>
+        <ConnectionsSection selected={selected} agents={agents} />
+      </div>
+    );
+  }
+
+  if (selected.kind === "data") {
+    const meta = DATA_NODES.find(d => d.name === selected.name);
+    return (
+      <div style={PANE_STYLE}>
+        <div style={HEADER_STYLE}>
+          <div style={{ fontSize: 13, fontWeight: "bold" }}>💾 <span>{selected.name}</span></div>
+          <button onClick={onClose} style={CLOSE_BTN_STYLE} aria-label="close">×</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 11 }}>
+          {meta && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#555" }}>Port</span><span>{meta.port}</span>
+              </div>
+              <div style={{ color: "#888", fontSize: 10, marginTop: 4 }}>{meta.description}</div>
+            </>
+          )}
         </div>
         <ConnectionsSection selected={selected} agents={agents} />
       </div>

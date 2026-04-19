@@ -1,4 +1,4 @@
-import { AGENT_COLORS, TOOL_NODES, peersOf, type AgentKey, type AgentInfo, type Selection } from "../types";
+import { AGENT_COLORS, TOOL_NODES, DATA_NODES, peersOf, type AgentKey, type AgentInfo, type Selection } from "../types";
 
 const CARD_WIDTH = 120;
 const CARD_GAP = 12;
@@ -90,7 +90,7 @@ function ProtocolLink({ id, label, color, dashed }: { id: string; label: string;
 export function AgentGraph({ agents, selected, highlightedAgent, onSelect }: Props) {
   const onlineCount = agents.filter(a => a.online).length;
   const hasSelection = selected !== null;
-  const peers = peersOf(selected, agents, TOOL_NODES);
+  const peers = peersOf(selected, agents, TOOL_NODES, DATA_NODES);
 
   const userGlow = deriveGlow(false, peers.has("user"), hasSelection);
   const orchestratorGlow = deriveGlow(selected?.kind === "orchestrator", peers.has("orchestrator"), hasSelection);
@@ -159,6 +159,36 @@ export function AgentGraph({ agents, selected, highlightedAgent, onSelect }: Pro
                   <div style={{ fontSize: 22 }}>🔧</div>
                   <div style={{ color: "#aaa", marginTop: 4, fontSize: 11 }}>{tool.name}</div>
                   <div style={{ color: "#555", fontSize: 9 }}>{tool.port}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* DATA branch */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <ProtocolLink id="arrow-sql" label="SQL" color="#888" />
+          <div style={CLUSTER_LABEL}>DATA</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: CARD_GAP, justifyContent: "center" }}>
+            {DATA_NODES.map(d => {
+              const isSelected = selected?.kind === "data" && selected.name === d.name;
+              const isPeer = peers.has(`data:${d.name}`);
+              const state = deriveGlow(isSelected, isPeer, hasSelection);
+              return (
+                <div
+                  key={d.name}
+                  onClick={() => onSelect(isSelected ? null : { kind: "data", name: d.name })}
+                  data-node={`data-${d.name}`}
+                  data-glow={state}
+                  style={{
+                    ...NODE_CARD_BASE,
+                    border: `1px solid ${isSelected ? "#aaa" : "#444"}`,
+                    ...glowStyle(state, "#aaaaaa"),
+                  }}
+                >
+                  <div style={{ fontSize: 22 }}>💾</div>
+                  <div style={{ color: "#aaa", marginTop: 4, fontSize: 11 }}>{d.name}</div>
+                  <div style={{ color: "#555", fontSize: 9 }}>{d.port}</div>
                 </div>
               );
             })}
