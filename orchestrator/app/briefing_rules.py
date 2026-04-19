@@ -67,3 +67,40 @@ def medication_missed_rule(metrics: dict) -> Alert | None:
 
 
 RULES.append(medication_missed_rule)
+
+
+def body_weight_gain_rule(metrics: dict) -> Alert | None:
+    body = metrics.get("body") or {}
+    latest = body.get("latest")
+    rows = body.get("recent_90d") or []
+    if not latest or latest.get("weight_kg") is None:
+        return None
+    latest_ts = latest["recorded_at"]
+    target = latest_ts - timedelta(days=7)
+    ref = None
+    best_delta = timedelta(days=3)  # strictly-less sentinel = matches < 3 days
+    for r in rows:
+        if r.get("weight_kg") is None:
+            continue
+        if r["recorded_at"] == latest_ts:
+            continue
+        d = abs(r["recorded_at"] - target)
+        if d <= timedelta(days=2) and d < best_delta:
+            ref, best_delta = r, d
+    if ref is None:
+        return None
+    delta = latest["weight_kg"] - ref["weight_kg"]
+    if delta < 1.5:
+        return None
+    msg = (f"weight +{delta:.1f} kg in 7 days "
+           f"({ref['weight_kg']:.1f} → {latest['weight_kg']:.1f})")
+    return Alert(
+        rule_id="body.weight_gain.7d",
+        severity="warn",
+        message=msg,
+        category="wellness",
+        throttle_hours=24,
+    )
+
+
+RULES.append(body_weight_gain_rule)
