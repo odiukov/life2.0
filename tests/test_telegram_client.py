@@ -48,12 +48,15 @@ async def test_ask_orchestrator_accumulates_text_deltas():
     ]
     client = _build_stream_client(_sse_lines(events))
     with patch("telegram_bot.app.client.httpx.AsyncClient", return_value=client):
-        result = await ask_orchestrator("I slept 7 hours")
+        result = await ask_orchestrator("I slept 7 hours", "tg-1-2026-04-19-v0")
 
     args, kwargs = client.stream.call_args
     assert args[0] == "POST"
     assert args[1] == "http://orchestrator:8000/chat/stream"
-    assert kwargs["json"] == {"messages": [{"role": "user", "content": "I slept 7 hours"}]}
+    assert kwargs["json"] == {
+        "threadId": "tg-1-2026-04-19-v0",
+        "messages": [{"role": "user", "content": "I slept 7 hours"}],
+    }
     assert result == "You slept well."
 
 
@@ -61,7 +64,7 @@ async def test_ask_orchestrator_accumulates_text_deltas():
 async def test_ask_orchestrator_empty_stream_returns_placeholder():
     client = _build_stream_client([])
     with patch("telegram_bot.app.client.httpx.AsyncClient", return_value=client):
-        result = await ask_orchestrator("test")
+        result = await ask_orchestrator("test", "tg-1-2026-04-19-v0")
     assert result == "(empty response)"
 
 
@@ -69,7 +72,7 @@ async def test_ask_orchestrator_empty_stream_returns_placeholder():
 async def test_ask_orchestrator_on_request_error_returns_friendly_message():
     client = _build_stream_client(exc=httpx.RequestError("connection refused"))
     with patch("telegram_bot.app.client.httpx.AsyncClient", return_value=client):
-        result = await ask_orchestrator("test")
+        result = await ask_orchestrator("test", "tg-1-2026-04-19-v0")
     assert "unavailable" in result.lower()
 
 
@@ -82,5 +85,5 @@ async def test_ask_orchestrator_on_http_status_error_returns_friendly_message():
     status_err = httpx.HTTPStatusError("500", request=mock_request, response=mock_resp)
     client = _build_stream_client([], raise_status=status_err)
     with patch("telegram_bot.app.client.httpx.AsyncClient", return_value=client):
-        result = await ask_orchestrator("test")
+        result = await ask_orchestrator("test", "tg-1-2026-04-19-v0")
     assert "500" in result

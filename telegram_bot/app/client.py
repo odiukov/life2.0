@@ -7,7 +7,7 @@ ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://orchestrator:8000"
 SYNC_SERVICE_URL = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:8080")
 
 
-async def ask_orchestrator(message: str) -> str:
+async def ask_orchestrator(message: str, thread_id: str) -> str:
     """POST message to orchestrator /chat/stream, accumulate text deltas, return final string."""
     parts: list[str] = []
     try:
@@ -15,7 +15,10 @@ async def ask_orchestrator(message: str) -> str:
             async with client.stream(
                 "POST",
                 f"{ORCHESTRATOR_URL}/chat/stream",
-                json={"messages": [{"role": "user", "content": message}]},
+                json={
+                    "threadId": thread_id,
+                    "messages": [{"role": "user", "content": message}],
+                },
             ) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
