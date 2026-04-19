@@ -131,3 +131,23 @@ def body_fat_high_rule(metrics: dict) -> Alert | None:
 
 
 RULES.append(body_fat_high_rule)
+
+
+def body_no_data_rule(metrics: dict) -> Alert | None:
+    body = metrics.get("body") or {}
+    latest = body.get("latest")
+    if latest is None:
+        return None
+    age = datetime.now(timezone.utc) - latest["recorded_at"]
+    if age < timedelta(days=14):
+        return None
+    return Alert(
+        rule_id="body.no_data.14d",
+        severity="info",
+        message=f"no body measurement in {age.days} days",
+        category="wellness",
+        throttle_hours=168,
+    )
+
+
+RULES.append(body_no_data_rule)

@@ -187,3 +187,33 @@ def test_body_fat_high_silent_on_flat_baseline():
               "lean_mass_kg": None, "bmi": None, "recorded_at": now}
     metrics = {"body": {"latest": latest, "recent_90d": [latest, *rows]}}
     assert body_fat_high_rule(metrics) is None
+
+
+def test_body_no_data_fires_when_latest_is_15_days_old():
+    from orchestrator.app.briefing_rules import body_no_data_rule
+    now = datetime.now(timezone.utc)
+    latest = {"weight_kg": 82.0, "body_fat_pct": None,
+              "lean_mass_kg": None, "bmi": None,
+              "recorded_at": now - timedelta(days=15)}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest]}}
+    alert = body_no_data_rule(metrics)
+    assert alert is not None
+    assert alert.rule_id == "body.no_data.14d"
+    assert alert.severity == "info"
+    assert alert.throttle_hours == 168
+    assert "15 days" in alert.message
+
+
+def test_body_no_data_silent_when_latest_is_13_days_old():
+    from orchestrator.app.briefing_rules import body_no_data_rule
+    now = datetime.now(timezone.utc)
+    latest = {"weight_kg": 82.0, "body_fat_pct": None,
+              "lean_mass_kg": None, "bmi": None,
+              "recorded_at": now - timedelta(days=13)}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest]}}
+    assert body_no_data_rule(metrics) is None
+
+
+def test_body_no_data_silent_when_body_is_none():
+    from orchestrator.app.briefing_rules import body_no_data_rule
+    assert body_no_data_rule({"body": None}) is None
