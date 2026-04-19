@@ -26,7 +26,7 @@ _BOT_COMMANDS: list[BotCommand] = [
 async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
-from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard, medication_a2a_call
+from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync, fetch_dashboard, medication_a2a_call, upload_finance_csv
 from .threads import bump_reset_count, compute_thread_id
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
@@ -150,6 +150,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(reply)
         return
     await _reply(update, update.message.text)
+
+
+async def handle_finance_csv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    doc = update.message.document
+    if not doc:
+        return
+    thinking = await update.message.reply_text("Обрабатываю CSV…")
+    tg_file = await doc.get_file()
+    blob = bytes(await tg_file.download_as_bytearray())
+    result = await upload_finance_csv(blob, filename=doc.file_name or "payoneer.csv")
+    if "error" in result:
+        await thinking.edit_text(result["error"])
+        return
+    await thinking.edit_text(result.get("summary", "(empty summary)"))
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -401,6 +415,12 @@ def main() -> None:
     app.add_handler(CommandHandler("dashboard", cmd_dashboard))
     app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(
+        MessageHandler(
+            filters.Document.MimeType("text/csv") | filters.Document.FileExtension("csv"),
+            handle_finance_csv,
+        )
+    )
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
     app.run_polling()

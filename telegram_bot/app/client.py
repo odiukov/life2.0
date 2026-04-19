@@ -169,3 +169,20 @@ async def medication_a2a_call(skill: str, message: str, params: dict | None = No
                     if text:
                         out = text
     return out
+
+
+async def upload_finance_csv(csv_bytes: bytes, filename: str = "payoneer.csv") -> dict:
+    """POST CSV bytes to orchestrator /finance/upload. Returns the JSON body."""
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{ORCHESTRATOR_URL}/finance/upload",
+                files={"csv": (filename, csv_bytes, "text/csv")},
+            )
+            resp.raise_for_status()
+            return resp.json()
+    except httpx.RequestError as e:
+        return {"error": f"Orchestrator unavailable: {e}"}
+    except httpx.HTTPStatusError as e:
+        detail = e.response.text[:300]
+        return {"error": f"Upload failed ({e.response.status_code}): {detail}"}
