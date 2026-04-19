@@ -17,6 +17,7 @@ _BOT_COMMANDS: list[BotCommand] = [
     BotCommand("habits", "Список привычек + отметка"),
     BotCommand("habit", "Отметка привычки / создание / архив"),
     BotCommand("sync", "Запустить утренний синк + бриф вручную"),
+    BotCommand("new", "Начать новый разговор (сбросить контекст)"),
 ]
 
 
@@ -24,6 +25,7 @@ async def _set_commands(app: Application) -> None:
     await app.bot.set_my_commands(_BOT_COMMANDS)
 
 from .client import ask_orchestrator, sync_body_pdf, habits_a2a_call, trigger_full_sync
+from .threads import bump_reset_count, compute_thread_id
 from .habits_ui import on_habit_callback
 from .vihealth import build_sync_payload
 from .coach import CoachLoop, CoachAlreadyActive, CoachUnavailable, default_llm_call, default_log_mood_call
@@ -48,8 +50,9 @@ except Exception as e:
 
 async def _reply(update: Update, message: str) -> None:
     """Send message to orchestrator and reply with the result."""
+    thread_id = compute_thread_id(update.effective_chat.id)
     thinking = await update.message.reply_text("...")
-    output = await ask_orchestrator(message)
+    output = await ask_orchestrator(message, thread_id)
     if len(output) > 4096:
         output = output[:4090] + "\n[truncated]"
     try:
@@ -110,6 +113,12 @@ async def cmd_coach(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Coach unavailable right now, try later.")
         return
     await update.message.reply_text(reply)
+
+
+async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reset the current Telegram conversation thread for this chat."""
+    bump_reset_count(update.effective_chat.id)
+    await update.message.reply_text("Новый разговор начат ✨")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -282,6 +291,7 @@ def main() -> None:
     app.add_handler(CommandHandler("habit", cmd_habit))
     app.add_handler(CommandHandler("habits", cmd_habits))
     app.add_handler(CommandHandler("sync", cmd_sync))
+    app.add_handler(CommandHandler("new", cmd_new))
     app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
