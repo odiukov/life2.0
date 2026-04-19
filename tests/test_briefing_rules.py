@@ -172,3 +172,18 @@ def test_body_fat_high_silent_when_below_p90():
 def test_body_fat_high_silent_when_no_body():
     from orchestrator.app.briefing_rules import body_fat_high_rule
     assert body_fat_high_rule({"body": None}) is None
+
+
+def test_body_fat_high_silent_on_flat_baseline():
+    """When all historical fats are identical, p90 == every point. Rule must
+    stay silent to avoid weekly spam on a stable baseline."""
+    from orchestrator.app.briefing_rules import body_fat_high_rule
+    now = datetime.now(timezone.utc)
+    fats = [18.0] * 10
+    rows = [{"weight_kg": None, "body_fat_pct": v,
+             "lean_mass_kg": None, "bmi": None,
+             "recorded_at": now - timedelta(days=i)} for i, v in enumerate(fats)]
+    latest = {"weight_kg": None, "body_fat_pct": 18.0,
+              "lean_mass_kg": None, "bmi": None, "recorded_at": now}
+    metrics = {"body": {"latest": latest, "recent_90d": [latest, *rows]}}
+    assert body_fat_high_rule(metrics) is None

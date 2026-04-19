@@ -114,6 +114,8 @@ def body_fat_high_rule(metrics: dict) -> Alert | None:
             if r is not latest and r.get("body_fat_pct") is not None]
     if len(fats) < 10:
         return None
+    if max(fats) == min(fats):
+        return None  # flat baseline — p90 == every other reading, would spam
     p90 = statistics.quantiles(fats, n=10)[8]
     latest_fat = latest.get("body_fat_pct")
     if latest_fat is None or latest_fat < p90:
