@@ -103,6 +103,26 @@ def build_dashboard(metrics: dict, insight: str | None) -> str:
             ]
             lines.append("  Today: " + " · ".join(today_bits))
 
+    medication = metrics.get("medication")
+    if medication and medication.get("active"):
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        last_by_name: dict[str, datetime] = {}
+        for r in medication.get("logs") or []:
+            n, ts = r.get("name"), r.get("recorded_at")
+            if n and ts and (n not in last_by_name or ts > last_by_name[n]):
+                last_by_name[n] = ts
+        bits = []
+        for m in medication["active"]:
+            last = last_by_name.get(m["name"])
+            if last is None:
+                tail = "not logged in 7d"
+            else:
+                hrs = int((now - last).total_seconds() // 3600)
+                tail = f"last {hrs}h ago" if hrs >= 1 else "last <1h ago"
+            bits.append(f"{m['name']} ({m['schedule']}, {tail})")
+        lines.append("💊 Medications: " + "; ".join(bits))
+
     recovery = metrics.get("recovery")
     if recovery:
         bucket = recovery["bucket"]
