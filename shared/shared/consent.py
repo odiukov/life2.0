@@ -99,12 +99,17 @@ class ConsentSpanExporter(SpanExporter):
         )
 
     def _redact_event(self, event):
+        # LLM instrumentors use span events for prompt/completion content with
+        # multiple schemas (OpenLLMetry uses "prompt"/"completion", new OTEL GenAI
+        # semconv uses "gen_ai.user.message" etc, some libs use "message"). Rather
+        # than maintain a fragile allowlist, redact all event attributes when the
+        # user hasn't consented — events in non-LLM spans rarely carry content
+        # that matters for debugging anyway, and this is the conservative default.
         name = getattr(event, "name", "") or ""
-        if not any(name.startswith(p) for p in self.SENSITIVE_EVENT_PREFIXES):
-            return event
-        # Build a new Event with redacted attributes but preserved name/timestamp.
-        from opentelemetry.sdk.trace import Event
         ev_attrs = dict(getattr(event, "attributes", None) or {})
+        if not ev_attrs:
+            return event
+        from opentelemetry.sdk.trace import Event
         redacted = {k: "[REDACTED]" for k in ev_attrs}
         return Event(name=name, attributes=redacted, timestamp=getattr(event, "timestamp", None))
 
