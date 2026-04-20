@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["ESLINT_USE_FLAT_CONFIG"],
   "tasks": {
     "build": {
       "outputs": ["dist/**", ".next/**"],

@@ -23,6 +23,8 @@ module.exports = {
     'react-native/no-color-literals': 'error',
     'react-native/no-inline-styles': 'warn',
     'react-native/no-raw-text': 'off',
+    'react-native/no-unused-styles': 'error',
+    'react-native/split-platform-components': 'error',
   },
   ignorePatterns: ['node_modules/', 'dist/', '.expo/', 'ios/', 'android/'],
 };
