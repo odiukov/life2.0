@@ -123,8 +123,27 @@ def install_consent_pipeline() -> None:
 
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     for sp in span_processors:
-        if isinstance(sp, BatchSpanProcessor):
-            inner = getattr(sp, "span_exporter", None)
+        if not isinstance(sp, BatchSpanProcessor):
+            continue
+        # SDK 1.27+: actual exporter lives on sp._batch_processor._exporter
+        # (sp.span_exporter is a read-only property). Fall back to the
+        # property name for older SDKs where it was still writable.
+        bp = getattr(sp, "_batch_processor", None)
+        if bp is not None and hasattr(bp, "_exporter"):
+            inner = bp._exporter
             if inner is not None and not isinstance(inner, ConsentSpanExporter):
+                bp._exporter = ConsentSpanExporter(inner)
+                log.info(
+                    "install_consent_pipeline: wrapped BatchProcessor._exporter with ConsentSpanExporter"
+                )
+                continue
+        inner = getattr(sp, "span_exporter", None)
+        if inner is not None and not isinstance(inner, ConsentSpanExporter):
+            try:
                 sp.span_exporter = ConsentSpanExporter(inner)
-                log.info("install_consent_pipeline: wrapped BatchSpanProcessor exporter with ConsentSpanExporter")
+                log.info("install_consent_pipeline: wrapped span_exporter (legacy path)")
+            except AttributeError:
+                log.warning(
+                    "install_consent_pipeline: could not wrap exporter — "
+                    "neither _batch_processor._exporter nor span_exporter is mutable"
+                )
