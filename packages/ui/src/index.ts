@@ -6,3 +6,4 @@ export { MetricChip } from './components/MetricChip';
 export { Bubble } from './components/Bubble';
 export { AgentBadge, type AgentId } from './components/AgentBadge';
 export { AskBar } from './components/AskBar';
+export { AgentMark } from './components/AgentMark';

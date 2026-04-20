@@ -15,6 +15,9 @@
     "react-native-svg": "*"
   },
   "devDependencies": {
+    "@svgr/cli": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "@svgr/plugin-svgo": "^8.1.0",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~18.3.0",
@@ -23,6 +26,7 @@
     "react-native": "0.76.3",
     "react-native-svg": "15.8.0",
     "react-test-renderer": "^18.3.1",
+    "svgo": "^4.0.1",
     "ts-jest": "^29.4.9"
   },
   "dependencies": {

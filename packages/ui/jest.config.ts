@@ -10,6 +10,8 @@ const config: Config = {
   moduleNameMapper: {
     '^react-native-safe-area-context$':
       '<rootDir>/src/__mocks__/react-native-safe-area-context.tsx',
+    '^react-native-svg$':
+      '<rootDir>/src/__mocks__/react-native-svg.tsx',
   },
 };
 
