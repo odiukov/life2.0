@@ -1,3 +1,6 @@
+from shared.telemetry import init_telemetry, instrument_fastapi_app
+init_telemetry("sync-service")
+
 import logging
 from contextlib import asynccontextmanager
 
@@ -17,6 +20,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="sync-service", lifespan=lifespan)
+instrument_fastapi_app(app)
 
 
 @app.post("/sync")

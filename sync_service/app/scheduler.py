@@ -9,6 +9,26 @@ from apscheduler.triggers.cron import CronTrigger
 logger = logging.getLogger(__name__)
 
 
+from opentelemetry import trace as _otel_trace
+from shared.telemetry import set_span_user
+
+_job_tracer = _otel_trace.get_tracer("sync.scheduler")
+
+
+def traced_job(name: str):
+    """Wrap an APScheduler-scheduled async function in a root span."""
+    def deco(fn):
+        async def wrapped(*a, **kw):
+            with _job_tracer.start_as_current_span(f"sync.{name}") as span:
+                span.set_attribute("job.name", name)
+                set_span_user()
+                return await fn(*a, **kw)
+        wrapped.__name__ = fn.__name__
+        wrapped.__doc__ = fn.__doc__
+        return wrapped
+    return deco
+
+
 def start_scheduler() -> None:
     scheduler = AsyncIOScheduler()
 
@@ -51,6 +71,7 @@ def start_scheduler() -> None:
     )
 
 
+@traced_job("daily_sync")
 async def run_daily_sync() -> dict:
     from .sync import do_sync, do_nutrition_sync  # late import to avoid circular at module load
 
@@ -89,6 +110,7 @@ async def trigger_briefing(orchestrator_url: str) -> None:
         logger.warning(f"Daily briefing trigger failed: {e}")
 
 
+@traced_job("mood_checkin")
 async def _send_mood_checkin() -> None:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
