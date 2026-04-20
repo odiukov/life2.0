@@ -12,6 +12,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-native": "^5.0.0",
     "prettier": "^3.3.3",
     "turbo": "^2.1.0",
     "typescript": "^5.4.5"

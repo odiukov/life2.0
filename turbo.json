@@ -1,0 +1,13 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**", ".next/**"],
+      "dependsOn": ["^build"]
+    },
+    "lint": { "outputs": [] },
+    "typecheck": { "outputs": ["*.tsbuildinfo"] },
+    "test": { "outputs": [] },
+    "dev": { "cache": false, "persistent": true }
+  }
+}
