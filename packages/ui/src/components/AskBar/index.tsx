@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTheme } from '../../theme';
+import { Icon } from '../Icon';
 
 export function AskBar({
   onSubmit,
@@ -43,27 +44,18 @@ export function AskBar({
         blurOnSubmit={false}
       />
       <Pressable testID="ask-mic" onPress={onVoice} hitSlop={8}>
-        <MicGlyph color={colors.accentHi} />
+        <Icon name="Microphone" size={20} color={colors.accentHi} testID="ask-mic-icon" />
       </Pressable>
       <Pressable testID="ask-action" onPress={onAction} hitSlop={8} style={{ marginLeft: spacing.s2 }}>
-        <PlusGlyph color={colors.accentHi} />
+        <Icon name="Plus" size={20} color={colors.accentHi} testID="ask-plus-icon" />
       </Pressable>
       <Pressable testID="ask-send" onPress={send} hitSlop={8} style={{ marginLeft: spacing.s2 }}>
-        <SendGlyph color={value.trim() ? colors.accentHi : colors.fg3} />
+        <Icon name="PaperPlaneRight" size={20} color={value.trim() ? colors.accentHi : colors.fg3} testID="ask-send-icon" weight="fill" />
       </Pressable>
     </View>
   );
 }
 
-function MicGlyph({ color }: { color: string }) {
-  return <View style={{ width: 20, height: 20 }}>{/* replaced by phosphor icon in Task 8 */}</View>;
-}
-function PlusGlyph({ color }: { color: string }) {
-  return <View style={{ width: 20, height: 20 }}>{/* replaced by phosphor icon in Task 8 */}</View>;
-}
-function SendGlyph({ color }: { color: string }) {
-  return <View style={{ width: 20, height: 20 }}>{/* replaced by phosphor icon in Task 8 */}</View>;
-}
 
 const styles = StyleSheet.create({
   bar: { borderWidth: 1, flexDirection: 'row', alignItems: 'flex-end' },

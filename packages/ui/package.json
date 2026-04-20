@@ -30,6 +30,7 @@
     "ts-jest": "^29.4.9"
   },
   "dependencies": {
+    "phosphor-react-native": "^3.0.4",
     "react-native-safe-area-context": "^5.7.0"
   }
 }
