@@ -63,8 +63,13 @@ def init_telemetry(
     pub = os.environ.get("LANGFUSE_PUBLIC_KEY")
     sec = os.environ.get("LANGFUSE_SECRET_KEY")
     if pub and sec and "OTEL_EXPORTER_OTLP_HEADERS" not in os.environ:
+        from urllib.parse import quote
         token = base64.b64encode(f"{pub}:{sec}".encode()).decode()
-        os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {token}"
+        # OTEL spec: header VALUES in OTEL_EXPORTER_OTLP_HEADERS must be URL-encoded
+        # if they contain '=' or ','. Base64 padding '==' triggers the warning and,
+        # on stricter SDK versions, drops headers entirely. `quote(safe="")` escapes '='.
+        auth_value = quote(f"Basic {token}", safe="")
+        os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization={auth_value}"
         # Mirror for Traceloop's header reader as well.
         os.environ.setdefault(
             "TRACELOOP_HEADERS", os.environ["OTEL_EXPORTER_OTLP_HEADERS"]

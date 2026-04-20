@@ -58,6 +58,7 @@ def test_capture_metadata_sets_traceloop_content_false(monkeypatch):
 
 
 def test_otlp_headers_built_from_pub_sec(monkeypatch):
+    from urllib.parse import unquote
     monkeypatch.setenv("TELEMETRY_ENABLED", "true")
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-x")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-y")
@@ -65,8 +66,11 @@ def test_otlp_headers_built_from_pub_sec(monkeypatch):
     from shared import telemetry
     telemetry.init_telemetry("svc")
     hdr = os.environ["OTEL_EXPORTER_OTLP_HEADERS"]
-    assert hdr.startswith("Authorization=Basic ")
-    token = hdr.split("Basic ", 1)[1]
+    # Value is URL-encoded per OTEL spec (so base64 "==" padding doesn't break parsing).
+    assert hdr.startswith("Authorization=")
+    raw_value = unquote(hdr.split("Authorization=", 1)[1])
+    assert raw_value.startswith("Basic ")
+    token = raw_value.split("Basic ", 1)[1]
     decoded = base64.b64decode(token).decode()
     assert decoded == "pk-x:sk-y"
 
