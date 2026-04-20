@@ -1,2 +1,2 @@
 export * from './tokens';
-export * from './theme';
+export { ThemeProvider, ThemeContext, useTheme } from './theme';

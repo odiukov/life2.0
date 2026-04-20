@@ -6,7 +6,7 @@ import { radius } from '../tokens/radius';
 
 type ThemeValue = {
   mode: ThemeMode;
-  colors: (typeof colorsByMode)['dark'];
+  colors: (typeof colorsByMode)[ThemeMode];
   typography: typeof typography;
   spacing: typeof spacing;
   radius: typeof radius;
