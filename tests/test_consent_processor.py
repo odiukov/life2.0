@@ -83,6 +83,36 @@ def test_consent_denied_redacts_sensitive_attrs():
     assert out.attributes["http.method"] == "POST"
 
 
+def test_consent_denied_redacts_langchain_and_system_instructions():
+    """Regression: LangChain callback emits gen_ai.task.input/output with raw
+    prompts and responses; Anthropic/OpenAI/Gemini instrumentors emit
+    gen_ai.system_instructions; all LLM SDKs emit gen_ai.tool.definitions.
+    None were covered by the original SENSITIVE_PREFIXES list."""
+    from shared.consent import ConsentSpanExporter
+    inner = _CapturingInner()
+    exp = ConsentSpanExporter(inner)
+
+    span = _make_readable_span({
+        "telemetry.bodies_ok": "0",
+        "gen_ai.task.input": '{"messages":[{"role":"user","content":"my mood is 3/10"}]}',
+        "gen_ai.task.output": '{"content":"sorry to hear that"}',
+        "gen_ai.system_instructions": "You are a health coach. User has depression.",
+        "gen_ai.tool.definitions": '[{"name":"log_mood","parameters":{}}]',
+        "gen_ai.usage.input_tokens": 100,
+        "http.method": "POST",
+    })
+    exp.export([span])
+
+    out = inner.captured[0]
+    assert out.attributes["gen_ai.task.input"] == "[REDACTED]"
+    assert out.attributes["gen_ai.task.output"] == "[REDACTED]"
+    assert out.attributes["gen_ai.system_instructions"] == "[REDACTED]"
+    assert out.attributes["gen_ai.tool.definitions"] == "[REDACTED]"
+    # Non-sensitive: preserved.
+    assert out.attributes["gen_ai.usage.input_tokens"] == 100
+    assert out.attributes["http.method"] == "POST"
+
+
 def test_consent_absent_defaults_to_redact():
     from shared.consent import ConsentSpanExporter
     inner = _CapturingInner()

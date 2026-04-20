@@ -84,14 +84,27 @@ async def chat_stream(req: StreamChatRequest):
 
     from shared.telemetry import set_span_user, set_span_session
     from opentelemetry import baggage as _otel_baggage, context as _otel_context
-    from .consent_resolver import is_consented
     import os as _os
+    import logging as _logging
 
     set_span_session(thread_id)
     set_span_user()
 
-    _user_for_consent = _os.environ.get("LANGFUSE_DEFAULT_USER_ID", "owner")
-    _bodies_ok = await is_consented(_user_for_consent)
+    # Consent resolution: only needed in `consented` mode, and must NEVER
+    # break the chat handler (telemetry-never-breaks-the-app invariant).
+    # In non-consented modes the baggage is written but nothing downstream
+    # reads it (ConsentSpanExporter isn't installed), so skip the DB hit.
+    _bodies_ok = True
+    if _os.environ.get("TELEMETRY_CAPTURE_BODIES", "full").lower() == "consented":
+        try:
+            from .consent_resolver import is_consented
+            _user_for_consent = _os.environ.get("LANGFUSE_DEFAULT_USER_ID", "owner")
+            _bodies_ok = await is_consented(_user_for_consent)
+        except Exception as _e:
+            _logging.getLogger(__name__).warning(
+                "consent lookup failed, defaulting to bodies_ok=False: %s", _e
+            )
+            _bodies_ok = False  # fail-closed for privacy
 
     user_messages = [m for m in req.messages if m.get("role") == "user"]
     if not user_messages:

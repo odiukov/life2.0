@@ -54,6 +54,16 @@ class ConsentSpanExporter(SpanExporter):
         # (Langfuse consumes them into observation.input / .output during ingestion).
         "gen_ai.input.",
         "gen_ai.output.",
+        # System prompt: set by Anthropic/OpenAI/Gemini/Bedrock/LangChain instrumentors.
+        # Exact attribute name, so prefix match works.
+        "gen_ai.system_instructions",
+        # LangChain callback_handler emits raw chain/task I/O as JSON under these keys.
+        # Critical — this is where LangChain prompts + responses actually leak.
+        "gen_ai.task.input",
+        "gen_ai.task.output",
+        # Tool schemas (all LLM SDKs): may include user-sensitive enum values,
+        # app-specific data labels, or user-controllable definitions.
+        "gen_ai.tool.definitions",
         # Traceloop's proprietary mirror
         "traceloop.entity.input",
         "traceloop.entity.output",
