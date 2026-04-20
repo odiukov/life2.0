@@ -54,6 +54,17 @@ class ConsentSpanExporter(SpanExporter):
         "llm.response.",
     )
 
+    # OTEL GenAI semconv (2024+) emits content via span EVENTS, not attributes:
+    # gen_ai.user.message, gen_ai.system.message, gen_ai.assistant.message,
+    # gen_ai.tool.message, gen_ai.choice. Their bodies are sensitive too.
+    SENSITIVE_EVENT_PREFIXES = (
+        "gen_ai.user.message",
+        "gen_ai.system.message",
+        "gen_ai.assistant.message",
+        "gen_ai.tool.message",
+        "gen_ai.choice",
+    )
+
     def __init__(self, inner: SpanExporter):
         self._inner = inner
 
@@ -65,17 +76,20 @@ class ConsentSpanExporter(SpanExporter):
         attrs = span.attributes or {}
         if attrs.get("telemetry.bodies_ok") == "1":
             return span
-        redacted = {
+        redacted_attrs = {
             k: ("[REDACTED]" if any(k.startswith(p) for p in self.SENSITIVE_PREFIXES) else v)
             for k, v in attrs.items()
         }
+        redacted_events = tuple(
+            self._redact_event(e) for e in (span.events or ())
+        )
         return ReadableSpan(
             name=span.name,
             context=span.context,
             parent=span.parent,
             resource=span.resource,
-            attributes=redacted,
-            events=span.events,
+            attributes=redacted_attrs,
+            events=redacted_events,
             links=span.links,
             kind=span.kind,
             status=span.status,
@@ -83,6 +97,16 @@ class ConsentSpanExporter(SpanExporter):
             end_time=span.end_time,
             instrumentation_scope=span.instrumentation_scope,
         )
+
+    def _redact_event(self, event):
+        name = getattr(event, "name", "") or ""
+        if not any(name.startswith(p) for p in self.SENSITIVE_EVENT_PREFIXES):
+            return event
+        # Build a new Event with redacted attributes but preserved name/timestamp.
+        from opentelemetry.sdk.trace import Event
+        ev_attrs = dict(getattr(event, "attributes", None) or {})
+        redacted = {k: "[REDACTED]" for k in ev_attrs}
+        return Event(name=name, attributes=redacted, timestamp=getattr(event, "timestamp", None))
 
     def shutdown(self) -> None:
         self._inner.shutdown()
