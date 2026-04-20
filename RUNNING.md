@@ -382,3 +382,55 @@ Current alert rules (in `orchestrator/app/briefing_rules.py`):
 - `sleep.no_data.1d` — info, when yesterday has no sleep_session rows.
 - `medication.missed.2d` — warn, when an active medication has no
   `log_taken` event in the last 2 days.
+
+## Observability (Langfuse v3)
+
+The stack includes self-hosted Langfuse v3 for OTEL tracing of every user request across orchestrator, agents, Telegram bot, sync_service, and MCP calls.
+
+**UI:** http://localhost:3100 (not 3000 — that's CopilotKit runtime)
+
+**First-time bootstrap:** Langfuse v3 auto-creates the project + owner user + API keys from `LANGFUSE_INIT_*` env vars on first boot. No manual signup.
+
+**Required env** (in `.env`):
+- `LANGFUSE_SALT` — ≥32 char random string
+- `LANGFUSE_ENCRYPTION_KEY` — EXACTLY 64 hex chars. Generate: `openssl rand -hex 32`
+- `LANGFUSE_NEXTAUTH_SECRET` — ≥32 char random
+- `LANGFUSE_POSTGRES_PASSWORD`, `LANGFUSE_CLICKHOUSE_PASSWORD`, `LANGFUSE_REDIS_PASSWORD`, `LANGFUSE_MINIO_PASSWORD`
+- `LANGFUSE_INIT_USER_EMAIL`, `LANGFUSE_INIT_USER_PASSWORD`
+- `LANGFUSE_PUBLIC_KEY` — e.g. `pk-lf-lifeagents-owner`
+- `LANGFUSE_SECRET_KEY` — e.g. `sk-lf-<random>`
+
+**Telemetry consumer env** (applies to orchestrator + all agents + telegram-bot + sync-service):
+- `TELEMETRY_ENABLED=true`
+- `TELEMETRY_CAPTURE_BODIES=full` — options: `full` (default dev), `metadata` (no prompts/completions), `consented` (per-user opt-in via `telemetry_consent` table)
+- `LANGFUSE_DEFAULT_USER_ID=owner` — fallback for set_span_user(None)
+- `OTEL_EXPORTER_OTLP_ENDPOINT=http://langfuse-web:3000/api/public/otel`
+
+**Smoke:** `bash scripts/smoke-langfuse.sh`
+
+**Full-stack E2E smoke:** `bash scripts/smoke-telemetry-e2e.sh`
+
+**Wipe Langfuse state (dev only):** `bash scripts/wipe-langfuse.sh`
+
+**Consent table:** `telemetry_consent (user_id, bodies_ok, updated_at)`. Only meaningful in `consented` mode. Owner row auto-seeded with `bodies_ok=TRUE` by migration 0007.
+
+**Right-to-erasure:** `DELETE /api/public/traces?userId=<id>` via Langfuse public API. Works because every root span carries `langfuse.user.id`.
+
+**Startup order:** Langfuse services (postgres, clickhouse, redis, minio → worker → web) come up first. Application services do NOT `depends_on` Langfuse — telemetry is graceful-fallback; unreachable Langfuse logs a warning but never blocks the app.
+
+**RAM:** Langfuse stack adds ~2.2 GB overhead (clickhouse ~1GB, web+worker ~768MB, postgres+redis+minio ~450MB).
+
+**Troubleshooting:**
+- `langfuse-web` crash-looping with 'Bad encryption key' — `LANGFUSE_ENCRYPTION_KEY` is not exactly 64 hex chars.
+- First boot takes 60-90s (clickhouse initial schema migration). If `smoke-langfuse.sh` step 1 times out, extend its `seq 1 60` to `1 90`.
+- Traces not appearing: check `docker compose logs langfuse-worker` — worker drains queue; if it's crashed, traces pile up in Redis and never materialize.
+- If `ClickHouse unhealthy` on boot (ports 8123 refuse connection): IPv6 binding issue on docker-for-mac. The healthcheck uses `127.0.0.1` explicitly; if you see `localhost:8123` fall-through, re-pull the compose file.
+- Telegram bot logs `Header format invalid!` on init: `OTEL_EXPORTER_OTLP_HEADERS` must be URL-encoded (`shared.telemetry` does this automatically; if the warning returns after a refactor, confirm the Authorization value is URL-encoded not raw base64).
+
+**Consent mode switching (when moving from single-user dev to multi-user):**
+1. Set `TELEMETRY_CAPTURE_BODIES=consented` in `.env`.
+2. Ensure each user has a row in `telemetry_consent` with their actual `user_id`. Row absent → treated as `bodies_ok=FALSE` (conservative).
+3. In `orchestrator`, replace `LANGFUSE_DEFAULT_USER_ID` usage with JWT/session-sourced user_id when adding mobile auth.
+4. Redeploy; no code changes required.
+
+Verify: flip `telemetry_consent.bodies_ok` for a user, send a new `/chat/stream`, then check Langfuse trace — prompts should appear (consented=TRUE) or show `[REDACTED]` (consented=FALSE).
