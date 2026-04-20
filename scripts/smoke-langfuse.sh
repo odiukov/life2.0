@@ -7,7 +7,7 @@ source .env
 LANGFUSE_URL="${LANGFUSE_URL:-http://localhost:3100}"
 PUB="${LANGFUSE_PUBLIC_KEY}"
 SEC="${LANGFUSE_SECRET_KEY}"
-AUTH=$(printf '%s:%s' "$PUB" "$SEC" | base64)
+AUTH=$(printf '%s:%s' "$PUB" "$SEC" | base64 | tr -d '\n')
 
 echo "== 1/4: Waiting for langfuse-web health =="
 for i in $(seq 1 60); do
@@ -68,7 +68,7 @@ for i in $(seq 1 15); do
     fi
     sleep 1
     if [ "$i" = "15" ]; then
-        echo "FAIL: trace not visible after 15s"
+        echo "FAIL: trace not visible after 15s (check docker compose logs langfuse-worker)"
         exit 1
     fi
 done
