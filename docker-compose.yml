@@ -343,6 +343,7 @@ services:
       HABITS_AGENT_URL: http://agent-habits:8006/
       MEDICATION_AGENT_URL: http://agent-medication:8008/
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ALLOWED_USER_IDS: ${TELEGRAM_ALLOWED_USER_IDS:-}
     depends_on:
       orchestrator:
         condition: service_started

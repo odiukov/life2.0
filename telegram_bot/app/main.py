@@ -3,7 +3,7 @@ import os
 import re
 
 from telegram import BotCommand, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, ApplicationHandlerStop, CallbackQueryHandler, CommandHandler, MessageHandler, TypeHandler, filters, ContextTypes
 
 
 _BOT_COMMANDS: list[BotCommand] = [
@@ -36,6 +36,33 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+
+def _parse_allowlist(raw: str) -> tuple[frozenset[int], frozenset[str]]:
+    ids: set[int] = set()
+    usernames: set[str] = set()
+    for token in raw.replace(",", " ").split():
+        token = token.strip()
+        if not token:
+            continue
+        if token.lstrip("-").isdigit():
+            ids.add(int(token))
+        else:
+            usernames.add(token.lstrip("@").lower())
+    return frozenset(ids), frozenset(usernames)
+
+
+_ALLOWED_USER_IDS, _ALLOWED_USERNAMES = _parse_allowlist(os.environ.get("TELEGRAM_ALLOWED_USER_IDS", ""))
+
+
+async def _auth_guard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _ALLOWED_USER_IDS and not _ALLOWED_USERNAMES:
+        return
+    user = update.effective_user
+    uname = (user.username or "").lower() if user else ""
+    if user is None or (user.id not in _ALLOWED_USER_IDS and uname not in _ALLOWED_USERNAMES):
+        logger.warning("Blocked update from unauthorized user id=%s username=%s", getattr(user, "id", None), getattr(user, "username", None))
+        raise ApplicationHandlerStop
+
 
 _MAX_COACH_TURNS = int(os.environ.get("MAX_COACH_TURNS", "6"))
 
@@ -418,6 +445,11 @@ async def cmd_habits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 def main() -> None:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(_set_commands).build()
+    app.add_handler(TypeHandler(Update, _auth_guard), group=-1)
+    if _ALLOWED_USER_IDS or _ALLOWED_USERNAMES:
+        logger.info("Auth guard enabled: %d id(s), %d username(s)", len(_ALLOWED_USER_IDS), len(_ALLOWED_USERNAMES))
+    else:
+        logger.warning("TELEGRAM_ALLOWED_USER_IDS not set — bot is open to anyone who finds it")
     app.add_handler(CommandHandler("sleep", cmd_sleep))
     app.add_handler(CommandHandler("workout", cmd_workout))
     app.add_handler(CommandHandler("nutrition", cmd_nutrition))
