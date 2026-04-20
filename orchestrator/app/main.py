@@ -1,6 +1,8 @@
+"""Orchestrator HTTP entrypoint."""
+from __future__ import annotations
+
 from shared.telemetry import init_telemetry
 init_telemetry("orchestrator")
-"""Orchestrator HTTP entrypoint."""
 
 import json
 import uuid
