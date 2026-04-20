@@ -7,6 +7,10 @@ const config: Config = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testMatch: ['**/*.test.ts?(x)'],
+  moduleNameMapper: {
+    '^react-native-safe-area-context$':
+      '<rootDir>/src/__mocks__/react-native-safe-area-context.tsx',
+  },
 };
 
 export default config;
