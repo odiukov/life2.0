@@ -100,27 +100,27 @@ describe("AgentGraph (topology)", () => {
     expect(workoutCard.style.outline).toMatch(/#4a9eff/);
   });
 
-  it("renders the DATA cluster with payoneer-finance", () => {
+  it("renders the DATA cluster with finance node", () => {
     render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={() => {}} />);
     expect(screen.getByText("DATA")).toBeInTheDocument();
     expect(screen.getByText("SQL")).toBeInTheDocument();
-    expect(screen.getByText("payoneer-finance")).toBeInTheDocument();
-    expect(screen.getByText("csv/sql")).toBeInTheDocument();
+    expect(screen.getByText("finance")).toBeInTheDocument();
+    expect(screen.getByText("sql")).toBeInTheDocument();
   });
 
-  it("calls onSelect with data selection when payoneer-finance is clicked", () => {
+  it("calls onSelect with data selection when finance is clicked", () => {
     const onSelect = vi.fn();
     render(<AgentGraph agents={AGENTS} selected={null} highlightedAgent={null} onSelect={onSelect} />);
-    screen.getByText("payoneer-finance").click();
-    expect(onSelect).toHaveBeenCalledWith({ kind: "data", name: "payoneer-finance" });
+    screen.getByText("finance").click();
+    expect(onSelect).toHaveBeenCalledWith({ kind: "data", name: "finance" });
   });
 
-  it("highlights payoneer-finance as peer when orchestrator is selected", () => {
+  it("highlights finance as peer when orchestrator is selected", () => {
     const { container } = render(
       <AgentGraph agents={AGENTS} selected={{ kind: "orchestrator" }} highlightedAgent={null} onSelect={() => {}} />,
     );
     expect(
-      container.querySelector('[data-node="data-payoneer-finance"]')?.getAttribute("data-glow"),
+      container.querySelector('[data-node="data-finance"]')?.getAttribute("data-glow"),
     ).toBe("peer");
   });
 });

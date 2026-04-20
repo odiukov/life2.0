@@ -147,9 +147,9 @@ export interface DataNode {
 
 export const DATA_NODES: DataNode[] = [
   {
-    name: "payoneer-finance",
-    port: "csv/sql",
-    description: "CSV upload → finance_transactions. Tools: query_finance_summary / categories / runway.",
+    name: "finance",
+    port: "sql",
+    description: "Finance data in Postgres (finance_transactions). Currently ingests Payoneer PDF statements only; more sources can be added later. Tools: query_finance_summary / categories / runway.",
   },
 ];
 

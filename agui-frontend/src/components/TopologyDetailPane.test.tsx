@@ -125,14 +125,14 @@ describe("TopologyDetailPane", () => {
   it("renders data-node detail pane with name/port/description", () => {
     render(
       <TopologyDetailPane
-        selected={{ kind: "data", name: "payoneer-finance" }}
+        selected={{ kind: "data", name: "finance" }}
         agents={[]}
         stats={null}
         onClose={() => {}}
       />,
     );
-    expect(screen.getByText(/payoneer-finance/)).toBeInTheDocument();
-    expect(screen.getByText("csv/sql")).toBeInTheDocument();
-    expect(screen.getByText(/CSV upload/)).toBeInTheDocument();
+    expect(screen.getByText("finance")).toBeInTheDocument();
+    expect(screen.getByText("sql")).toBeInTheDocument();
+    expect(screen.getByText(/Payoneer PDF/)).toBeInTheDocument();
   });
 });
