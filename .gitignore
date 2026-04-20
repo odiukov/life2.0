@@ -18,3 +18,12 @@ gcp-oauth.keys.json
 mcp-config/**/*.json
 mcp-config/**/*.cache
 !mcp-config/**/.gitkeep
+
+node_modules/
+.turbo/
+*.tsbuildinfo
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/.expo/
