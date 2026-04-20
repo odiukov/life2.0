@@ -1,3 +1,29 @@
+from shared.telemetry import init_telemetry, set_span_user, set_span_session
+init_telemetry("telegram-bot")
+
+from opentelemetry import trace
+_telemetry_tracer = trace.get_tracer("telegram.bot")
+
+
+def traced_handler(name: str):
+    """Decorator that wraps a PTB handler in a root span + attaches user/session."""
+    def deco(fn):
+        async def wrapped(update, context):
+            with _telemetry_tracer.start_as_current_span(f"telegram.{name}") as span:
+                try:
+                    span.set_attribute("telegram.chat_id", update.effective_chat.id)
+                    span.set_attribute("telegram.command", name)
+                except Exception:
+                    pass
+                set_span_user()
+                set_span_session(f"tg-{update.effective_chat.id}")
+                return await fn(update, context)
+        wrapped.__name__ = fn.__name__
+        wrapped.__doc__ = fn.__doc__
+        return wrapped
+    return deco
+
+
 import logging
 import os
 import re
@@ -91,36 +117,43 @@ async def _reply(update: Update, message: str) -> None:
         await update.message.reply_text(output)
 
 
+@traced_handler("sleep")
 async def cmd_sleep(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "analyze my sleep"
     await _reply(update, f"sleep {text}")
 
 
+@traced_handler("workout")
 async def cmd_workout(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "analyze my workout"
     await _reply(update, f"workout {text}")
 
 
+@traced_handler("nutrition")
 async def cmd_nutrition(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "analyze my nutrition"
     await _reply(update, f"nutrition {text}")
 
 
+@traced_handler("body")
 async def cmd_body(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "what's my current body composition"
     await _reply(update, f"body {text}")
 
 
+@traced_handler("mood")
 async def cmd_mood(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "how has my mood been lately"
     await _reply(update, f"mood {text}")
 
 
+@traced_handler("journal")
 async def cmd_journal(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = " ".join(context.args) if context.args else "journal entry placeholder"
     await _reply(update, f"mood {text}")
 
 
+@traced_handler("coach")
 async def cmd_coach(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if _COACH is None:
         await update.message.reply_text("Coach unavailable (GROQ_API_KEY not set).")
@@ -145,12 +178,14 @@ async def cmd_coach(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(reply)
 
 
+@traced_handler("new")
 async def cmd_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Reset the current Telegram conversation thread for this chat."""
     bump_reset_count(update.effective_chat.id)
     await update.message.reply_text("Новый разговор начат ✨")
 
 
+@traced_handler("dashboard")
 async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     thinking = await update.message.reply_text("Собираю дашборд...")
     try:
@@ -166,6 +201,7 @@ async def cmd_dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text(text)
 
 
+@traced_handler("text")
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.effective_chat.id
     if _COACH is not None and _COACH.has_session(chat_id):
@@ -197,6 +233,7 @@ def _looks_like_payoneer(pdf_bytes: bytes) -> bool:
     return "Payoneer" in first or "Account Statement" in first
 
 
+@traced_handler("document")
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Single PDF dispatcher: route Payoneer statements to finance, everything
     else (default = Lescale/ViHealth) to the body-composition sync path."""
@@ -280,6 +317,7 @@ def parse_habit_args(args: list[str]) -> dict:
         return {"name": name, "note": " ".join(args[1:])}
 
 
+@traced_handler("habit")
 async def cmd_habit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     args = context.args or []
     parsed = parse_habit_args(args)
@@ -358,6 +396,7 @@ def parse_med_args(args: list[str]) -> dict:
     return out
 
 
+@traced_handler("med")
 async def cmd_med(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     args = context.args or []
     parsed = parse_med_args(args)
@@ -421,6 +460,7 @@ async def cmd_med(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(text or "logged")
 
 
+@traced_handler("sync")
 async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     thinking = await update.message.reply_text("Syncing Garmin + Yazio…")
     result = await trigger_full_sync()
@@ -430,6 +470,7 @@ async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(result)
 
 
+@traced_handler("habits")
 async def cmd_habits(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from .habits_ui import build_habits_keyboard
     try:
@@ -463,7 +504,7 @@ def main() -> None:
     app.add_handler(CommandHandler("sync", cmd_sync))
     app.add_handler(CommandHandler("new", cmd_new))
     app.add_handler(CommandHandler("dashboard", cmd_dashboard))
-    app.add_handler(CallbackQueryHandler(on_habit_callback, pattern=r"^h:"))
+    app.add_handler(CallbackQueryHandler(traced_handler("habit_callback")(on_habit_callback), pattern=r"^h:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.Document.PDF, handle_document))
     logger.info("Bot started, polling...")
