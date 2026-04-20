@@ -31,3 +31,14 @@ def test_full_mode_enables_content_capture(monkeypatch):
     from shared import telemetry
     telemetry.init_telemetry("svc")
     assert os.environ["TRACELOOP_TRACE_CONTENT"] == "true"
+
+
+def test_consented_mode_enables_content_capture(monkeypatch):
+    # Consented mode MUST capture content — ConsentSpanExporter redacts it at
+    # export time per user consent. Without capture there'd be nothing to redact.
+    monkeypatch.setenv("TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("TELEMETRY_CAPTURE_BODIES", "consented")
+    monkeypatch.delenv("TRACELOOP_TRACE_CONTENT", raising=False)
+    from shared import telemetry
+    telemetry.init_telemetry("svc")
+    assert os.environ["TRACELOOP_TRACE_CONTENT"] == "true"

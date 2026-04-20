@@ -76,9 +76,15 @@ def init_telemetry(
         )
 
     capture = os.environ.get("TELEMETRY_CAPTURE_BODIES", "full").lower()
+    # In `metadata` mode we disable content capture entirely (cheap, deterministic).
+    # In `full` mode we capture everything.
+    # In `consented` mode we MUST capture content — the ConsentSpanExporter then
+    # redacts it per-user at export time based on the W3C baggage flag. If we
+    # disabled capture here, there'd be nothing to redact and opted-in users
+    # would also see empty prompts/completions.
     os.environ.setdefault(
         "TRACELOOP_TRACE_CONTENT",
-        "true" if capture == "full" else "false",
+        "false" if capture == "metadata" else "true",
     )
 
     # Traceloop installs global TracerProvider + BatchSpanProcessor + OTLPExporter.
