@@ -335,55 +335,63 @@ async def run_briefing(agents: dict, use_today: bool = False) -> dict:
     agents: registry dict from get_registry() — {name: {url, card}}
     Returns {"status": "sent" | "skipped" | "error", "reason": str}
     """
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-    if not bot_token or not chat_id:
-        logger.warning("Briefing Telegram send skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set")
-        return {"status": "skipped", "reason": "telegram not configured"}
+    from opentelemetry import trace as _otel_trace
+    from shared.telemetry import set_span_user, set_span_session
+    import datetime as _dt
+    _tracer = _otel_trace.get_tracer("orchestrator.briefing")
+    with _tracer.start_as_current_span("briefing.run") as _span:
+        _span.set_attribute("briefing.date", _dt.date.today().isoformat())
+        set_span_user()
+        set_span_session(f"briefing-{_dt.date.today().isoformat()}")
+        bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+        if not bot_token or not chat_id:
+            logger.warning("Briefing Telegram send skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set")
+            return {"status": "skipped", "reason": "telegram not configured"}
 
-    try:
-        metrics = await get_yesterday_metrics(use_today=use_today)
-    except Exception as e:
-        logger.error("Briefing DB query failed: %s", e)
-        return {"status": "error", "reason": f"db error: {e}"}
-    has_any = any(metrics.get(d) for d in ["sleep", "workout", "nutrition"])
-    if not has_any:
-        logger.warning("Briefing skipped: no health data for yesterday")
-        return {"status": "skipped", "reason": "no data for yesterday"}
+        try:
+            metrics = await get_yesterday_metrics(use_today=use_today)
+        except Exception as e:
+            logger.error("Briefing DB query failed: %s", e)
+            return {"status": "error", "reason": f"db error: {e}"}
+        has_any = any(metrics.get(d) for d in ["sleep", "workout", "nutrition"])
+        if not has_any:
+            logger.warning("Briefing skipped: no health data for yesterday")
+            return {"status": "skipped", "reason": "no data for yesterday"}
 
-    mode = os.environ.get("BRIEFING_MODE", "dashboard").lower()
+        mode = os.environ.get("BRIEFING_MODE", "dashboard").lower()
 
-    if mode == "alerts":
-        raw_alerts = collect_alerts(metrics)
-        registry = await _get_registry_for_alerts()
-        fresh_alerts = (
-            await registry.filter_fresh(raw_alerts)
-            if registry is not None else raw_alerts
-        )
-        message = compose_alert_brief(metrics, fresh_alerts)
+        if mode == "alerts":
+            raw_alerts = collect_alerts(metrics)
+            registry = await _get_registry_for_alerts()
+            fresh_alerts = (
+                await registry.filter_fresh(raw_alerts)
+                if registry is not None else raw_alerts
+            )
+            message = compose_alert_brief(metrics, fresh_alerts)
+            try:
+                await send_telegram_message(bot_token, chat_id, message)
+                if registry is not None:
+                    await registry.mark_emitted(fresh_alerts)
+                logger.info("Alert brief sent (%d alerts)", len(fresh_alerts))
+                return {"status": "sent"}
+            except Exception as e:
+                logger.error("Briefing Telegram send failed: %s", e)
+                return {"status": "error", "reason": str(e)}
+
+        # Legacy dashboard path — unchanged
+        summaries = await call_agents_for_briefing(agents, metrics)
+        insight = None
+        if summaries:
+            try:
+                insight = await generate_insight(metrics, summaries)
+            except Exception as e:
+                logger.warning("Briefing insight generation failed: %s", e)
+        message = build_dashboard(metrics, insight)
         try:
             await send_telegram_message(bot_token, chat_id, message)
-            if registry is not None:
-                await registry.mark_emitted(fresh_alerts)
-            logger.info("Alert brief sent (%d alerts)", len(fresh_alerts))
+            logger.info("Daily briefing sent to Telegram")
             return {"status": "sent"}
         except Exception as e:
             logger.error("Briefing Telegram send failed: %s", e)
             return {"status": "error", "reason": str(e)}
-
-    # Legacy dashboard path — unchanged
-    summaries = await call_agents_for_briefing(agents, metrics)
-    insight = None
-    if summaries:
-        try:
-            insight = await generate_insight(metrics, summaries)
-        except Exception as e:
-            logger.warning("Briefing insight generation failed: %s", e)
-    message = build_dashboard(metrics, insight)
-    try:
-        await send_telegram_message(bot_token, chat_id, message)
-        logger.info("Daily briefing sent to Telegram")
-        return {"status": "sent"}
-    except Exception as e:
-        logger.error("Briefing Telegram send failed: %s", e)
-        return {"status": "error", "reason": str(e)}

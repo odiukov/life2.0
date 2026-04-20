@@ -1,5 +1,6 @@
+from shared.telemetry import init_telemetry
+init_telemetry("orchestrator")
 """Orchestrator HTTP entrypoint."""
-from __future__ import annotations
 
 import json
 import uuid
@@ -50,6 +51,8 @@ _pool = None
 _saver = None
 
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
+from shared.telemetry import instrument_fastapi_app
+instrument_fastapi_app(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -76,6 +79,10 @@ async def chat_stream(req: StreamChatRequest):
     thread_id = req.threadId or str(uuid.uuid4())
     run_id = req.runId or str(uuid.uuid4())
     message_id = str(uuid.uuid4())
+
+    from shared.telemetry import set_span_user, set_span_session
+    set_span_session(thread_id)
+    set_span_user()
 
     user_messages = [m for m in req.messages if m.get("role") == "user"]
     if not user_messages:
@@ -158,22 +165,30 @@ async def chat_stream(req: StreamChatRequest):
 
 @app.get("/stats")
 async def stats():
+    from shared.telemetry import set_span_user
+    set_span_user()
     return await get_stats()
 
 
 @app.get("/health-summary")
 async def health_summary():
+    from shared.telemetry import set_span_user
+    set_span_user()
     return await get_health_summary()
 
 
 @app.delete("/activity")
 async def delete_activity():
+    from shared.telemetry import set_span_user
+    set_span_user()
     deleted = await clear_activity()
     return {"deleted": deleted}
 
 
 @app.get("/agents")
 async def agents():
+    from shared.telemetry import set_span_user
+    set_span_user()
     registry = get_registry()
     result = []
     for name, entry in registry.items():
@@ -198,11 +213,15 @@ async def agents():
 
 @app.post("/briefing")
 async def briefing(debug: bool = False):
+    from shared.telemetry import set_span_user
+    set_span_user()
     return await run_briefing(get_registry(), use_today=debug)
 
 
 @app.get("/dashboard", response_class=PlainTextResponse)
 async def dashboard_endpoint():
+    from shared.telemetry import set_span_user
+    set_span_user()
     metrics = await get_yesterday_metrics()
     return build_dashboard(metrics, insight=None)
 
@@ -221,6 +240,8 @@ async def finance_upload(file: UploadFile = File(..., alias="csv")):
       415 if the upload is not a PDF (by content-type or filename).
       422 if the PDF doesn't look like a Payoneer Account Statement.
     """
+    from shared.telemetry import set_span_user
+    set_span_user()
     from .payoneer_pdf import parse_payoneer_pdf, PayoneerPdfFormatError
     from .finance_ingest import (
         ingest_rows, categorize_new, build_upload_summary,
