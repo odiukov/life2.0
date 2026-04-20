@@ -46,10 +46,18 @@ class ConsentSpanExporter(SpanExporter):
     forwarding to the inner exporter."""
 
     SENSITIVE_PREFIXES = (
+        # Legacy OTEL GenAI semconv (pre-2024)
         "gen_ai.prompt.",
         "gen_ai.completion.",
+        # OTEL GenAI semconv 2025+ (OpenLLMetry 0.60+, traceloop-sdk 0.30+):
+        # content is carried in attributes gen_ai.input.messages / gen_ai.output.messages
+        # (Langfuse consumes them into observation.input / .output during ingestion).
+        "gen_ai.input.",
+        "gen_ai.output.",
+        # Traceloop's proprietary mirror
         "traceloop.entity.input",
         "traceloop.entity.output",
+        # Some older libs
         "llm.prompts.",
         "llm.response.",
     )
@@ -133,7 +141,7 @@ def install_consent_pipeline() -> None:
 
     provider = trace.get_tracer_provider()
     if not isinstance(provider, TracerProvider):
-        log.warning("install_consent_pipeline: TracerProvider is not SDK type; skipping")
+        log.warning("install_consent_pipeline: TracerProvider is not SDK type (got %s); skipping", type(provider).__name__)
         return
 
     provider.add_span_processor(BaggageSnapshotProcessor())
