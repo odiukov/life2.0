@@ -83,8 +83,15 @@ async def chat_stream(req: StreamChatRequest):
     message_id = str(uuid.uuid4())
 
     from shared.telemetry import set_span_user, set_span_session
+    from opentelemetry import baggage as _otel_baggage, context as _otel_context
+    from .consent_resolver import is_consented
+    import os as _os
+
     set_span_session(thread_id)
     set_span_user()
+
+    _user_for_consent = _os.environ.get("LANGFUSE_DEFAULT_USER_ID", "owner")
+    _bodies_ok = await is_consented(_user_for_consent)
 
     user_messages = [m for m in req.messages if m.get("role") == "user"]
     if not user_messages:
@@ -108,55 +115,62 @@ async def chat_stream(req: StreamChatRequest):
                     yield content
 
     async def event_stream():
-        yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
-        yield _sse({"type": "TextMessageStart", "messageId": message_id, "role": "assistant"})
-        tried_reset = False
-        while True:
-            try:
-                async for content in _run_graph():
-                    yield _sse({
-                        "type": "TextMessageContent",
-                        "messageId": message_id,
-                        "delta": content,
-                    })
-                break
-            except ValueError as e:
-                # LangGraph raises ValueError with "INVALID_CHAT_HISTORY" when the stored
-                # checkpoint has AIMessage tool_calls without matching ToolMessages — e.g.
-                # after an interrupted run. Wipe the thread and retry once.
-                if "INVALID_CHAT_HISTORY" in str(e) and not tried_reset and _saver is not None:
-                    tried_reset = True
-                    try:
-                        await _saver.adelete_thread(thread_id)
-                    except Exception as del_err:
+        _bag_ctx = _otel_baggage.set_baggage(
+            "telemetry.bodies_ok", "1" if _bodies_ok else "0"
+        )
+        _bag_token = _otel_context.attach(_bag_ctx)
+        try:
+            yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
+            yield _sse({"type": "TextMessageStart", "messageId": message_id, "role": "assistant"})
+            tried_reset = False
+            while True:
+                try:
+                    async for content in _run_graph():
                         yield _sse({
                             "type": "TextMessageContent",
                             "messageId": message_id,
-                            "delta": f"Error: {del_err}",
+                            "delta": content,
                         })
-                        break
+                    break
+                except ValueError as e:
+                    # LangGraph raises ValueError with "INVALID_CHAT_HISTORY" when the stored
+                    # checkpoint has AIMessage tool_calls without matching ToolMessages — e.g.
+                    # after an interrupted run. Wipe the thread and retry once.
+                    if "INVALID_CHAT_HISTORY" in str(e) and not tried_reset and _saver is not None:
+                        tried_reset = True
+                        try:
+                            await _saver.adelete_thread(thread_id)
+                        except Exception as del_err:
+                            yield _sse({
+                                "type": "TextMessageContent",
+                                "messageId": message_id,
+                                "delta": f"Error: {del_err}",
+                            })
+                            break
+                        yield _sse({
+                            "type": "TextMessageContent",
+                            "messageId": message_id,
+                            "delta": "♻️ Предыдущий разговор был прерван, начинаю заново.\n\n",
+                        })
+                        continue
                     yield _sse({
                         "type": "TextMessageContent",
                         "messageId": message_id,
-                        "delta": "♻️ Предыдущий разговор был прерван, начинаю заново.\n\n",
+                        "delta": f"Error: {e}",
                     })
-                    continue
-                yield _sse({
-                    "type": "TextMessageContent",
-                    "messageId": message_id,
-                    "delta": f"Error: {e}",
-                })
-                break
-            except Exception as e:
-                yield _sse({
-                    "type": "TextMessageContent",
-                    "messageId": message_id,
-                    "delta": f"Error: {e}",
-                })
-                break
+                    break
+                except Exception as e:
+                    yield _sse({
+                        "type": "TextMessageContent",
+                        "messageId": message_id,
+                        "delta": f"Error: {e}",
+                    })
+                    break
 
-        yield _sse({"type": "TextMessageEnd", "messageId": message_id})
-        yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
+            yield _sse({"type": "TextMessageEnd", "messageId": message_id})
+            yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
+        finally:
+            _otel_context.detach(_bag_token)
 
     return StreamingResponse(
         event_stream(),
