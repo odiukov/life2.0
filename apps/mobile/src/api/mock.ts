@@ -18,6 +18,18 @@ const routes: Record<string, () => unknown> = {
       { agent: 'finance',    label: 'Finance',    metric: '$4,231',    tint: 'success' },
     ],
   }),
+  'GET /dashboard/summary': () => ({
+    agents: [
+      { agent: 'sleep',      label: 'Sleep',      metric: '7h12m',     tint: 'success' },
+      { agent: 'recovery',   label: 'Recovery',   metric: 'Recovered', tint: 'success' },
+      { agent: 'workout',    label: 'Workout',    metric: 'Z2 60m',    tint: 'neutral' },
+      { agent: 'nutrition',  label: 'Nutrition',  metric: '1840 kcal', tint: 'neutral' },
+      { agent: 'mood',       label: 'Mood',       metric: '7/10',      tint: 'success' },
+      { agent: 'habits',     label: 'Habits',     metric: '2/3',       tint: 'warn' },
+      { agent: 'medication', label: 'Medication', metric: 'B12 −2d',   tint: 'warn' },
+      { agent: 'finance',    label: 'Finance',    metric: '$4,231',    tint: 'success' },
+    ],
+  }),
   'GET /today': () => ({
     greeting: 'Good morning',
     date: new Date().toISOString().slice(0, 10),

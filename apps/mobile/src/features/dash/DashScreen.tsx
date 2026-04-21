@@ -12,7 +12,7 @@ export function DashScreen() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/dashboard');
+      const { data, error } = await api.GET('/dashboard/summary');
       if (error) throw error;
       return data!;
     },

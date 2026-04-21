@@ -16,6 +16,10 @@ paths:
     get:
       operationId: getDashboard
       responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } } }
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } } }
   /today:
     get:
       operationId: getToday
