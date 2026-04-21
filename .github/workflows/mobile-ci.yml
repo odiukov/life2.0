@@ -1,0 +1,33 @@
+name: mobile-ci
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/mobile-ci.yml'
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.15.0'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @life-agents/ui typecheck
+      - run: pnpm --filter @life-agents/api-client typecheck
+      - run: pnpm --filter @life-agents/i18n typecheck
+      - run: pnpm --filter @life-agents/mobile typecheck
+      - run: pnpm --filter @life-agents/ui test -- --ci --coverage=false
+      - run: pnpm --filter @life-agents/mobile test -- --ci --coverage=false --passWithNoTests
