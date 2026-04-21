@@ -1,11 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
+import { apiMode } from '@/api/client';
 import { mockAssistantStream, StreamEvent } from './mockStream';
+import { realAssistantStream, THREAD_ID } from './realStream';
 
 type AgentType = Extract<StreamEvent, { type: 'agent' }>['agent'];
 
 type Message =
   | { kind: 'user'; id: string; text: string }
   | { kind: 'assistant'; id: string; agent?: AgentType; text: string; streaming: boolean };
+
+const assistantStream = apiMode === 'mock' ? mockAssistantStream : realAssistantStream;
 
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -19,7 +23,7 @@ export function useChat() {
     setMessages((m) => [...m, { kind: 'assistant', id: aid, text: '', streaming: true }]);
     let buffer = '';
     let agent: AgentType | undefined;
-    for await (const ev of mockAssistantStream(text)) {
+    for await (const ev of assistantStream(text, THREAD_ID)) {
       if (ev.type === 'token') {
         buffer += ev.content;
         setMessages((m) =>
