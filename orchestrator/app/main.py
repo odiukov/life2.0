@@ -336,3 +336,135 @@ async def finance_upload(file: UploadFile = File(..., alias="csv")):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Mobile endpoints
+# ---------------------------------------------------------------------------
+
+from datetime import datetime, timezone as _tz  # noqa: E402
+
+
+def _thread_title(thread_id: str) -> str:
+    if thread_id.startswith("tg-"):
+        return "Telegram chat"
+    return f"Thread {thread_id[:8]}"
+
+
+async def _fetch_checkpoint_threads(limit: int = 50) -> list[dict]:
+    from shared.db import get_pool
+    pool = await get_pool()
+    rows = await pool.fetch(
+        "SELECT thread_id, MAX(created_at) AS updated_at "
+        "FROM checkpoints "
+        "GROUP BY thread_id "
+        "ORDER BY updated_at DESC "
+        "LIMIT $1",
+        limit,
+    )
+    return [dict(r) for r in rows]
+
+
+def _build_today_shape(metrics: dict, alerts: list) -> dict:
+    now = datetime.now()
+    hour = now.hour
+    if hour < 12:
+        greeting = "Good morning"
+    elif hour < 18:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
+
+    # Status pills
+    pills: list[dict] = []
+    recovery = metrics.get("recovery") or {}
+    if recovery.get("bucket") == "recovered":
+        pills.append({"tone": "success", "label": "Recovered"})
+    elif recovery.get("bucket") == "depleted":
+        pills.append({"tone": "warn", "label": "Depleted"})
+
+    med = metrics.get("medication") or {}
+    active_meds = med.get("active") or []
+    if active_meds:
+        med_logs = med.get("logs") or []
+        now_utc = datetime.now(_tz.utc)
+        last_by_name: dict[str, datetime] = {}
+        for r in med_logs:
+            n, ts = r.get("name"), r.get("recorded_at")
+            if n and ts and (n not in last_by_name or ts > last_by_name[n]):
+                last_by_name[n] = ts
+        from datetime import timedelta
+        any_missed = any(
+            last_by_name.get(m.get("name")) is None
+            or (now_utc - last_by_name[m["name"]]) >= timedelta(days=2)
+            for m in active_meds
+        )
+        if any_missed:
+            pills.append({"tone": "warn", "label": "Missed med"})
+
+    sleep = metrics.get("sleep") or {}
+    if sleep:
+        secs = sleep.get("duration_seconds", 0)
+        hrs = secs / 3600
+        if hrs >= 7:
+            pills.append({"tone": "success", "label": f"Slept {hrs:.1f}h"})
+        else:
+            pills.append({"tone": "warn", "label": f"Slept {hrs:.1f}h"})
+
+    # Must-see lines
+    from .briefing import _must_see_lines
+    must_see = _must_see_lines(metrics)
+
+    # Alerts → response shape
+    now_iso = datetime.now(_tz.utc).isoformat().replace("+00:00", "Z")
+    alert_items = [
+        {
+            "id": a.rule_id,
+            "title": a.message[:50],
+            "body": a.message,
+            "category": a.category,
+            "severity": a.severity,
+            "created_at": now_iso,
+        }
+        for a in alerts
+    ]
+
+    return {
+        "greeting": greeting,
+        "date": now.date().isoformat(),
+        "status_pills": pills[:4],
+        "must_see": must_see,
+        "alerts": alert_items,
+    }
+
+
+@app.get("/me")
+async def get_me() -> dict:
+    return {"id": "me", "voice_preset": "calm_coach"}
+
+
+@app.get("/chat/threads")
+async def list_threads() -> list:
+    try:
+        rows = await _fetch_checkpoint_threads(limit=50)
+    except Exception:
+        return []
+    return [
+        {
+            "id": r["thread_id"],
+            "title": _thread_title(r["thread_id"]),
+            "updated_at": (
+                r["updated_at"].astimezone(_tz.utc).isoformat().replace("+00:00", "Z")
+                if r["updated_at"] is not None else None
+            ),
+        }
+        for r in rows
+    ]
+
+
+@app.get("/today")
+async def get_today() -> dict:
+    from .briefing_rules import collect_alerts
+    metrics = await get_yesterday_metrics()
+    alerts = collect_alerts(metrics)
+    return _build_today_shape(metrics, alerts)
