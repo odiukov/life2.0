@@ -32,5 +32,5 @@ export function MetricChip({
 }
 
 const styles = StyleSheet.create({
-  chip: { borderWidth: 1, alignSelf: 'flex-start' },
+  chip: { alignSelf: 'flex-start', borderWidth: 1 },
 });

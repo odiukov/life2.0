@@ -58,5 +58,5 @@ export function IntegrationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { alignItems: 'center', flexDirection: 'row' },
 });

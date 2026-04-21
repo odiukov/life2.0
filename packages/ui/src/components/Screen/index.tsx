@@ -15,6 +15,6 @@ export function Screen({ children, style, edges = ['top', 'bottom'], ...rest }: 
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
   inner: { flex: 1 },
+  safe: { flex: 1 },
 });

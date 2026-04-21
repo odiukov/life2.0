@@ -51,5 +51,5 @@ export function AgentCard({
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1 },
-  row: { flexDirection: 'row', alignItems: 'center' },
+  row: { alignItems: 'center', flexDirection: 'row' },
 });

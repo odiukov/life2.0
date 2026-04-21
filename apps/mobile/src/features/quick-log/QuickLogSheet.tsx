@@ -62,6 +62,6 @@ export function QuickLogSheet() {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { flexGrow: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
 });

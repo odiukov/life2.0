@@ -66,5 +66,5 @@ export function AskBar({
 
 
 const styles = StyleSheet.create({
-  bar: { borderWidth: 1, flexDirection: 'row', alignItems: 'flex-end' },
+  bar: { alignItems: 'flex-end', borderWidth: 1, flexDirection: 'row' },
 });

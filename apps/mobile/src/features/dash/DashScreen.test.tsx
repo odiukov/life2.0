@@ -6,13 +6,16 @@ import { DashScreen } from './DashScreen';
 
 function makeWrapper() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={qc}>
-      <SafeAreaProvider>
-        <ThemeProvider>{children}</ThemeProvider>
-      </SafeAreaProvider>
-    </QueryClientProvider>
-  );
+  function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={qc}>
+        <SafeAreaProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    );
+  }
+  return Wrapper;
 }
 
 test('renders 8 agent cards from mock dashboard', async () => {

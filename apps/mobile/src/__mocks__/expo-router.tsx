@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export function useRouter() {
   return { push: jest.fn(), replace: jest.fn(), back: jest.fn() };
@@ -13,6 +13,7 @@ export function Link({ children }: { children: React.ReactNode }) {
 }
 
 export function useFocusEffect(effect: () => void) {
-  // Jest mock — run once on mount like a regular useEffect
-  require('react').useEffect(effect, []);
+  const stable = React.useRef(effect);
+  stable.current = effect;
+  useEffect(() => stable.current(), []);
 }

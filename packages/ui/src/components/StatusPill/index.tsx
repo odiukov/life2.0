@@ -40,5 +40,5 @@ export function StatusPill({ tone = 'neu', children }: { tone?: Tone; children: 
 }
 
 const styles = StyleSheet.create({
-  pill: { borderWidth: 1, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
+  pill: { alignItems: 'center', alignSelf: 'flex-start', borderWidth: 1, flexDirection: 'row' },
 });
