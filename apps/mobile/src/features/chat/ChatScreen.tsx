@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { AgentBadge, AskBar, Bubble, Screen, useTheme } from '@life-agents/ui';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useChat } from './useChat';
 import { CommandPalette } from './CommandPalette';
 import { matchCommands } from './commands';
+import { consumePrefill } from './prefillBuffer';
 
 export function ChatScreen() {
   const { messages, send } = useChat();
@@ -12,6 +13,13 @@ export function ChatScreen() {
   const router = useRouter();
   const [input, setInput] = useState('');
   const commandMatches = matchCommands(input);
+
+  useFocusEffect(
+    useCallback(() => {
+      const prefill = consumePrefill();
+      if (prefill) setInput(prefill);
+    }, []),
+  );
 
   return (
     <Screen>
