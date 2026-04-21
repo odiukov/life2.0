@@ -4,8 +4,16 @@
     "jsx": "react-native",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["app/**/*", "src/**/*", "index.ts"]
+  "include": [
+    "app/**/*",
+    "src/**/*",
+    "index.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

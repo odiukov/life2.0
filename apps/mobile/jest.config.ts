@@ -14,12 +14,12 @@ const config: Config = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testMatch: ['**/*.test.ts?(x)'],
+  setupFiles: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@life-agents/ui$': '<rootDir>/../../packages/ui/src/index.ts',
     '^react-native-safe-area-context$': '<rootDir>/src/__mocks__/react-native-safe-area-context.tsx',
     '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.tsx',
-    '^react-native-mmkv$': '<rootDir>/src/__mocks__/react-native-mmkv.tsx',
     '^expo-router$': '<rootDir>/src/__mocks__/expo-router.tsx',
   },
   transformIgnorePatterns: [
