@@ -16,7 +16,7 @@ export function ChatScreen() {
   const commandMatches = matchCommands(input, connected);
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
