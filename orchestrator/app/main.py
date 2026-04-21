@@ -5,6 +5,7 @@ from shared.telemetry import init_telemetry
 init_telemetry("orchestrator")
 
 import json
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -55,11 +56,18 @@ _saver = None
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
 from shared.telemetry import instrument_fastapi_app
 instrument_fastapi_app(app)
+_cors_origins = (
+    ["*"]
+    if os.getenv("ENV", "dev") == "dev"
+    else ["http://localhost:3000"]  # P0 tightens this to the public app host
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["content-type"],
 )
 
 

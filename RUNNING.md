@@ -434,3 +434,13 @@ The stack includes self-hosted Langfuse v3 for OTEL tracing of every user reques
 4. Redeploy; no code changes required.
 
 Verify: flip `telemetry_consent.bodies_ok` for a user, send a new `/chat/stream`, then check Langfuse trace — prompts should appear (consented=TRUE) or show `[REDACTED]` (consented=FALSE).
+
+## Running the mobile app against the local backend
+
+The mobile app supports three API modes (configured via `apps/mobile/.env.local`):
+
+- `mock` (default in tests): in-memory fixtures, no backend needed.
+- `local`: hits `EXPO_PUBLIC_API_BASE_URL` — use your Mac for a real dev loop.
+- `cloud`: hits `EXPO_PUBLIC_API_BASE_URL_CLOUD` — populated by P0 deploy.
+
+See `apps/mobile/.env.local.example` and `scripts/mac-ip.sh` for setup. For off-network device testing, Tailscale is the recommended bridge.
