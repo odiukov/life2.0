@@ -1,0 +1,69 @@
+openapi: 3.1.0
+info:
+  title: life-agents-api
+  version: 0.0.1-p3a
+paths:
+  /chat/threads:
+    get:
+      operationId: listThreads
+      responses: { '200': { description: ok, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Thread' } } } } } }
+  /chat/stream:
+    post:
+      operationId: chatStream
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { message: { type: string }, thread_id: { type: string } }, required: [message, thread_id] } } } }
+      responses: { '200': { description: SSE stream of events } }
+  /dashboard:
+    get:
+      operationId: getDashboard
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } } } }
+  /today:
+    get:
+      operationId: getToday
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Today' } } } } }
+  /me:
+    get:
+      operationId: getMe
+      responses: { '200': { description: ok, content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } } } }
+components:
+  schemas:
+    Thread:
+      type: object
+      required: [id, title, updated_at]
+      properties: { id: { type: string }, title: { type: string }, updated_at: { type: string, format: date-time } }
+    AgentSummary:
+      type: object
+      required: [agent, label, metric, tint]
+      properties:
+        agent: { type: string, enum: [sleep, workout, nutrition, mood, habits, recovery, medication, finance, calendar, home] }
+        label: { type: string }
+        metric: { type: string }
+        tint: { type: string, enum: [success, warn, danger, neutral] }
+    Dashboard:
+      type: object
+      required: [agents]
+      properties: { agents: { type: array, items: { $ref: '#/components/schemas/AgentSummary' } } }
+    Alert:
+      type: object
+      required: [id, title, body, category, severity, created_at]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
+        category: { type: string, enum: [wellness, productivity, lifestyle] }
+        severity: { type: string, enum: [info, warn, crit] }
+        created_at: { type: string, format: date-time }
+    Today:
+      type: object
+      required: [greeting, date, status_pills, must_see, alerts]
+      properties:
+        greeting: { type: string }
+        date: { type: string, format: date }
+        status_pills: { type: array, items: { type: object, required: [tone, label], properties: { tone: { type: string, enum: [success, warn, danger, neu] }, label: { type: string } } } }
+        must_see: { type: array, items: { type: string } }
+        alerts: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+    Me:
+      type: object
+      required: [id, voice_preset]
+      properties:
+        id: { type: string }
+        voice_preset: { type: string, enum: [calm_coach, data_literate, clinical, hype] }
