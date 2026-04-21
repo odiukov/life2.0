@@ -4,16 +4,24 @@ import { useTheme } from '../../theme';
 import { Icon } from '../Icon';
 
 export function AskBar({
+  value: controlledValue,
+  onChangeText,
   onSubmit,
   onVoice,
   onAction,
 }: {
+  value?: string;
+  onChangeText?: (text: string) => void;
   onSubmit: (text: string) => void;
   onVoice?: () => void;
   onAction?: () => void;
 }) {
   const { colors, radius, spacing, typography } = useTheme();
-  const [value, setValue] = useState('');
+  const [internalValue, setInternalValue] = useState('');
+  const isControlled = controlledValue !== undefined && onChangeText !== undefined;
+  const value = isControlled ? controlledValue : internalValue;
+  const setValue = isControlled ? onChangeText! : setInternalValue;
+
   const send = () => {
     if (!value.trim()) return;
     onSubmit(value.trim());
