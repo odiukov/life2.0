@@ -2,8 +2,6 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AgentMark, Card, Screen, useTheme } from '@life-agents/ui';
-import { COMMANDS } from '../chat/commands';
-import { setPrefill } from '../chat/prefillBuffer';
 
 const logActions = [
   { id: 'meal',    label: 'Meal photo',    hint: 'Snap + LLM parse',     agent: 'nutrition'  as const },
@@ -23,26 +21,22 @@ export function QuickLogSheet() {
     else router.replace('/(tabs)/chat');
   };
 
-  const sectionTitle = (t: string) => (
-    <Text
-      style={[
-        typography.micro,
-        {
-          color: colors.fg2,
-          paddingHorizontal: spacing.s3,
-          marginTop: spacing.s3,
-          marginBottom: spacing.s2,
-        },
-      ]}
-    >
-      {t}
-    </Text>
-  );
-
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.s6 }}>
-        {sectionTitle('Log')}
+        <Text
+          style={[
+            typography.micro,
+            {
+              color: colors.fg2,
+              paddingHorizontal: spacing.s3,
+              marginTop: spacing.s3,
+              marginBottom: spacing.s2,
+            },
+          ]}
+        >
+          Log
+        </Text>
         <View style={[styles.grid, { paddingHorizontal: spacing.s3, gap: spacing.s3 }]}>
           {logActions.map((a) => (
             <Pressable
@@ -57,36 +51,6 @@ export function QuickLogSheet() {
                   <Text style={[typography.caption, { color: colors.fg2, textAlign: 'center' }]}>
                     {a.hint}
                   </Text>
-                </View>
-              </Card>
-            </Pressable>
-          ))}
-        </View>
-
-        {sectionTitle('Ask')}
-        <View style={{ paddingHorizontal: spacing.s3, gap: spacing.s2 }}>
-          {COMMANDS.map((c) => (
-            <Pressable
-              key={c.name}
-              onPress={() => {
-                setPrefill(c.name + ' ');
-                dismiss();
-              }}
-            >
-              <Card>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.s3,
-                    padding: spacing.s2,
-                  }}
-                >
-                  <AgentMark agent={c.agent} size={20} color={colors.accentHi} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[typography.bodyEm, { color: colors.fg1 }]}>{c.name}</Text>
-                    <Text style={[typography.caption, { color: colors.fg2 }]}>{c.hint}</Text>
-                  </View>
                 </View>
               </Card>
             </Pressable>
