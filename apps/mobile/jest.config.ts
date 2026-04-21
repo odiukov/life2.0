@@ -14,7 +14,6 @@ const config: Config = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testMatch: ['**/*.test.ts?(x)'],
-  setupFiles: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@life-agents/ui$': '<rootDir>/../../packages/ui/src/index.ts',
