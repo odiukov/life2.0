@@ -1,9 +1,2 @@
-import { Screen, ScreenState } from '@life-agents/ui';
+export { MoreScreen as default } from '@/features/more/MoreScreen';
 
-export default function More() {
-  return (
-    <Screen>
-      <ScreenState kind="empty" title="More coming in Task 18" />
-    </Screen>
-  );
-}
