@@ -17,6 +17,9 @@ const commandReplies: Record<string, { agent: AgentType; reply: string }> = {
   '/recovery':   { agent: 'recovery',   reply: 'Recovered — HRV +8% vs baseline, RHR −3bpm, stress low, body battery 88%.' },
   '/dashboard':  { agent: 'calendar',   reply: '⚡ Recovered · 💤 7h12m · 🔥 1/3 habits · 📅 3 meetings · 💊 B12 −2d · 💰 $4,231' },
   '/new':        { agent: 'home',       reply: "New thread started. What's on your mind?" },
+  '/finance':    { agent: 'finance',   reply: 'This month (USD): $420 food · $180 subs · $90 transport · runway 47d.' },
+  '/calendar':   { agent: 'calendar',  reply: 'Today: 3 meetings, busiest 14-16. First free slot 11:00 for 1h.' },
+  '/ha':         { agent: 'home',      reply: 'Living room 21°C · 47% RH · lights off · robot vacuum docked.' },
 };
 
 export async function* mockAssistantStream(userText: string): AsyncGenerator<StreamEvent> {

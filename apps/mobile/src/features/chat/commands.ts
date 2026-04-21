@@ -1,9 +1,11 @@
 import type { AgentId } from '@life-agents/ui';
+import type { IntegrationId } from '../integrations/store';
 
 export type ChatCommand = {
   name: string;
   agent: AgentId;
   hint: string;
+  requires?: IntegrationId;
 };
 
 export const COMMANDS: readonly ChatCommand[] = [
@@ -18,11 +20,23 @@ export const COMMANDS: readonly ChatCommand[] = [
   { name: '/recovery',   agent: 'recovery',   hint: "Get today's recovery readiness" },
   { name: '/dashboard',  agent: 'calendar',   hint: 'Full dashboard dump' },
   { name: '/new',        agent: 'home',       hint: 'Start a new chat thread' },
-] as const;
 
-export function matchCommands(input: string): readonly ChatCommand[] {
+  // Integration-gated
+  { name: '/finance',    agent: 'finance',    hint: "This month's spending by category", requires: 'payoneer' },
+  { name: '/calendar',   agent: 'calendar',   hint: "Today's meetings & free slots",     requires: 'calendar' },
+  { name: '/ha',         agent: 'home',       hint: 'Home Assistant state & scenes',      requires: 'ha' },
+];
+
+export function matchCommands(
+  input: string,
+  connected: ReadonlySet<IntegrationId> = new Set(),
+): readonly ChatCommand[] {
   if (!input.startsWith('/')) return [];
   const q = input.toLowerCase();
-  const word = q.split(/\s/)[0] ?? q; // only match the first token
-  return COMMANDS.filter((c) => c.name.startsWith(word));
+  const word = q.split(/\s/)[0] ?? q;
+  return COMMANDS.filter(
+    (c) =>
+      c.name.startsWith(word) &&
+      (c.requires === undefined || connected.has(c.requires)),
+  );
 }

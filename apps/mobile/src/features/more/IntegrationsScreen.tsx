@@ -1,41 +1,62 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card, Screen, useTheme } from '@life-agents/ui';
+import { useIntegrationsStore, isConnected, type IntegrationId, type IntegrationStatus } from '@/features/integrations/store';
 
-const sources = [
-  { id: 'apple-health', label: 'Apple Health',    status: 'not-connected' },
-  { id: 'garmin',       label: 'Garmin',          status: 'not-connected' },
-  { id: 'strava',       label: 'Strava',          status: 'not-connected' },
-  { id: 'calendar',     label: 'Google Calendar', status: 'not-connected' },
-  { id: 'ha',           label: 'Home Assistant',  status: 'not-connected' },
-  { id: 'payoneer',     label: 'Payoneer',        status: 'manual-upload' },
-  { id: 'yazio',        label: 'Yazio',           status: 'device-only' },
+const sources: readonly { id: IntegrationId; label: string }[] = [
+  { id: 'apple-health', label: 'Apple Health' },
+  { id: 'garmin',       label: 'Garmin' },
+  { id: 'strava',       label: 'Strava' },
+  { id: 'calendar',     label: 'Google Calendar' },
+  { id: 'ha',           label: 'Home Assistant' },
+  { id: 'payoneer',     label: 'Payoneer' },
+  { id: 'yazio',        label: 'Yazio' },
 ] as const;
 
+function labelFor(status: IntegrationStatus): string {
+  return status.replace('-', ' ');
+}
+
 export function IntegrationsScreen() {
+  const status = useIntegrationsStore((s) => s.status);
+  const toggle = useIntegrationsStore((s) => s.toggle);
   const { colors, spacing, typography } = useTheme();
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.s3, gap: spacing.s2 }}>
-        {sources.map((s) => (
-          <Card key={s.id}>
-            <View style={[styles.row, { gap: spacing.s3 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.bodyEm, { color: colors.fg1 }]}>{s.label}</Text>
-                <Text style={[typography.caption, { color: colors.fg2 }]}>{s.status}</Text>
-              </View>
-              <View style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: s.status === 'not-connected' ? colors.fg3 : colors.success,
-              }} />
-            </View>
-          </Card>
-        ))}
+        <Text style={[typography.caption, { color: colors.fg2, marginBottom: spacing.s2 }]}>
+          Tap a row to toggle connected / not-connected in dev mode.
+        </Text>
+        {sources.map((s) => {
+          const st = status[s.id];
+          const connected = isConnected(st);
+          return (
+            <Pressable key={s.id} onPress={() => toggle(s.id)}>
+              <Card>
+                <View style={[styles.row, { gap: spacing.s3 }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.bodyEm, { color: colors.fg1 }]}>{s.label}</Text>
+                    <Text style={[typography.caption, { color: colors.fg2 }]}>{labelFor(st)}</Text>
+                  </View>
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: connected ? colors.success : colors.fg3,
+                    }}
+                  />
+                </View>
+              </Card>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({ row: { flexDirection: 'row', alignItems: 'center' } });
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
+});

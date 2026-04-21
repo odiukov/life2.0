@@ -5,13 +5,15 @@ import { useRouter } from 'expo-router';
 import { useChat } from './useChat';
 import { CommandPalette } from './CommandPalette';
 import { matchCommands } from './commands';
+import { useConnectedIntegrations } from '../integrations/store';
 
 export function ChatScreen() {
   const { messages, send } = useChat();
   const { spacing } = useTheme();
   const router = useRouter();
   const [input, setInput] = useState('');
-  const commandMatches = matchCommands(input);
+  const connected = useConnectedIntegrations();
+  const commandMatches = matchCommands(input, connected);
 
   return (
     <Screen>
