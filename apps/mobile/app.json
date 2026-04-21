@@ -2,6 +2,7 @@
   "expo": {
     "name": "life-agents",
     "slug": "life-agents",
+    "icon": "./assets/icon.png",
     "scheme": "lifeagents",
     "version": "0.0.1",
     "orientation": "portrait",
