@@ -1,9 +1,11 @@
 import React from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { AgentBadge, AskBar, Bubble, Screen, useTheme } from '@life-agents/ui';
 import { useChat } from './useChat';
 
 export function ChatScreen() {
+  const router = useRouter();
   const { messages, send } = useChat();
   const { spacing } = useTheme();
   return (
@@ -28,7 +30,11 @@ export function ChatScreen() {
             )
           }
         />
-        <AskBar onSubmit={send} />
+        <AskBar
+          onSubmit={send}
+          onAction={() => router.push('/quick-log')}
+          onVoice={() => {}}
+        />
       </KeyboardAvoidingView>
     </Screen>
   );
