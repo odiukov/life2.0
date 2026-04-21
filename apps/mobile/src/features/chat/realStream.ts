@@ -1,9 +1,9 @@
 /**
  * Real streaming client for the orchestrator /chat/stream SSE endpoint.
  *
- * Uses XMLHttpRequest with onreadystatechange (readyState=3) because React Native's
- * fetch() does not expose response.body as a stream — responseText accumulates
- * as the server sends chunks.
+ * Uses XMLHttpRequest with onprogress because React Native's fetch() does not
+ * expose response.body as a ReadableStream — responseText accumulates as the
+ * server sends chunks; we diff against `consumed` to extract each delta.
  */
 import { apiBaseUrl } from '@/api/client';
 import type { StreamEvent } from './mockStream';
@@ -20,7 +20,9 @@ export async function* realAssistantStream(
   let waker: (() => void) | null = null;
   const push = (item: QueueItem) => {
     queue.push(item);
-    waker?.();
+    const w = waker;
+    waker = null;
+    w?.();
   };
   const waitForItem = () =>
     new Promise<void>((resolve) => {
@@ -28,9 +30,16 @@ export async function* realAssistantStream(
     });
 
   const xhr = new XMLHttpRequest();
-  let consumed = 0; // length of responseText already parsed
-  let pendingBuffer = ''; // partial frame carry-over between reads
+  let consumed = 0;
+  let pendingBuffer = '';
   let streamEnded = false;
+
+  const finish = () => {
+    if (streamEnded) return;
+    streamEnded = true;
+    push({ kind: 'event', event: { type: 'done' } });
+    push({ kind: 'done' });
+  };
 
   const processChunk = (newText: string) => {
     pendingBuffer += newText;
@@ -50,9 +59,8 @@ export async function* realAssistantStream(
         if (ev.type === 'TextMessageContent') {
           const delta = typeof ev.delta === 'string' ? ev.delta : '';
           if (delta) push({ kind: 'event', event: { type: 'token', content: delta } });
-        } else if (ev.type === 'RunFinished' && !streamEnded) {
-          streamEnded = true;
-          push({ kind: 'done' });
+        } else if (ev.type === 'RunFinished') {
+          finish();
           return;
         }
         // RunStarted, TextMessageStart, TextMessageEnd — ignored.
@@ -60,36 +68,43 @@ export async function* realAssistantStream(
     }
   };
 
+  const drainResponse = () => {
+    const fresh = xhr.responseText.substring(consumed);
+    consumed = xhr.responseText.length;
+    if (fresh) processChunk(fresh);
+  };
+
   xhr.open('POST', `${apiBaseUrl}/chat/stream`);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.setRequestHeader('Accept', 'text/event-stream');
 
-  xhr.onreadystatechange = () => {
-    // readyState 3 (LOADING): responseText accumulating
-    // readyState 4 (DONE): request finished (success or error)
-    if (xhr.readyState === 3 || xhr.readyState === 4) {
-      const fresh = xhr.responseText.substring(consumed);
-      consumed = xhr.responseText.length;
-      if (fresh) processChunk(fresh);
+  xhr.onprogress = () => {
+    drainResponse();
+  };
+
+  xhr.onload = () => {
+    drainResponse();
+    if (xhr.status >= 400 && !streamEnded) {
+      push({
+        kind: 'event',
+        event: { type: 'token', content: `[Server error: ${xhr.status}]` },
+      });
     }
-    if (xhr.readyState === 4) {
-      if (xhr.status >= 400 && !streamEnded) {
-        push({ kind: 'event', event: { type: 'token', content: `[Server error: ${xhr.status}]` } });
-      }
-      if (!streamEnded) {
-        streamEnded = true;
-        push({ kind: 'done' });
-      }
-    }
+    finish();
   };
 
   xhr.onerror = () => {
     if (!streamEnded) {
-      streamEnded = true;
       push({ kind: 'event', event: { type: 'token', content: '[Network error]' } });
-      push({ kind: 'event', event: { type: 'done' } });
-      push({ kind: 'done' });
     }
+    finish();
+  };
+
+  xhr.ontimeout = () => {
+    if (!streamEnded) {
+      push({ kind: 'event', event: { type: 'token', content: '[Timeout]' } });
+    }
+    finish();
   };
 
   xhr.send(
@@ -99,13 +114,13 @@ export async function* realAssistantStream(
     }),
   );
 
-  // Consumer loop: yield queued events as they arrive.
   while (true) {
     while (queue.length > 0) {
       const item = queue.shift()!;
       if (item.kind === 'done') return;
       yield item.event;
     }
+    if (streamEnded && queue.length === 0) return;
     await waitForItem();
   }
 }
