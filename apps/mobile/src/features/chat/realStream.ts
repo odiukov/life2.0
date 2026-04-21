@@ -8,13 +8,11 @@
 import { apiBaseUrl } from '@/api/client';
 import type { StreamEvent } from './mockStream';
 
-export const THREAD_ID = 'mobile-' + Date.now();
-
 type QueueItem = { kind: 'event'; event: StreamEvent } | { kind: 'done' };
 
 export async function* realAssistantStream(
   userText: string,
-  threadId: string = THREAD_ID,
+  threadId: string,
 ): AsyncGenerator<StreamEvent> {
   const queue: QueueItem[] = [];
   let waker: (() => void) | null = null;
