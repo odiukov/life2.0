@@ -18,6 +18,11 @@ export function QuickLogSheet() {
   const router = useRouter();
   const { spacing, colors, typography } = useTheme();
 
+  const dismiss = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/chat');
+  };
+
   const sectionTitle = (t: string) => (
     <Text
       style={[
@@ -43,7 +48,7 @@ export function QuickLogSheet() {
             <Pressable
               key={a.id}
               style={[styles.cell, { flexBasis: '47%' }]}
-              onPress={() => router.back()}
+              onPress={dismiss}
             >
               <Card>
                 <View style={{ alignItems: 'center', gap: spacing.s2, padding: spacing.s3 }}>
@@ -65,7 +70,7 @@ export function QuickLogSheet() {
               key={c.name}
               onPress={() => {
                 setPrefill(c.name + ' ');
-                router.back();
+                dismiss();
               }}
             >
               <Card>
