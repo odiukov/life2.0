@@ -42,8 +42,14 @@ const routes: Record<string, () => unknown> = {
 
 export function mockFetch(): Fetch {
   return async (input, init) => {
-    const url = typeof input === 'string' ? input : (input as URL).toString();
-    const method = init?.method?.toUpperCase() ?? 'GET';
+    const url =
+      typeof input === 'string' ? input
+      : input instanceof Request ? input.url
+      : (input as URL).toString();
+    const method =
+      (input instanceof Request ? input.method : null) ??
+      init?.method?.toUpperCase() ??
+      'GET';
     const pathname = new URL(url, 'http://mock.local').pathname;
     const key = `${method} ${pathname}`;
     const handler = routes[key];

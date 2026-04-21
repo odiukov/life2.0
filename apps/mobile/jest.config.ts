@@ -19,9 +19,10 @@ const config: Config = {
     '^@life-agents/ui$': '<rootDir>/../../packages/ui/src/index.ts',
     '^react-native-safe-area-context$': '<rootDir>/src/__mocks__/react-native-safe-area-context.tsx',
     '^react-native-svg$': '<rootDir>/src/__mocks__/react-native-svg.tsx',
+    '^react-native-mmkv$': '<rootDir>/src/__mocks__/react-native-mmkv.tsx',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo|@expo)/)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo|@expo|openapi-fetch|openapi-typescript-helpers)/)',
   ],
 };
 
