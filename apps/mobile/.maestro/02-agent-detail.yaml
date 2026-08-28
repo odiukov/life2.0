@@ -1,0 +1,16 @@
+appId: app.lifeagents.mobile
+name: Tapping an agent card opens its detail sheet
+---
+- launchApp
+- runFlow: shared/dismiss-dev-overlays.yaml
+- assertVisible: "AGENTS"
+- tapOn: ".*Sleep, 7h.*"
+- assertVisible: "AT A GLANCE"
+- assertVisible: "DURATION"
+- assertVisible: "7-DAY DURATION"
+- assertVisible: "QUICK ACTIONS"
+- takeScreenshot: screenshots/agent-detail
+# The sheet has no back button; tapping the backdrop above it closes it.
+- tapOn:
+    point: 50%, 8%
+- assertVisible: "AGENTS"

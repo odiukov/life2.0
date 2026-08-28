@@ -9,7 +9,8 @@
     "android": "expo run:android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint app src --ext ts,tsx",
-    "test": "jest"
+    "test": "jest",
+    "e2e": "maestro test .maestro"
   },
   "dependencies": {
     "@kingstinct/react-native-healthkit": "^14.0.0",

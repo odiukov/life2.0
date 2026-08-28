@@ -1,0 +1,15 @@
+appId: app.lifeagents.mobile
+name: Settings sheet lists the integrations
+---
+- launchApp
+- runFlow: shared/dismiss-dev-overlays.yaml
+- assertVisible: ".*Good evening.*"
+# Gear button in the header opens settings as a bottom sheet.
+- tapOn:
+    point: 92%, 11%
+- assertVisible: "SETTINGS"
+- assertVisible: ".*Integrations.*"
+- takeScreenshot: screenshots/settings
+- tapOn: ".*Integrations, Connected sources.*"
+- assertVisible: ".*Apple Health.*"
+- takeScreenshot: screenshots/integrations

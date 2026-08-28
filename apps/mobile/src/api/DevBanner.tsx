@@ -5,7 +5,9 @@ import { useTheme } from '@life-agents/ui';
 
 export function DevBanner() {
   const { colors, typography, spacing } = useTheme();
-  if (!__DEV__) return null;
+  // Hidden in release builds, and opt-out in dev via EXPO_PUBLIC_HIDE_DEV_BANNER=1
+  // so UI captures (see apps/mobile/.maestro) don't carry the debug chrome.
+  if (!__DEV__ || process.env.EXPO_PUBLIC_HIDE_DEV_BANNER === '1') return null;
   return (
     <View
       style={[

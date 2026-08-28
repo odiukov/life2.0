@@ -9,11 +9,16 @@ Everything runs on your machine: your own Postgres, your own vector store, your
 own observability stack, and the LLM provider of your choosing.
 
 <p align="center">
-  <img src=".github/assets/screenshots/today.png" width="24%" alt="Today" />
+  <img src=".github/assets/screenshots/home.png" width="24%" alt="Home" />
   <img src=".github/assets/screenshots/chat.png" width="24%" alt="Chat" />
-  <img src=".github/assets/screenshots/dash.png" width="24%" alt="Agent dashboard" />
+  <img src=".github/assets/screenshots/agent-detail.png" width="24%" alt="Agent detail" />
   <img src=".github/assets/screenshots/integrations.png" width="24%" alt="Integrations" />
 </p>
+
+<p align="center"><sub>
+  Captured from the Maestro flows in <code>apps/mobile/.maestro</code>, running against
+  the synthetic demo user — no real health data.
+</sub></p>
 
 ## Why
 
@@ -175,6 +180,24 @@ Roughly 700 Python tests cover the agents, orchestrator routing, ingestion and
 auth. A handful require a running Postgres; the rest are hermetic.
 
 Shell smoke tests against a live stack live in `scripts/`.
+
+### UI tests
+
+End-to-end flows live in `apps/mobile/.maestro` and drive the real app with
+[Maestro](https://maestro.mobile.dev). They cover the home grid, the agent
+detail sheet, a full chat round trip through the orchestrator, and the settings
+and integrations sheets — and they double as the source of the screenshots
+above.
+
+```bash
+brew install openjdk@21                                   # Maestro needs a JDK
+curl -fsSL "https://get.maestro.mobile.dev" | bash
+
+pnpm --filter @life-agents/mobile e2e                      # or: maestro test apps/mobile/.maestro
+```
+
+They expect the stack up, the demo user seeded, and the app installed on a
+booted simulator — see the flow comments in `apps/mobile/.maestro/config.yaml`.
 
 ## Project layout
 

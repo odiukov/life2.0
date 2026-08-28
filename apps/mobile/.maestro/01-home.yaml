@@ -1,0 +1,16 @@
+appId: app.lifeagents.mobile
+name: Home shows the agent grid
+---
+- launchApp
+- runFlow: shared/dismiss-dev-overlays.yaml
+- assertVisible: ".*Good evening.*"
+- assertVisible: "TODAY"
+- assertVisible: ".*READY.*"
+- assertVisible: "AGENTS"
+# Every domain agent reports a metric from the seeded data.
+- assertVisible: ".*Sleep.*"
+- assertVisible: ".*Recovery.*"
+- assertVisible: ".*Nutrition.*"
+- assertVisible: ".*Habits.*"
+- assertVisible: ".*Body.*"
+- takeScreenshot: screenshots/home

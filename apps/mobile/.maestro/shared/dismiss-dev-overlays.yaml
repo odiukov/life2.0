@@ -1,0 +1,8 @@
+appId: app.lifeagents.mobile
+name: Dismiss the React Native LogBox toast if it is showing
+---
+# Debug builds surface a LogBox toast over the tab bar. It is absent in release
+# builds, so every step here is optional.
+- tapOn:
+    text: ".*Open debugger to view warnings.*"
+    optional: true

@@ -1,0 +1,16 @@
+# Maestro end-to-end flows for the Life Agents mobile app.
+#
+# These run against a simulator with the app installed and the backend stack up
+# (`docker compose up -d`) seeded with the demo user:
+#
+#   python scripts/seed_demo_data.py --days 28
+#
+# and apps/mobile/.env.local pointing at it:
+#
+#   EXPO_PUBLIC_API_MODE=local
+#   EXPO_PUBLIC_API_BASE_URL=http://localhost:8000
+#   EXPO_PUBLIC_DEV_USER_ID=de000000-0000-4000-8000-000000000001
+#
+# Run everything:  maestro test apps/mobile/.maestro
+flows:
+  - "*.yaml"
