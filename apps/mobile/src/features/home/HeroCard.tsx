@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { CircularProgress, useTheme } from '@life-agents/ui';
-import { AGENT_COLOR } from '../dash/agentMeta';
+import { AGENT_COLOR } from '../agents/agentMeta';
 import type { HomeAgent } from './useHomeSummary';
 import { usePressScale } from '@/lib/usePressScale';
 

@@ -27,10 +27,6 @@ export default function TabsLayout() {
           name="chat"
           options={{ title: 'Chat', tabBarIcon: ({ color }) => <Icon name="ChatCircle" size={22} color={color} /> }}
         />
-
-        {/* Hidden — still routable from ProfileSheet deep-links */}
-        <Tabs.Screen name="dash"   options={{ href: null }} />
-        <Tabs.Screen name="more"   options={{ href: null }} />
       </Tabs>
       <View style={{ position: 'absolute', top: insets.top, left: 0, right: 0 }}>
         <DevBanner />

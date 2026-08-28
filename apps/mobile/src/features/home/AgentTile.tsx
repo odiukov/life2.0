@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import { CircularProgress, useTheme } from '@life-agents/ui';
 import type { AgentId } from '@life-agents/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { AGENT_COLOR, AGENT_META } from '../dash/agentMeta';
+import { AGENT_COLOR, AGENT_META } from '../agents/agentMeta';
 import type { HomeAgent } from './useHomeSummary';
 import { usePressScale } from '@/lib/usePressScale';
 import { BodyProfileAlert } from './BodyProfileAlert';

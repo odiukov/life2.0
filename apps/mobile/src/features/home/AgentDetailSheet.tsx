@@ -7,7 +7,7 @@ import { useTheme } from '@life-agents/ui';
 import type { AgentId } from '@life-agents/ui';
 import { useSheetAnimation } from '@/lib/sheetAnimation';
 import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
-import { AgentDetailContent } from './AgentDetailScreen';
+import { AgentDetailContent } from './AgentDetailContent';
 
 type Props = {
   visible: boolean;

@@ -1,6 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 import {
   AgentMark,
   BigRing,
@@ -17,7 +16,7 @@ import {
 import type { AgentId } from '@life-agents/ui';
 import { AGENT_COPY } from '@/features/agents/agentCopy';
 import { useConnectedIntegrations } from '@/features/integrations/store';
-import { AGENT_META } from '../dash/agentMeta';
+import { AGENT_META } from '../agents/agentMeta';
 import { useHomeSummary } from './useHomeSummary';
 import { useAgentDetail, type AgentDetail } from './useAgentDetail';
 
@@ -25,7 +24,6 @@ import { useAgentDetail, type AgentDetail } from './useAgentDetail';
  * Content body of the agent detail view — hero header, per-agent body, and
  * quick actions. No outer scroll wrapper, no back button, no container
  * padding. Designed to be embedded inside a bottom sheet (AgentDetailSheet)
- * or a fullscreen scroll wrapper (AgentDetailScreen).
  */
 export function AgentDetailContent({
   agentId,
@@ -147,35 +145,6 @@ export function AgentDetailContent({
         </View>
       )}
     </View>
-  );
-}
-
-/**
- * Fullscreen route wrapper around AgentDetailContent — kept for the
- * /(tabs)/dash/[agent] deep-link route. The primary in-app entry point is
- * AgentDetailSheet.
- */
-export function AgentDetailScreen({ agentId }: { agentId: AgentId }) {
-  const { colors } = useTheme();
-  const router = useRouter();
-
-  function handleAction(message: string) {
-    const tagged = `/${agentId} ${message}`;
-    router.push({ pathname: '/(tabs)/chat', params: { send: tagged } } as never);
-  }
-
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg1 }}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
-    >
-      <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-        <Icon name="CaretLeft" size={18} color={colors.fg2} />
-        <Text style={{ color: colors.fg2, fontSize: 14 }}>Home</Text>
-      </Pressable>
-      <AgentDetailContent agentId={agentId} onAction={handleAction} />
-    </ScrollView>
   );
 }
 
@@ -889,18 +858,6 @@ function HomeBody({ tint: _tint, connected }: { tint: string; connected: Set<str
 const rowGap16 = { flexDirection: 'row' as const, gap: 16 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 24,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-  },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -9,7 +9,7 @@ import {
   useIntegrationsStore,
 } from '@/features/integrations/store';
 import { IntegrationSheet } from '@/features/integrations/IntegrationSheet';
-import { AGENT_COLOR } from '@/features/dash/agentMeta';
+import { AGENT_COLOR } from '@/features/agents/agentMeta';
 import { useSheetAnimation, SHEET_SPRING } from '@/lib/sheetAnimation';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';

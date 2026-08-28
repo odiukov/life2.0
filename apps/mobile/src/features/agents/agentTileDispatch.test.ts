@@ -16,6 +16,7 @@ const ctx = () => ({
   router: { push: jest.fn() },
   openIntegration: jest.fn(),
   openDetail: jest.fn(),
+  openIntegrationsList: jest.fn(),
 });
 
 describe('dispatchTilePress', () => {
@@ -60,7 +61,7 @@ describe('dispatchTilePress', () => {
     expect(c.openIntegration).not.toHaveBeenCalled();
   });
 
-  it('navigates to /(tabs)/more/integrations for kind=finance-upload', () => {
+  it('opens the settings integrations list for kind=finance-upload', () => {
     const c = ctx();
     dispatchTilePress(
       makeRow({
@@ -70,7 +71,8 @@ describe('dispatchTilePress', () => {
       }),
       c,
     );
-    expect(c.router.push).toHaveBeenCalledWith('/(tabs)/more/integrations');
+    expect(c.openIntegrationsList).toHaveBeenCalled();
+    expect(c.router.push).not.toHaveBeenCalled();
     expect(c.openDetail).not.toHaveBeenCalled();
     expect(c.openIntegration).not.toHaveBeenCalled();
   });

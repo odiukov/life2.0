@@ -361,6 +361,8 @@ export function HomeScreen() {
   const [briefOpen, setBriefOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Non-null when a tile links straight into a settings sub-panel.
+  const [settingsPanel, setSettingsPanel] = useState<'integrations' | null>(null);
   const [ringHint, setRingHint] = useState<RingKey | null>(null);
   const [openAgent, setOpenAgent] = useState<AgentId | null>(null);
 
@@ -452,6 +454,7 @@ export function HomeScreen() {
       // raw `Dispatch<SetStateAction<T>>` is wider in its param type and won't assign.
       openIntegration: (panel: IntegrationId) => setActiveIntegration(panel),
       openDetail: (detailId: AgentId) => setOpenAgent(detailId),
+      openIntegrationsList: () => setSettingsPanel('integrations'),
     });
   }
 
@@ -633,7 +636,14 @@ export function HomeScreen() {
         </View>
       </ScrollView>
 
-      <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsSheet
+        visible={settingsOpen || settingsPanel !== null}
+        initialPanel={settingsPanel ?? undefined}
+        onClose={() => {
+          setSettingsOpen(false);
+          setSettingsPanel(null);
+        }}
+      />
       <AgentDetailSheet
         visible={openAgent !== null}
         agentId={openAgent}

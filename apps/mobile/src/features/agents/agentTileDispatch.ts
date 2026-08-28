@@ -7,6 +7,8 @@ export type TileDispatchContext = {
   router: Pick<Router, 'push'>;
   openIntegration: (panel: IntegrationId) => void;
   openDetail: (id: AgentId) => void;
+  /** Opens the settings sheet on its integrations list. */
+  openIntegrationsList: () => void;
 };
 
 export function dispatchTilePress(row: AgentRow, ctx: TileDispatchContext): void {
@@ -25,7 +27,7 @@ export function dispatchTilePress(row: AgentRow, ctx: TileDispatchContext): void
       });
       return;
     case 'finance-upload':
-      ctx.router.push('/(tabs)/more/integrations');
+      ctx.openIntegrationsList();
       return;
     default: {
       const _exhaustive: never = row.cta;

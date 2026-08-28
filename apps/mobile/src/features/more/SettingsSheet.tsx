@@ -223,9 +223,14 @@ const NAV_ROWS = [
   { key: 'about', label: 'About Life Agents', hint: 'v0.0.1', icon: 'Info' },
 ] as const;
 
-type Props = { visible: boolean; onClose: () => void };
+type Props = {
+  visible: boolean;
+  onClose: () => void;
+  /** Sub-panel to open straight away, e.g. when a home tile links into settings. */
+  initialPanel?: SubPanel;
+};
 
-export function SettingsSheet({ visible, onClose }: Props) {
+export function SettingsSheet({ visible, onClose, initialPanel }: Props) {
   const { colors, spacing, typography } = useTheme();
   const { session, signOut } = useSession();
   const insets = useSafeAreaInsets();
@@ -342,8 +347,12 @@ export function SettingsSheet({ visible, onClose }: Props) {
       // SecureStore keys while this sheet is closed. Re-hydrate on open so
       // the badges aren't stale when the sheet appears.
       hydrateIntegrationsFromSecureStore().catch(() => {});
+      // Callers can link straight into a sub-panel (e.g. a home tile that
+      // needs the integrations list) instead of the settings root.
+      if (initialPanel) openSub(initialPanel);
     }
-  }, [visible]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, initialPanel]);
 
   const subSheetStyle = useAnimatedStyle(() => ({
     transform: [

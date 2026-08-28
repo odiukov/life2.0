@@ -1,4 +1,4 @@
-// apps/mobile/src/features/dash/agentMeta.ts
+// apps/mobile/src/features/agents/agentMeta.ts
 import type { AgentId } from '@life-agents/ui';
 
 export type QuickAction = {
