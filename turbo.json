@@ -1,0 +1,14 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": ["ESLINT_USE_FLAT_CONFIG"],
+  "tasks": {
+    "build": {
+      "outputs": ["dist/**", ".next/**"],
+      "dependsOn": ["^build"]
+    },
+    "lint": { "outputs": [] },
+    "typecheck": { "outputs": ["*.tsbuildinfo"] },
+    "test": { "outputs": [] },
+    "dev": { "cache": false, "persistent": true }
+  }
+}

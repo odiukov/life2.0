@@ -1,0 +1,11 @@
+node_modules
+.turbo
+dist
+*.lock
+pnpm-lock.yaml
+ios/
+android/
+.expo
+coverage
+*.tsbuildinfo
+build

@@ -1,0 +1,61 @@
+export const darkColors = {
+  bg0: '#0f0f13',
+  bg1: '#141418',
+  bg2: '#1c1c23',
+  bg3: '#25252f',
+  bg4: '#2e2e38',
+  fg1: '#f5f5f7',
+  fg2: '#a8a8b3',
+  fg3: '#6b6b78',
+  fg4: '#47474f',
+  border: '#3a3a4ab3',
+  borderSoft: '#3a3a4a59',
+  accent: '#c88600',
+  accentHi: '#dfa030',
+  accentInk: '#2a1a00',
+  accentSoft: '#c8860026',
+  accentBorder: '#c88600',
+  success: '#4ade80',
+  successSoft: '#4ade8026',
+  warn: '#f59e0b',
+  warnSoft: '#f59e0b26',
+  danger: '#f87171',
+  dangerSoft: '#f8717126',
+  info: '#60a5fa',
+  infoSoft: '#60a5fa26',
+} as const;
+
+export const lightColors = {
+  bg0: '#ffffff',
+  bg1: '#fafafa',
+  bg2: '#f4f4f5',
+  bg3: '#e4e4e7',
+  bg4: '#d4d4d8',
+  fg1: '#09090b',
+  fg2: '#52525b',
+  fg3: '#a1a1aa',
+  fg4: '#d4d4d8',
+  border: '#e5e5e5',
+  borderSoft: '#f0f0f0',
+  accent: '#a06800',
+  accentHi: '#b87800',
+  accentInk: '#ffffff',
+  accentSoft: '#c8860014',
+  accentBorder: '#c88600',
+  success: '#16a34a',
+  successSoft: '#16a34a14',
+  warn: '#ca8a04',
+  warnSoft: '#ca8a0414',
+  danger: '#dc2626',
+  dangerSoft: '#dc262614',
+  info: '#2563eb',
+  infoSoft: '#2563eb14',
+} as const;
+
+export type ColorToken = keyof typeof darkColors;
+export type ThemeMode = 'dark' | 'light';
+
+export const colors = {
+  dark: darkColors,
+  light: lightColors,
+} satisfies Record<ThemeMode, Record<ColorToken, string>>;

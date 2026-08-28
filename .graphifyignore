@@ -1,0 +1,44 @@
+# Dependencies and generated package manager state
+node_modules/
+.pnpm-store/
+
+# Build outputs and caches
+dist/
+build/
+.turbo/
+.expo/
+coverage/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Mobile native/generated outputs
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+
+# Local graphify outputs and temp files
+graphify-out/
+.graphify_*
+
+# Secrets and local-only config
+.env
+.env.*
+!.env.example
+gcp-oauth.keys.json
+mcp-config/**/*.json
+mcp-config/**/*.cache
+/.mcp.json
+
+# Personal/local working dirs
+.worktrees/
+.claude/
+.superpowers/
+design_handoff_home_redesign/
+
+# OS/editor noise
+.DS_Store

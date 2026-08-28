@@ -1,0 +1,23 @@
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { apiMode, apiBaseUrl } from './client';
+import { useTheme } from '@life-agents/ui';
+
+export function DevBanner() {
+  const { colors, typography, spacing } = useTheme();
+  if (!__DEV__) return null;
+  return (
+    <View
+      style={[
+        styles.bar,
+        { backgroundColor: colors.bg3, paddingHorizontal: spacing.s3, paddingVertical: 2 },
+      ]}
+    >
+      <Text style={[typography.micro, { color: colors.accentHi }]}>
+        {apiMode === 'local' ? `DEV · ${apiBaseUrl}` : `DEV · ${apiMode.toUpperCase()}`}
+      </Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({ bar: { alignItems: 'center' } });

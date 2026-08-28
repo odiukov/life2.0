@@ -1,0 +1,211 @@
+openapi: 3.1.0
+info:
+  title: life-agents-api
+  version: 0.0.1-p3a
+paths:
+  /chat/threads:
+    get:
+      operationId: listThreads
+      responses:
+        {
+          '200':
+            {
+              description: ok,
+              content:
+                {
+                  application/json:
+                    { schema: { type: array, items: { $ref: '#/components/schemas/Thread' } } },
+                },
+            },
+        }
+  /chat/stream:
+    post:
+      operationId: chatStream
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                {
+                  schema:
+                    {
+                      type: object,
+                      properties: { message: { type: string }, thread_id: { type: string } },
+                      required: [message, thread_id],
+                    },
+                },
+            },
+        }
+      responses: { '200': { description: SSE stream of events } }
+  /dashboard:
+    get:
+      operationId: getDashboard
+      responses:
+        {
+          '200':
+            {
+              description: ok,
+              content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } },
+            },
+        }
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      responses:
+        {
+          '200':
+            {
+              description: ok,
+              content: { application/json: { schema: { $ref: '#/components/schemas/Dashboard' } } },
+            },
+        }
+  /me:
+    get:
+      operationId: getMe
+      responses:
+        {
+          '200':
+            {
+              description: ok,
+              content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } },
+            },
+        }
+  /me/profile:
+    get:
+      operationId: getProfile
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BodyProfile' }
+    patch:
+      operationId: updateProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BodyProfileUpdate' }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { type: object, properties: { ok: { type: boolean } } }
+  /agents/{agent_id}/detail:
+    get:
+      operationId: getAgentDetail
+      summary: Get enriched detail for one agent
+      parameters:
+        - name: agent_id
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [sleep, workout, nutrition, mood, habits, recovery, medication, finance, calendar]
+      responses:
+        '200':
+          description: Agent detail with history and insight
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetail'
+        '404':
+          description: Unknown agent_id
+components:
+  schemas:
+    Thread:
+      type: object
+      required: [id, title, updated_at]
+      properties:
+        {
+          id: { type: string },
+          title: { type: string },
+          updated_at: { type: string, format: date-time },
+        }
+    AgentSummary:
+      type: object
+      required: [agent, label, metric, tint]
+      properties:
+        agent:
+          {
+            type: string,
+            enum:
+              [
+                sleep,
+                workout,
+                nutrition,
+                mood,
+                habits,
+                recovery,
+                medication,
+                finance,
+                calendar,
+                home,
+              ],
+          }
+        label: { type: string }
+        metric: { type: string }
+        tint: { type: string, enum: [success, warn, danger, neutral] }
+        detail: { type: string, nullable: true }
+        progress: { type: number, format: float, nullable: true }
+    Dashboard:
+      type: object
+      required: [agents]
+      properties: { agents: { type: array, items: { $ref: '#/components/schemas/AgentSummary' } } }
+    Me:
+      type: object
+      required: [id, voice_preset]
+      properties:
+        id: { type: string }
+        voice_preset: { type: string, enum: [calm_coach, data_literate, clinical, hype] }
+    BodyProfile:
+      type: object
+      properties:
+        height_cm: { type: number, nullable: true }
+        weight_kg: { type: number, nullable: true }
+        age: { type: integer, nullable: true }
+        sex: { type: string, enum: [male, female], nullable: true }
+        activity_level:
+          { type: string, enum: [sedentary, light, moderate, active, very_active], nullable: true }
+        calorie_goal_override: { type: integer, nullable: true }
+        tdee_kcal: { type: integer, nullable: true }
+    BodyProfileUpdate:
+      type: object
+      properties:
+        height_cm: { type: number, nullable: true }
+        weight_kg: { type: number, nullable: true }
+        age: { type: integer, nullable: true }
+        sex: { type: string, enum: [male, female], nullable: true }
+        activity_level:
+          { type: string, enum: [sedentary, light, moderate, active, very_active], nullable: true }
+        calorie_goal_override: { type: integer, nullable: true }
+    AgentDetail:
+      type: object
+      required: [agent, insight, metrics, history]
+      properties:
+        agent:
+          type: string
+          enum: [sleep, workout, nutrition, mood, habits, recovery, medication, finance, calendar]
+        insight:
+          type: string
+          description: Formula-computed 1-2 sentence summary. Empty string when insufficient data.
+        metrics:
+          type: object
+          additionalProperties: true
+          description: Flat dict of agent-specific metric values. Keys differ per agent.
+        history:
+          type: array
+          items:
+            type: object
+            required: [date, value, label]
+            properties:
+              date:
+                type: string
+                format: date
+              value:
+                type: number
+                format: float
+              label:
+                type: string

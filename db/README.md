@@ -1,0 +1,1 @@
+Schema lives in `supabase/migrations/` now. The files under `db/migrations.DEPRECATED/` and `db/init.sql.DEPRECATED` are historical; edits must go through Supabase's CLI format in `supabase/migrations/` going forward. Local docker postgres is still bootstrapped from the same files (the orchestrator's `shared/db.py::init_db_pool` applies whichever set exists).

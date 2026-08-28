@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'${CODEX_PROJECT_ROOT:-.}/.codex/hooks/block-host-python-pytest.sh'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'${CODEX_PROJECT_ROOT:-.}/.codex/hooks/prettier-on-edit.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

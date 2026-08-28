@@ -1,0 +1,61 @@
+# --- Secrets & local config -------------------------------------------------
+.env
+.env.*
+!.env.example
+.env.auth
+apps/mobile/.env.local
+!apps/mobile/.env.local.example
+
+# Google Calendar MCP — OAuth client secret + per-user tokens
+gcp-oauth.keys.json
+mcp-config/
+!mcp-config/.gitkeep
+
+# Personal MCP server config (may embed local DB creds)
+/.mcp.json
+
+# Credential-ish file types — never commit
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.mobileprovision
+serviceAccount*.json
+service-account*.json
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# --- Node / JS --------------------------------------------------------------
+node_modules/
+.turbo/
+*.tsbuildinfo
+dist/
+build/
+
+# --- Mobile -----------------------------------------------------------------
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/.expo/
+
+# --- Agent tooling / local scratch ------------------------------------------
+.claude
+.superpowers
+.worktrees/
+graphify-out/
+graphify-out-backend/
+docs/
+design_handoff_home_redesign/
+
+# --- OS ---------------------------------------------------------------------
+.DS_Store
