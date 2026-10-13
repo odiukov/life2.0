@@ -16,7 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --all-packages --frozen
+      - run: uv sync --all-packages --all-extras --frozen
       - run: make lint
       - run: make test
       # Enable make test-integration in Task 7 when integration fixtures and markers exist.

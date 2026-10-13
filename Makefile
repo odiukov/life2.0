@@ -1,7 +1,7 @@
 .PHONY: sync fmt lint test test-integration evals migrate
 
 sync:
-	uv sync --all-packages
+	uv sync --all-packages --all-extras
 
 fmt:
 	uv run ruff format .
