@@ -1,4 +1,5 @@
 """ConsentSpanExporter redacts sensitive attributes for non-consenting users."""
+
 import pytest
 from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.trace import SpanContext, SpanKind, Status, StatusCode, TraceFlags
@@ -29,6 +30,7 @@ def _make_readable_span(attrs: dict, name="test") -> ReadableSpan:
 
 class _CapturingInner:
     """Inner exporter that captures spans instead of shipping to OTLP."""
+
     def __init__(self):
         self.captured = []
 
@@ -36,21 +38,27 @@ class _CapturingInner:
         self.captured = list(spans)
         return SpanExportResult.SUCCESS
 
-    def shutdown(self): pass
-    def force_flush(self, timeout_millis=30_000): return True
+    def shutdown(self):
+        pass
+
+    def force_flush(self, timeout_millis=30_000):
+        return True
 
 
 def test_consent_ok_preserves_sensitive_attrs():
     from shared.consent import ConsentSpanExporter
+
     inner = _CapturingInner()
     exp = ConsentSpanExporter(inner)
 
-    span = _make_readable_span({
-        "telemetry.bodies_ok": "1",
-        "gen_ai.prompt.0.content": "my blood pressure is 120/80",
-        "gen_ai.usage.input_tokens": 42,
-        "http.method": "POST",
-    })
+    span = _make_readable_span(
+        {
+            "telemetry.bodies_ok": "1",
+            "gen_ai.prompt.0.content": "my blood pressure is 120/80",
+            "gen_ai.usage.input_tokens": 42,
+            "http.method": "POST",
+        }
+    )
     exp.export([span])
 
     out = inner.captured[0]
@@ -61,17 +69,20 @@ def test_consent_ok_preserves_sensitive_attrs():
 
 def test_consent_denied_redacts_sensitive_attrs():
     from shared.consent import ConsentSpanExporter
+
     inner = _CapturingInner()
     exp = ConsentSpanExporter(inner)
 
-    span = _make_readable_span({
-        "telemetry.bodies_ok": "0",
-        "gen_ai.prompt.0.content": "my blood pressure is 120/80",
-        "gen_ai.completion.content": "that's normal",
-        "traceloop.entity.input": "{\"q\": \"bp\"}",
-        "gen_ai.usage.input_tokens": 42,
-        "http.method": "POST",
-    })
+    span = _make_readable_span(
+        {
+            "telemetry.bodies_ok": "0",
+            "gen_ai.prompt.0.content": "my blood pressure is 120/80",
+            "gen_ai.completion.content": "that's normal",
+            "traceloop.entity.input": '{"q": "bp"}',
+            "gen_ai.usage.input_tokens": 42,
+            "http.method": "POST",
+        }
+    )
     exp.export([span])
 
     out = inner.captured[0]
@@ -89,18 +100,21 @@ def test_consent_denied_redacts_langchain_and_system_instructions():
     gen_ai.system_instructions; all LLM SDKs emit gen_ai.tool.definitions.
     None were covered by the original SENSITIVE_PREFIXES list."""
     from shared.consent import ConsentSpanExporter
+
     inner = _CapturingInner()
     exp = ConsentSpanExporter(inner)
 
-    span = _make_readable_span({
-        "telemetry.bodies_ok": "0",
-        "gen_ai.task.input": '{"messages":[{"role":"user","content":"my mood is 3/10"}]}',
-        "gen_ai.task.output": '{"content":"sorry to hear that"}',
-        "gen_ai.system_instructions": "You are a health coach. User has depression.",
-        "gen_ai.tool.definitions": '[{"name":"log_mood","parameters":{}}]',
-        "gen_ai.usage.input_tokens": 100,
-        "http.method": "POST",
-    })
+    span = _make_readable_span(
+        {
+            "telemetry.bodies_ok": "0",
+            "gen_ai.task.input": '{"messages":[{"role":"user","content":"my mood is 3/10"}]}',
+            "gen_ai.task.output": '{"content":"sorry to hear that"}',
+            "gen_ai.system_instructions": "You are a health coach. User has depression.",
+            "gen_ai.tool.definitions": '[{"name":"log_mood","parameters":{}}]',
+            "gen_ai.usage.input_tokens": 100,
+            "http.method": "POST",
+        }
+    )
     exp.export([span])
 
     out = inner.captured[0]
@@ -115,14 +129,17 @@ def test_consent_denied_redacts_langchain_and_system_instructions():
 
 def test_consent_absent_defaults_to_redact():
     from shared.consent import ConsentSpanExporter
+
     inner = _CapturingInner()
     exp = ConsentSpanExporter(inner)
 
-    span = _make_readable_span({
-        # telemetry.bodies_ok not set
-        "gen_ai.prompt.0.content": "sensitive",
-        "http.method": "GET",
-    })
+    span = _make_readable_span(
+        {
+            # telemetry.bodies_ok not set
+            "gen_ai.prompt.0.content": "sensitive",
+            "http.method": "GET",
+        }
+    )
     exp.export([span])
 
     out = inner.captured[0]
@@ -132,14 +149,17 @@ def test_consent_absent_defaults_to_redact():
 
 def test_exporter_handles_none_and_non_string_attrs():
     from shared.consent import ConsentSpanExporter
+
     inner = _CapturingInner()
     exp = ConsentSpanExporter(inner)
 
-    span = _make_readable_span({
-        "telemetry.bodies_ok": "0",
-        "gen_ai.usage.input_tokens": 42,  # int
-        "gen_ai.usage.cost": 0.01,         # float
-    })
+    span = _make_readable_span(
+        {
+            "telemetry.bodies_ok": "0",
+            "gen_ai.usage.input_tokens": 42,  # int
+            "gen_ai.usage.cost": 0.01,  # float
+        }
+    )
     # Should not raise.
     result = exp.export([span])
     assert result == SpanExportResult.SUCCESS

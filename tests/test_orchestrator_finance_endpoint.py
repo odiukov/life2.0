@@ -4,6 +4,7 @@ Uses a temporary TestClient over orchestrator.app.main without starting
 the full lifespan (no graph, no checkpointer) — the endpoint itself only
 touches DB helpers + PDF parser + ingest.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,6 +24,7 @@ USER = UUID("00000000-0000-0000-0000-000000000001")
 def _override_current_user(app):
     """Bypass JWT auth for endpoint tests by injecting a fixed user_id."""
     from orchestrator.app.auth import current_user
+
     app.dependency_overrides[current_user] = lambda: USER
     try:
         yield
@@ -73,6 +75,7 @@ def _has_db() -> bool:
 def _fake_pdf_bytes() -> bytes:
     """Build a minimal single-page PDF with the Payoneer-shaped text."""
     import pymupdf
+
     doc = pymupdf.open()
     page = doc.new_page(width=595, height=842)
     page.insert_text((50, 50), _PAGE, fontsize=8, fontname="helv")
@@ -87,10 +90,12 @@ async def _cleanup():
         yield
         return
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         await conn.execute("DELETE FROM finance_transactions WHERE txn_id LIKE 'pyn-pdf-%'")
@@ -115,10 +120,13 @@ async def test_upload_happy_path():
     from orchestrator.app import main
 
     pdf = _fake_pdf_bytes()
-    with patch(
-        "orchestrator.app.finance_ingest.categorize_new",
-        new=AsyncMock(return_value=None),
-    ), _override_current_user(main.app):
+    with (
+        patch(
+            "orchestrator.app.finance_ingest.categorize_new",
+            new=AsyncMock(return_value=None),
+        ),
+        _override_current_user(main.app),
+    ):
         client = TestClient(main.app)
         files = {"csv": ("payoneer.pdf", pdf, "application/pdf")}
         resp = client.post("/finance/upload", files=files)
@@ -138,16 +146,20 @@ async def test_upload_rejects_non_payoneer_pdf():
 
     # A valid PDF byte stream, but without Payoneer markers.
     import pymupdf
+
     doc = pymupdf.open()
     p = doc.new_page(width=595, height=842)
     p.insert_text((50, 50), "Random unrelated doc", fontsize=10)
     bad = doc.tobytes()
     doc.close()
 
-    with patch(
-        "orchestrator.app.finance_ingest.categorize_new",
-        new=AsyncMock(return_value=None),
-    ), _override_current_user(main.app):
+    with (
+        patch(
+            "orchestrator.app.finance_ingest.categorize_new",
+            new=AsyncMock(return_value=None),
+        ),
+        _override_current_user(main.app),
+    ):
         client = TestClient(main.app)
         resp = client.post(
             "/finance/upload",

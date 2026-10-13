@@ -4,6 +4,7 @@ Uses the a2a-sdk 0.3.x ClientFactory API — the deprecated A2AClient is avoided
 Consumers call ``await get_client(url)`` to get a ready ``Client`` and then
 iterate ``client.send_message(message)`` for responses.
 """
+
 from __future__ import annotations
 
 import asyncio

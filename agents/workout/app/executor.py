@@ -1,4 +1,5 @@
 """WorkoutAgentExecutor — maps incoming A2A messages to workout-domain skills."""
+
 from __future__ import annotations
 
 import json
@@ -42,6 +43,7 @@ def _get_llm():
     if _LLM is None:
         _LLM = build_llm()
     return _LLM
+
 
 from .skills import PEER_SKILLS, SKILL_PROMPTS
 
@@ -101,8 +103,12 @@ class WorkoutAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -132,10 +138,16 @@ class WorkoutAgentExecutor(AgentExecutor):
             output = result.content if isinstance(result.content, str) else str(result.content)
 
             await insert_task_record(
-                agent="workout", task_id=task_id, context_id=context_id,
-                skill_id=skill_id, input_=params, output=output, state="completed",
+                agent="workout",
+                task_id=task_id,
+                context_id=context_id,
+                skill_id=skill_id,
+                input_=params,
+                output=output,
+                state="completed",
             )
-            await upsert_memory(user_id=uid,
+            await upsert_memory(
+                user_id=uid,
                 agent_id="workout",
                 id_=str(uuid.uuid4()),
                 text=output,
@@ -160,8 +172,12 @@ class WorkoutAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("workout executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:

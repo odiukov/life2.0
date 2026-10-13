@@ -11,6 +11,7 @@ Flow (see spec §4.5.2):
 it transparently refreshes via refresh_token when the stored access_token is within
 REFRESH_SKEW_SECONDS of expiry.
 """
+
 from __future__ import annotations
 
 import os

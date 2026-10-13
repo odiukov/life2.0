@@ -10,6 +10,7 @@ Production pattern: externally-managed pool with autocommit=True and
 prepare_threshold=0, per LangChain's production guidance. `from_conn_string`
 is avoided because it hides the pool and can leak connections.
 """
+
 from __future__ import annotations
 
 import logging

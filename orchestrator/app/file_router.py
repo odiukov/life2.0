@@ -24,9 +24,7 @@ def _classify_text(text: str) -> FileType:
     for pattern in _VIHEALTH_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE):
             return "vihealth"
-    payoneer_hits = sum(
-        1 for p in _PAYONEER_PATTERNS if re.search(p, text, re.IGNORECASE)
-    )
+    payoneer_hits = sum(1 for p in _PAYONEER_PATTERNS if re.search(p, text, re.IGNORECASE))
     if payoneer_hits >= 2:
         return "payoneer"
     return "unknown"
@@ -35,6 +33,7 @@ def _classify_text(text: str) -> FileType:
 def _extract_pdf_text(pdf_bytes: bytes) -> str:
     import pdfplumber
     import io
+
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         return "\n".join(page.extract_text() or "" for page in pdf.pages)
 
@@ -128,7 +127,13 @@ def _vihealth_summary(rows: list[dict], written: int, unchanged: int) -> str:
         return f"Данные уже в базе (пропущено: {unchanged}). Последнее измерение: {detail}"
     n = written
     last_digit, tens = n % 10, n % 100
-    suffix = "е" if last_digit == 1 and tens != 11 else "я" if last_digit in (2, 3, 4) and tens not in (12, 13, 14) else "й"
+    suffix = (
+        "е"
+        if last_digit == 1 and tens != 11
+        else "я"
+        if last_digit in (2, 3, 4) and tens not in (12, 13, 14)
+        else "й"
+    )
     lines = [f"Импортировал {n} измерени{suffix} (без изменений: {unchanged})."]
     last = sorted(rows, key=lambda r: r["recorded_at"])[-1]
     m = last["data"]
@@ -162,10 +167,7 @@ async def route_file(
         return await _ingest_vihealth(pdf_bytes, user_id)
     elif resolved == "payoneer":
         return await _ingest_payoneer(pdf_bytes, user_id)
-    return (
-        "Не удалось определить тип файла. "
-        "Укажи /body или /finance перед отправкой."
-    )
+    return "Не удалось определить тип файла. Укажи /body или /finance перед отправкой."
 
 
 async def _ingest_vihealth(pdf_bytes: bytes, user_id: UUID) -> str:

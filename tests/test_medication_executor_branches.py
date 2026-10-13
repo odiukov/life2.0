@@ -56,15 +56,24 @@ def _texts(q):
 async def test_log_medication_resolves_name_and_inserts_log():
     from agents.medication.app.executor import MedicationAgentExecutor
 
-    fake_med = {"id": "uuid-mag", "name": "magnesium", "dose": "200mg",
-                "schedule": "daily 21:00", "notes": None, "created_at": None}
+    fake_med = {
+        "id": "uuid-mag",
+        "name": "magnesium",
+        "dose": "200mg",
+        "schedule": "daily 21:00",
+        "notes": None,
+        "created_at": None,
+    }
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               AsyncMock(return_value=fake_med)), \
-         patch("agents.medication.app.executor.insert_log", AsyncMock()) as insert, \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        _patch_owner(),
+        patch(
+            "agents.medication.app.executor.registry.find_by_name", AsyncMock(return_value=fake_med)
+        ),
+        patch("agents.medication.app.executor.insert_log", AsyncMock()) as insert,
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("/med magnesium", "log_medication", {"name": "magnesium"})
@@ -83,12 +92,13 @@ async def test_log_medication_resolves_name_and_inserts_log():
 async def test_log_medication_unknown_name_hint():
     from agents.medication.app.executor import MedicationAgentExecutor
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               AsyncMock(return_value=None)), \
-         patch("agents.medication.app.executor.insert_log", AsyncMock()), \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        _patch_owner(),
+        patch("agents.medication.app.executor.registry.find_by_name", AsyncMock(return_value=None)),
+        patch("agents.medication.app.executor.insert_log", AsyncMock()),
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("random", "log_medication", {"name": "unknown"})
@@ -99,15 +109,31 @@ async def test_log_medication_unknown_name_hint():
 
 async def test_list_active_formats_deterministic_summary():
     from agents.medication.app.executor import MedicationAgentExecutor
+
     meds = [
-        {"id": "a", "name": "magnesium", "dose": "200mg", "schedule": "daily 21:00", "notes": None, "created_at": None},
-        {"id": "b", "name": "vitamin-d", "dose": "2000IU", "schedule": "daily morning", "notes": None, "created_at": None},
+        {
+            "id": "a",
+            "name": "magnesium",
+            "dose": "200mg",
+            "schedule": "daily 21:00",
+            "notes": None,
+            "created_at": None,
+        },
+        {
+            "id": "b",
+            "name": "vitamin-d",
+            "dose": "2000IU",
+            "schedule": "daily morning",
+            "notes": None,
+            "created_at": None,
+        },
     ]
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.list_active",
-               AsyncMock(return_value=meds)), \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        _patch_owner(),
+        patch("agents.medication.app.executor.registry.list_active", AsyncMock(return_value=meds)),
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("", "list_active")
@@ -120,11 +146,13 @@ async def test_list_active_formats_deterministic_summary():
 
 async def test_list_active_empty():
     from agents.medication.app.executor import MedicationAgentExecutor
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.list_active",
-               AsyncMock(return_value=[])), \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+
+    with (
+        _patch_owner(),
+        patch("agents.medication.app.executor.registry.list_active", AsyncMock(return_value=[])),
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("", "list_active")
@@ -134,18 +162,27 @@ async def test_list_active_empty():
 
 async def test_analyze_adherence_runs_llm_with_real_data():
     from agents.medication.app.executor import MedicationAgentExecutor
-    meds = [{"id": "a", "name": "magnesium", "dose": None,
-             "schedule": "daily 21:00", "notes": None, "created_at": None}]
+
+    meds = [
+        {
+            "id": "a",
+            "name": "magnesium",
+            "dose": None,
+            "schedule": "daily 21:00",
+            "notes": None,
+            "created_at": None,
+        }
+    ]
     logs = [{"data": {"name": "magnesium"}, "recorded_at": None}] * 10  # 10 takes in 14 days
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.list_active",
-               AsyncMock(return_value=meds)), \
-         patch("agents.medication.app.executor.fetch_medication_logs",
-               AsyncMock(return_value=logs)), \
-         patch("agents.medication.app.executor._get_llm") as get_llm, \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        _patch_owner(),
+        patch("agents.medication.app.executor.registry.list_active", AsyncMock(return_value=meds)),
+        patch("agents.medication.app.executor.fetch_medication_logs", AsyncMock(return_value=logs)),
+        patch("agents.medication.app.executor._get_llm") as get_llm,
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         llm = AsyncMock()
         llm.ainvoke = AsyncMock(return_value=type("R", (), {"content": "Good adherence."})())
         get_llm.return_value = llm
@@ -160,16 +197,27 @@ async def test_analyze_adherence_runs_llm_with_real_data():
 
 async def test_archive_medication_soft_deletes():
     from agents.medication.app.executor import MedicationAgentExecutor
-    fake_med = {"id": "uuid-zz", "name": "zinc", "dose": "15mg",
-                "schedule": "daily", "notes": None, "created_at": None}
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               AsyncMock(return_value=fake_med)), \
-         patch("agents.medication.app.executor.registry.archive",
-               AsyncMock(return_value=True)) as arch, \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    fake_med = {
+        "id": "uuid-zz",
+        "name": "zinc",
+        "dose": "15mg",
+        "schedule": "daily",
+        "notes": None,
+        "created_at": None,
+    }
+
+    with (
+        _patch_owner(),
+        patch(
+            "agents.medication.app.executor.registry.find_by_name", AsyncMock(return_value=fake_med)
+        ),
+        patch(
+            "agents.medication.app.executor.registry.archive", AsyncMock(return_value=True)
+        ) as arch,
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("stop zinc", "archive_medication", {"name": "zinc"})
@@ -182,11 +230,12 @@ async def test_archive_medication_soft_deletes():
 async def test_archive_medication_unknown_name():
     from agents.medication.app.executor import MedicationAgentExecutor
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               AsyncMock(return_value=None)), \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        _patch_owner(),
+        patch("agents.medication.app.executor.registry.find_by_name", AsyncMock(return_value=None)),
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         ex = MedicationAgentExecutor()
         q = _FakeQueue()
         ctx = _FakeContext("stop xxx", "archive_medication", {"name": "xxx"})
@@ -201,22 +250,28 @@ async def test_log_medication_uses_user_id_from_message_not_legacy_owner():
     from agents.medication.app.executor import MedicationAgentExecutor
 
     other_user = UUID("00000000-0000-0000-0000-000000000099")
-    fake_med = {"id": "uuid-mag", "name": "magnesium", "dose": "200mg",
-                "schedule": "daily 21:00", "notes": None, "created_at": None}
+    fake_med = {
+        "id": "uuid-mag",
+        "name": "magnesium",
+        "dose": "200mg",
+        "schedule": "daily 21:00",
+        "notes": None,
+        "created_at": None,
+    }
 
-    with patch(
+    with (
+        patch(
             "agents.medication.app.executor.user_id_from_message",
-            new=AsyncMock(return_value=other_user)
-        ), \
-        patch("agents.medication.app.executor.registry.find_by_name",
-              new=AsyncMock(return_value=fake_med)), \
-        patch("agents.medication.app.executor.insert_log",
-              new=AsyncMock()) as mock_insert, \
-        patch("agents.medication.app.executor.insert_task_record",
-              new=AsyncMock()), \
-        patch("agents.medication.app.executor.upsert_memory",
-              new=AsyncMock()):
-
+            new=AsyncMock(return_value=other_user),
+        ),
+        patch(
+            "agents.medication.app.executor.registry.find_by_name",
+            new=AsyncMock(return_value=fake_med),
+        ),
+        patch("agents.medication.app.executor.insert_log", new=AsyncMock()) as mock_insert,
+        patch("agents.medication.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", new=AsyncMock()),
+    ):
         ctx = _FakeContext("magnesium", "log_medication", {"name": "magnesium"})
         q = _FakeQueue()
         await MedicationAgentExecutor().execute(ctx, q)
@@ -234,18 +289,25 @@ async def test_log_medication_emits_log_entry_artifact():
     from agents.medication.app.executor import MedicationAgentExecutor
     from a2a.types import DataPart
 
-    fake_med = {"id": "uuid-mag", "name": "magnesium", "dose": "200mg",
-                "schedule": "daily 21:00", "notes": None, "created_at": None}
+    fake_med = {
+        "id": "uuid-mag",
+        "name": "magnesium",
+        "dose": "200mg",
+        "schedule": "daily 21:00",
+        "notes": None,
+        "created_at": None,
+    }
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               new=AsyncMock(return_value=fake_med)), \
-         patch("agents.medication.app.executor.insert_log",
-               new=AsyncMock()), \
-         patch("agents.medication.app.executor.insert_task_record",
-               new=AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory",
-               new=AsyncMock()):
+    with (
+        _patch_owner(),
+        patch(
+            "agents.medication.app.executor.registry.find_by_name",
+            new=AsyncMock(return_value=fake_med),
+        ),
+        patch("agents.medication.app.executor.insert_log", new=AsyncMock()),
+        patch("agents.medication.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", new=AsyncMock()),
+    ):
         ctx = _FakeContext("magnesium", "log_medication", {"name": "magnesium"})
         q = _FakeQueue()
         await MedicationAgentExecutor().execute(ctx, q)
@@ -266,25 +328,30 @@ async def test_log_medication_emits_log_entry_artifact():
 async def test_archive_medication_emits_log_entry_artifact():
     from agents.medication.app.executor import MedicationAgentExecutor
 
-    fake_med = {"id": "uuid-mag", "name": "magnesium", "dose": "200mg",
-                "schedule": "daily 21:00", "notes": None, "created_at": None}
+    fake_med = {
+        "id": "uuid-mag",
+        "name": "magnesium",
+        "dose": "200mg",
+        "schedule": "daily 21:00",
+        "notes": None,
+        "created_at": None,
+    }
 
-    with _patch_owner(), \
-         patch("agents.medication.app.executor.registry.find_by_name",
-               new=AsyncMock(return_value=fake_med)), \
-         patch("agents.medication.app.executor.registry.archive",
-               new=AsyncMock(return_value=True)), \
-         patch("agents.medication.app.executor.insert_task_record",
-               new=AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory",
-               new=AsyncMock()):
-        ctx = _FakeContext("magnesium", "archive_medication",
-                          {"name": "magnesium"})
+    with (
+        _patch_owner(),
+        patch(
+            "agents.medication.app.executor.registry.find_by_name",
+            new=AsyncMock(return_value=fake_med),
+        ),
+        patch("agents.medication.app.executor.registry.archive", new=AsyncMock(return_value=True)),
+        patch("agents.medication.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", new=AsyncMock()),
+    ):
+        ctx = _FakeContext("magnesium", "archive_medication", {"name": "magnesium"})
         q = _FakeQueue()
         await MedicationAgentExecutor().execute(ctx, q)
 
     found = any(
-        getattr(getattr(evt, "artifact", None), "name", None) == "log_entry"
-        for evt in q.events
+        getattr(getattr(evt, "artifact", None), "name", None) == "log_entry" for evt in q.events
     )
     assert found, "archive_medication must emit a log_entry artifact"

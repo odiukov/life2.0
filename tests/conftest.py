@@ -6,6 +6,7 @@ provider env. Real keys aren't needed for unit tests (the LLM clients are
 mocked or never invoked), so we set placeholder values early — before any
 test module is imported.
 """
+
 from __future__ import annotations
 
 import os
@@ -16,11 +17,14 @@ os.environ.setdefault("OPENROUTER_API_KEY", "test-placeholder")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-placeholder")
 os.environ.setdefault("GEMINI_API_KEY", "test-placeholder")
 os.environ.setdefault("GROQ_API_KEY", "test-placeholder")
-os.environ.setdefault("POSTGRES_DSN", "postgresql://lifeagents:lifeagents@localhost:5432/lifeagents")
+os.environ.setdefault(
+    "POSTGRES_DSN", "postgresql://lifeagents:lifeagents@localhost:5432/lifeagents"
+)
 
 
 # Fixed UUID for integration tests. Seeded into public.users by ensure_test_user.
 import uuid as _uuid
+
 TEST_USER_ID = _uuid.UUID("11111111-1111-1111-1111-111111111111")
 
 
@@ -31,6 +35,7 @@ async def ensure_test_user() -> _uuid.UUID:
     code under test. Safe to call repeatedly; uses ON CONFLICT DO NOTHING.
     """
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         await conn.execute(

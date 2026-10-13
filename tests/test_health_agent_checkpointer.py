@@ -4,6 +4,7 @@ These run without a live Postgres — they only verify the wiring that
 main.lifespan depends on. End-to-end durability is covered by
 scripts/smoke-checkpointer.sh.
 """
+
 from __future__ import annotations
 
 import pytest

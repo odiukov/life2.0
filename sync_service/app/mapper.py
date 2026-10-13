@@ -43,6 +43,7 @@ def map_hrv(date_str: str, raw: dict) -> dict | None:
     if last_night is None:
         return None
     from datetime import datetime, timezone
+
     recorded_at = datetime.fromisoformat(f"{date_str}T06:00:00").replace(tzinfo=timezone.utc)
     return {
         "agent": "sleep",
@@ -68,9 +69,7 @@ def map_activity(raw: dict) -> dict | None:
     recorded_at = datetime.fromisoformat(start_str).replace(tzinfo=timezone.utc)
     activity_type = raw.get("activityType", {})
     type_key = (
-        activity_type.get("typeKey", "unknown")
-        if isinstance(activity_type, dict)
-        else "unknown"
+        activity_type.get("typeKey", "unknown") if isinstance(activity_type, dict) else "unknown"
     )
 
     return {
@@ -96,9 +95,7 @@ def map_daily_stats(date_str: str, raw: dict | None) -> dict | None:
     if not raw:
         return None
 
-    recorded_at = datetime.fromisoformat(f"{date_str}T12:00:00").replace(
-        tzinfo=timezone.utc
-    )
+    recorded_at = datetime.fromisoformat(f"{date_str}T12:00:00").replace(tzinfo=timezone.utc)
     return {
         "agent": "sleep",
         "type": "daily_stats",

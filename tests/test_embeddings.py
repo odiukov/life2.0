@@ -10,10 +10,13 @@ async def test_embed_returns_vector_from_gemini_response():
     fake_response.json = lambda: {"embedding": {"values": [0.1] * 768}}
     post = AsyncMock(return_value=fake_response)
 
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "k"}), \
-         patch("shared.embeddings._get_client") as gc:
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "k"}),
+        patch("shared.embeddings._get_client") as gc,
+    ):
         gc.return_value.post = post
         from shared.embeddings import embed
+
         vec = await embed("hello", task_type="retrieval_document")
 
     assert len(vec) == 768
@@ -34,10 +37,13 @@ async def test_embed_maps_query_task_type():
     fake_response.json = lambda: {"embedding": {"values": [0.0] * 768}}
     post = AsyncMock(return_value=fake_response)
 
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "k"}), \
-         patch("shared.embeddings._get_client") as gc:
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "k"}),
+        patch("shared.embeddings._get_client") as gc,
+    ):
         gc.return_value.post = post
         from shared.embeddings import embed
+
         await embed("q", task_type="retrieval_query")
 
     assert post.await_args.kwargs["json"]["taskType"] == "RETRIEVAL_QUERY"
@@ -47,6 +53,7 @@ async def test_embed_maps_query_task_type():
 async def test_embed_raises_embedding_error_without_api_key():
     with patch.dict(os.environ, {}, clear=True):
         from shared.embeddings import embed, EmbeddingError
+
         with pytest.raises(EmbeddingError):
             await embed("hello")
 
@@ -63,9 +70,12 @@ async def test_embed_wraps_http_error_in_embedding_error():
     fake_response.json = lambda: {}
     post = AsyncMock(return_value=fake_response)
 
-    with patch.dict(os.environ, {"GEMINI_API_KEY": "k"}), \
-         patch("shared.embeddings._get_client") as gc:
+    with (
+        patch.dict(os.environ, {"GEMINI_API_KEY": "k"}),
+        patch("shared.embeddings._get_client") as gc,
+    ):
         gc.return_value.post = post
         from shared.embeddings import embed, EmbeddingError
+
         with pytest.raises(EmbeddingError):
             await embed("hello")

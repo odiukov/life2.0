@@ -1,4 +1,5 @@
 """Nutrition agent skill declarations + per-skill prompt builders."""
+
 from __future__ import annotations
 
 import os

@@ -1,4 +1,5 @@
 """Contract test: vector.search_memories always applies a user_id filter."""
+
 from __future__ import annotations
 
 import inspect

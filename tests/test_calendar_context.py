@@ -4,6 +4,7 @@ Fixtures use raw Google Calendar event resources — that is what
 google_calendar_api.list_events returns now that the MCP hop is gone, so
 _normalize_event is exercised on the real wire shape.
 """
+
 import asyncio
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -18,8 +19,11 @@ def _event(start_hour, end_hour, summary="Mtg", all_day=False, date_=None):
     """Build a minimal Google Calendar event resource."""
     day = date_ or date(2026, 4, 17)
     if all_day:
-        return {"summary": summary, "start": {"date": day.isoformat()},
-                "end": {"date": day.isoformat()}}
+        return {
+            "summary": summary,
+            "start": {"date": day.isoformat()},
+            "end": {"date": day.isoformat()},
+        }
     start = datetime(day.year, day.month, day.day, start_hour, 0, tzinfo=timezone.utc).isoformat()
     end = datetime(day.year, day.month, day.day, end_hour, 0, tzinfo=timezone.utc).isoformat()
     return {"summary": summary, "start": {"dateTime": start}, "end": {"dateTime": end}}
@@ -37,6 +41,7 @@ def _with_events(events):
 async def test_returns_none_without_user_id():
     """Calendar is per-user only — no user_id means no calendar."""
     from orchestrator.app.calendar_context import fetch_calendar_shape
+
     assert await fetch_calendar_shape(date(2026, 4, 17)) is None
 
 
@@ -112,8 +117,10 @@ async def test_per_user_calendar_shape_times_out_instead_of_blocking_dashboard()
         await asyncio.sleep(1)
         return []
 
-    with patch("orchestrator.app.google_calendar_api.list_events", new=slow_list), \
-         patch.object(calendar_context, "_CALENDAR_TIMEOUT_SECONDS", 0.01):
+    with (
+        patch("orchestrator.app.google_calendar_api.list_events", new=slow_list),
+        patch.object(calendar_context, "_CALENDAR_TIMEOUT_SECONDS", 0.01),
+    ):
         result = await calendar_context.fetch_calendar_shape(date(2026, 4, 17), USER)
 
     assert result is None
@@ -127,8 +134,10 @@ async def test_fetch_calendar_events_times_out():
         await asyncio.sleep(1)
         return []
 
-    with patch("orchestrator.app.google_calendar_api.list_events", new=slow_list), \
-         patch.object(calendar_context, "_CALENDAR_TIMEOUT_SECONDS", 0.01):
+    with (
+        patch("orchestrator.app.google_calendar_api.list_events", new=slow_list),
+        patch.object(calendar_context, "_CALENDAR_TIMEOUT_SECONDS", 0.01),
+    ):
         events = await calendar_context.fetch_calendar_events(USER, date(2026, 4, 17))
 
     assert events == []

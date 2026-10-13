@@ -3,6 +3,7 @@
 Consumed by the /chat/stream SSE handler to derive AgentRouted/AgentConsulted events.
 Keys are camelCase to match JS conventions.
 """
+
 from __future__ import annotations
 
 from typing import Annotated, Literal, NotRequired, TypedDict
@@ -40,9 +41,7 @@ def _take_last_non_none(a, b):
     return b if b is not None else a
 
 
-def _merge_tool_calls(
-    a: list[ToolCall] | None, b: list[ToolCall] | None
-) -> list[ToolCall]:
+def _merge_tool_calls(a: list[ToolCall] | None, b: list[ToolCall] | None) -> list[ToolCall]:
     """Merge tool-call lists by id, later value wins, stable order of first occurrence.
 
     Parallel tool nodes each read the same prior state and return `[*prior, their_own]`.

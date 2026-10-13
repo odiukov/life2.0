@@ -1,7 +1,9 @@
 """Orchestrator HTTP entrypoint."""
+
 from __future__ import annotations
 
 from shared.telemetry import init_telemetry
+
 init_telemetry("orchestrator")
 
 import asyncio
@@ -23,7 +25,14 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 from .auth import current_user
-from .db import clear_activity, fetch_body_logs, get_health_summary, get_stats, get_tasks_today, get_yesterday_metrics
+from .db import (
+    clear_activity,
+    fetch_body_logs,
+    get_health_summary,
+    get_stats,
+    get_tasks_today,
+    get_yesterday_metrics,
+)
 from .integrations_routes import router as integrations_router
 from .health_agent import create_health_agent
 from .registry import check_agent_health, discover_agents, get_registry
@@ -33,6 +42,7 @@ from .registry import check_agent_health, discover_agents, get_registry
 async def lifespan(app: FastAPI):
     global _graph, _pool, _saver
     from .checkpointer import close_checkpointer, open_checkpointer
+
     await discover_agents()
     _pool, _saver = await open_checkpointer()
     _graph = await create_health_agent(checkpointer=_saver)
@@ -40,6 +50,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         from .mcp_tools import close_mcp_sessions
+
         await close_mcp_sessions()
         if _pool is not None:
             await close_checkpointer(_pool)
@@ -52,6 +63,7 @@ _saver = None
 
 app = FastAPI(title="Orchestrator", lifespan=lifespan)
 from shared.telemetry import instrument_fastapi_app
+
 instrument_fastapi_app(app)
 _cors_origins = (
     ["*"]
@@ -68,6 +80,7 @@ app.add_middleware(
 )
 app.include_router(integrations_router)
 from .agent_passthrough import router as agent_passthrough_router
+
 app.include_router(agent_passthrough_router)
 
 
@@ -77,6 +90,7 @@ app.include_router(agent_passthrough_router)
 _logging = logging
 from fastapi.exceptions import RequestValidationError as _RVE
 from fastapi.responses import JSONResponse as _JR
+
 _val_logger = _logging.getLogger("orchestrator.validation")
 
 
@@ -85,15 +99,20 @@ async def _log_validation_error(request, exc: _RVE):
     body = await request.body()
     _val_logger.warning(
         "422 %s %s errors=%r body=%r",
-        request.method, request.url.path, exc.errors()[:5], body[:500],
+        request.method,
+        request.url.path,
+        exc.errors()[:5],
+        body[:500],
     )
     return _JR(status_code=422, content={"detail": exc.errors()})
 
 
 # -------- HealthKit sync endpoint (Plan Task 19) --------
 
+
 class HealthSample(BaseModel):
     """One HealthKit sample as the mobile app pushes it."""
+
     type: str
     start: datetime
     end: datetime | None = None
@@ -118,6 +137,7 @@ async def sync_trigger(user_id: UUID = Depends(current_user)):
     Returns immediately with {"ok": true}. Failures are logged server-side.
     Authenticated so random clients can't spam the sync service.
     """
+
     async def _fire():
         async with httpx.AsyncClient(timeout=30.0) as c:
             try:
@@ -136,13 +156,16 @@ async def sync_health(body: SyncHealthBody, user_id: UUID = Depends(current_user
     Rejects payloads with more than 500 samples — mobile chunks before POST.
     """
     from shared.db import get_pool
+
     pool = await get_pool()
     inserted = 0
     async with pool.acquire() as c:
         async with c.transaction():
             for s in body.samples:
                 data = s.model_dump(
-                    mode="json", exclude={"type", "start", "source"}, exclude_none=True,
+                    mode="json",
+                    exclude={"type", "start", "source"},
+                    exclude_none=True,
                 )
                 res = await c.execute(
                     """
@@ -150,7 +173,12 @@ async def sync_health(body: SyncHealthBody, user_id: UUID = Depends(current_user
                     VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT (user_id, source, type, recorded_at) DO NOTHING
                     """,
-                    user_id, "apple-health", s.type, s.start, data, s.source or "apple-health",
+                    user_id,
+                    "apple-health",
+                    s.type,
+                    s.start,
+                    data,
+                    s.source or "apple-health",
                 )
                 if res.split()[-1] == "1":
                     inserted += 1
@@ -158,6 +186,7 @@ async def sync_health(body: SyncHealthBody, user_id: UUID = Depends(current_user
     # daily_stats rows so the sleep / recovery agents see their
     # expected schema. Idempotent — safe to run even when nothing inserted.
     from .healthkit_aggregator import aggregate_for_user
+
     agg = await aggregate_for_user(user_id)
     return {"inserted": inserted, "received": len(body.samples), "aggregated": agg}
 
@@ -176,7 +205,7 @@ class BodyProfileUpdate(BaseModel):
     height_cm: float | None = None
     weight_kg: float | None = None
     age: int | None = None
-    sex: str | None = None          # "male" | "female"
+    sex: str | None = None  # "male" | "female"
     activity_level: str | None = None
     calorie_goal_override: int | None = None
 
@@ -188,7 +217,9 @@ class ViHealthProfileImport(BaseModel):
     sex: Literal["male", "female"] | None = None
 
 
-def _compute_tdee(weight_kg: float, height_cm: float, age: int, sex: str, activity_level: str) -> int:
+def _compute_tdee(
+    weight_kg: float, height_cm: float, age: int, sex: str, activity_level: str
+) -> int:
     """Mifflin-St Jeor BMR × activity multiplier.
 
     BMR (men)   = 10×W + 6.25×H − 5×A + 5
@@ -261,18 +292,14 @@ async def _build_featured_body(user_id: UUID) -> dict | None:
         None,
     )
     weight_delta_prev = (
-        round(latest_data["weight_kg"] - prev_row["data"]["weight_kg"], 1)
-        if prev_row else None
+        round(latest_data["weight_kg"] - prev_row["data"]["weight_kg"], 1) if prev_row else None
     )
 
     def delta_for(field: str) -> float | None:
         cur = latest_data.get(field)
         if cur is None:
             return None
-        candidates = [
-            r for r in rows[1:]
-            if (r.get("data") or {}).get(field) is not None
-        ]
+        candidates = [r for r in rows[1:] if (r.get("data") or {}).get(field) is not None]
         if not candidates:
             return None
         anchor = min(
@@ -283,10 +310,7 @@ async def _build_featured_body(user_id: UUID) -> dict | None:
             return None
         return round(cur - anchor["data"][field], 1)
 
-    spark_rows = [
-        r for r in rows
-        if (r.get("data") or {}).get("weight_kg") is not None
-    ][:8]
+    spark_rows = [r for r in rows if (r.get("data") or {}).get("weight_kg") is not None][:8]
     spark_weights = [r["data"]["weight_kg"] for r in reversed(spark_rows)]
 
     return {
@@ -369,7 +393,9 @@ async def _run_graph_with_routing(
                     observed.append(agent)
                     _routing_logger.info(
                         "routing thread=%s observed peer=%s order=%s",
-                        thread_id, agent, observed,
+                        thread_id,
+                        agent,
+                        observed,
                     )
                 for inner in tc.get("consultedPeers") or []:
                     if inner and inner not in inner_consulted:
@@ -394,7 +420,9 @@ async def _run_graph_with_routing(
             if content:
                 _routing_logger.info(
                     "routing thread=%s yield primary=%s consulted=%s",
-                    thread_id, primary, consulted,
+                    thread_id,
+                    primary,
+                    consulted,
                 )
                 yield (primary, consulted, content)
 
@@ -421,6 +449,7 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
     if _os.environ.get("TELEMETRY_CAPTURE_BODIES", "full").lower() == "consented":
         try:
             from .consent_resolver import is_consented
+
             _user_for_consent = _os.environ.get("LANGFUSE_DEFAULT_USER_ID", "owner")
             _bodies_ok = await is_consented(_user_for_consent)
         except Exception as _e:
@@ -435,9 +464,7 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
     text = user_messages[-1].get("content", "")
 
     async def event_stream():
-        _bag_ctx = _otel_baggage.set_baggage(
-            "telemetry.bodies_ok", "1" if _bodies_ok else "0"
-        )
+        _bag_ctx = _otel_baggage.set_baggage("telemetry.bodies_ok", "1" if _bodies_ok else "0")
         _bag_token = _otel_context.attach(_bag_ctx)
         try:
             yield _sse({"type": "RunStarted", "threadId": thread_id, "runId": run_id})
@@ -456,11 +483,13 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
                         if not primary_emitted:
                             yield _sse({"type": "AgentRouted", "primary": primary})
                             primary_emitted = True
-                        yield _sse({
-                            "type": "TextMessageContent",
-                            "messageId": message_id,
-                            "delta": content,
-                        })
+                        yield _sse(
+                            {
+                                "type": "TextMessageContent",
+                                "messageId": message_id,
+                                "delta": content,
+                            }
+                        )
                         if consulted and not consulted_emitted:
                             yield _sse({"type": "AgentConsulted", "peers": consulted})
                             consulted_emitted = True
@@ -474,30 +503,38 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
                         try:
                             await _saver.adelete_thread(thread_id)
                         except Exception as del_err:  # noqa: BLE001
-                            yield _sse({
+                            yield _sse(
+                                {
+                                    "type": "TextMessageContent",
+                                    "messageId": message_id,
+                                    "delta": f"Error: {del_err}",
+                                }
+                            )
+                            break
+                        yield _sse(
+                            {
                                 "type": "TextMessageContent",
                                 "messageId": message_id,
-                                "delta": f"Error: {del_err}",
-                            })
-                            break
-                        yield _sse({
+                                "delta": "♻️ Предыдущий разговор был прерван, начинаю заново.\n\n",
+                            }
+                        )
+                        continue
+                    yield _sse(
+                        {
                             "type": "TextMessageContent",
                             "messageId": message_id,
-                            "delta": "♻️ Предыдущий разговор был прерван, начинаю заново.\n\n",
-                        })
-                        continue
-                    yield _sse({
-                        "type": "TextMessageContent",
-                        "messageId": message_id,
-                        "delta": f"Error: {e}",
-                    })
+                            "delta": f"Error: {e}",
+                        }
+                    )
                     break
                 except Exception as e:  # noqa: BLE001
-                    yield _sse({
-                        "type": "TextMessageContent",
-                        "messageId": message_id,
-                        "delta": f"Error: {e}",
-                    })
+                    yield _sse(
+                        {
+                            "type": "TextMessageContent",
+                            "messageId": message_id,
+                            "delta": f"Error: {e}",
+                        }
+                    )
                     break
 
             if not primary_emitted:
@@ -517,6 +554,7 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
 @app.get("/stats")
 async def stats(user_id: UUID = Depends(current_user)):
     from shared.telemetry import set_span_user
+
     set_span_user()
     return await get_stats(user_id)
 
@@ -524,6 +562,7 @@ async def stats(user_id: UUID = Depends(current_user)):
 @app.get("/health-summary")
 async def health_summary(user_id: UUID = Depends(current_user)):
     from shared.telemetry import set_span_user
+
     set_span_user()
     return await get_health_summary(user_id)
 
@@ -531,6 +570,7 @@ async def health_summary(user_id: UUID = Depends(current_user)):
 @app.delete("/activity")
 async def delete_activity():
     from shared.telemetry import set_span_user
+
     set_span_user()
     deleted = await clear_activity()
     return {"deleted": deleted}
@@ -539,6 +579,7 @@ async def delete_activity():
 @app.get("/agents")
 async def agents():
     from shared.telemetry import set_span_user
+
     set_span_user()
     registry = get_registry()
     result = []
@@ -548,17 +589,18 @@ async def agents():
         card = entry.get("card", {})
         skills_raw = card.get("skills") or []
         skills = [
-            {"id": s.get("id", ""), "name": s.get("name", s.get("id", ""))}
-            for s in skills_raw
+            {"id": s.get("id", ""), "name": s.get("name", s.get("id", ""))} for s in skills_raw
         ]
-        result.append({
-            "name": name,
-            "url": entry["url"],
-            "online": online,
-            "skills": skills,
-            "description": card.get("description", ""),
-            "tasks_today": tasks_today,
-        })
+        result.append(
+            {
+                "name": name,
+                "url": entry["url"],
+                "online": online,
+                "skills": skills,
+                "description": card.get("description", ""),
+                "tasks_today": tasks_today,
+            }
+        )
     return {"agents": result}
 
 
@@ -569,6 +611,7 @@ async def agent_detail_endpoint(
 ) -> dict:
     from .agent_detail import get_agent_detail, VALID_AGENT_IDS
     from shared.telemetry import set_span_user
+
     set_span_user()
     if agent_id not in VALID_AGENT_IDS:
         raise HTTPException(status_code=404, detail=f"Unknown agent: {agent_id}")
@@ -579,6 +622,7 @@ async def agent_detail_endpoint(
 async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
     from shared.telemetry import set_span_user
     from .db import get_body_profile, fetch_body_logs
+
     set_span_user()
     metrics = await get_yesterday_metrics(user_id)
     # For nutrition and workout, prefer today's data if available.
@@ -614,14 +658,16 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             pills.append(f"HRV {sleep['hrv']}")
         if sleep.get("score") is not None:
             pills.append(f"Score {sleep['score']}")
-        agents.append({
-            "agent": "sleep",
-            "label": "Sleep",
-            "metric": _fmt_duration(secs),
-            "tint": "success" if hrs >= 7 else "warn",
-            "detail": " · ".join(pills) if pills else None,
-            "progress": min(hrs / 8.0, 1.0),
-        })
+        agents.append(
+            {
+                "agent": "sleep",
+                "label": "Sleep",
+                "metric": _fmt_duration(secs),
+                "tint": "success" if hrs >= 7 else "warn",
+                "detail": " · ".join(pills) if pills else None,
+                "progress": min(hrs / 8.0, 1.0),
+            }
+        )
 
     # ── Recovery ───────────────────────────────────────────────────────────
     recovery = metrics.get("recovery")
@@ -635,14 +681,16 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             for s in top3[:3]
             if s.get("label") and s.get("dir")
         ]
-        agents.append({
-            "agent": "recovery",
-            "label": "Recovery",
-            "metric": bucket.capitalize(),
-            "tint": tint_map.get(bucket, "neutral"),
-            "detail": " · ".join(pills) if pills else None,
-            "progress": progress_map.get(bucket),
-        })
+        agents.append(
+            {
+                "agent": "recovery",
+                "label": "Recovery",
+                "metric": bucket.capitalize(),
+                "tint": tint_map.get(bucket, "neutral"),
+                "detail": " · ".join(pills) if pills else None,
+                "progress": progress_map.get(bucket),
+            }
+        )
 
     # ── Workout ────────────────────────────────────────────────────────────
     workout = metrics.get("workout")
@@ -653,15 +701,17 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
         pills = []
         if workout.get("total_calories"):
             pills.append(f"{workout['total_calories']} kcal")
-        agents.append({
-            "agent": "workout",
-            "label": "Workout",
-            "metric": metric_str,
-            "tint": "neutral",
-            "detail": " · ".join(pills) if pills else None,
-            "progress": None,
-            "workout_type": workout.get("first_type") or "",
-        })
+        agents.append(
+            {
+                "agent": "workout",
+                "label": "Workout",
+                "metric": metric_str,
+                "tint": "neutral",
+                "detail": " · ".join(pills) if pills else None,
+                "progress": None,
+                "workout_type": workout.get("first_type") or "",
+            }
+        )
 
     # ── Nutrition ──────────────────────────────────────────────────────────
     nutrition = metrics.get("nutrition")
@@ -685,22 +735,38 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             override = profile.get("calorie_goal_override")
             if override:
                 goal = int(override)
-            elif all([weight_kg, profile.get("height_cm"), profile.get("age"), profile.get("sex"), profile.get("activity_level")]):
-                goal = _compute_tdee(weight_kg, profile["height_cm"], profile["age"], profile["sex"], profile["activity_level"])
+            elif all(
+                [
+                    weight_kg,
+                    profile.get("height_cm"),
+                    profile.get("age"),
+                    profile.get("sex"),
+                    profile.get("activity_level"),
+                ]
+            ):
+                goal = _compute_tdee(
+                    weight_kg,
+                    profile["height_cm"],
+                    profile["age"],
+                    profile["sex"],
+                    profile["activity_level"],
+                )
             if goal:
                 progress = min(kcal / goal, 1.0)
         except Exception:
             pass
         if goal:
             pills.append(f"Goal {goal} kcal")
-        agents.append({
-            "agent": "nutrition",
-            "label": "Nutrition",
-            "metric": f"{kcal} kcal",
-            "tint": "neutral",
-            "detail": " · ".join(pills) if pills else None,
-            "progress": progress,
-        })
+        agents.append(
+            {
+                "agent": "nutrition",
+                "label": "Nutrition",
+                "metric": f"{kcal} kcal",
+                "tint": "neutral",
+                "detail": " · ".join(pills) if pills else None,
+                "progress": progress,
+            }
+        )
 
     # ── Mood ───────────────────────────────────────────────────────────────
     mood = metrics.get("mood")
@@ -714,14 +780,16 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
                 pills.append(f"Energy {mood['avg_energy']:.1f}")
             if mood.get("count"):
                 pills.append(f"{mood['count']} entries")
-            agents.append({
-                "agent": "mood",
-                "label": "Mood",
-                "metric": f"{avg:.1f}/10",
-                "tint": "success" if avg >= 7 else "warn",
-                "detail": " · ".join(pills) if pills else None,
-                "progress": avg / 10.0,
-            })
+            agents.append(
+                {
+                    "agent": "mood",
+                    "label": "Mood",
+                    "metric": f"{avg:.1f}/10",
+                    "tint": "success" if avg >= 7 else "warn",
+                    "detail": " · ".join(pills) if pills else None,
+                    "progress": avg / 10.0,
+                }
+            )
 
     # ── Habits ─────────────────────────────────────────────────────────────
     habits = metrics.get("habits")
@@ -737,19 +805,22 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             if streaks:
                 s = streaks[0]
                 pills.append(f"Streak: {s['name']} {s['streak']}d")
-            agents.append({
-                "agent": "habits",
-                "label": "Habits",
-                "metric": f"{completed}/{expected}",
-                "tint": "success" if completed >= expected else "warn",
-                "detail": " · ".join(pills) if pills else None,
-                "progress": completed / expected,
-            })
+            agents.append(
+                {
+                    "agent": "habits",
+                    "label": "Habits",
+                    "metric": f"{completed}/{expected}",
+                    "tint": "success" if completed >= expected else "warn",
+                    "detail": " · ".join(pills) if pills else None,
+                    "progress": completed / expected,
+                }
+            )
 
     # ── Medication ─────────────────────────────────────────────────────────
     medication = metrics.get("medication")
     if medication and medication.get("active"):
         from datetime import timedelta, datetime as _dt, timezone as _tz
+
         now_utc = _dt.now(_tz.utc)
         last_by_name: dict = {}
         for r in medication.get("logs") or []:
@@ -758,21 +829,25 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
                 last_by_name[n] = ts
         active_names = [m.get("name") for m in medication["active"] if m.get("name")]
         overdue = [
-            n for n in active_names
-            if last_by_name.get(n) is None
-            or (now_utc - last_by_name[n]) >= timedelta(days=2)
+            n
+            for n in active_names
+            if last_by_name.get(n) is None or (now_utc - last_by_name[n]) >= timedelta(days=2)
         ]
         missed = len(overdue)
-        pills = [f"−{(now_utc - last_by_name[n]).days}d {n}" for n in overdue[:2] if n in last_by_name]
+        pills = [
+            f"−{(now_utc - last_by_name[n]).days}d {n}" for n in overdue[:2] if n in last_by_name
+        ]
         taken = len(active_names) - missed
-        agents.append({
-            "agent": "medication",
-            "label": "Medication",
-            "metric": " · ".join(active_names[:2]) if active_names else "On track",
-            "tint": "danger" if missed > 1 else "warn" if missed == 1 else "success",
-            "detail": " · ".join(pills) if pills else None,
-            "progress": taken / len(active_names) if active_names else 1.0,
-        })
+        agents.append(
+            {
+                "agent": "medication",
+                "label": "Medication",
+                "metric": " · ".join(active_names[:2]) if active_names else "On track",
+                "tint": "danger" if missed > 1 else "warn" if missed == 1 else "success",
+                "detail": " · ".join(pills) if pills else None,
+                "progress": taken / len(active_names) if active_names else 1.0,
+            }
+        )
 
     # ── Calendar ───────────────────────────────────────────────────────────
     calendar = metrics.get("calendar")
@@ -786,14 +861,16 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             detail_bits.append(f"Free {free_start} · {free_len}m")
         if all_day:
             detail_bits.append(f"All-day: {all_day[0]}")
-        agents.append({
-            "agent": "calendar",
-            "label": "Calendar",
-            "metric": f"{count} event{'s' if count != 1 else ''}",
-            "tint": "neutral" if count < 5 else "warn",
-            "detail": " · ".join(detail_bits) if detail_bits else None,
-            "progress": min(count / 8, 1.0),
-        })
+        agents.append(
+            {
+                "agent": "calendar",
+                "label": "Calendar",
+                "metric": f"{count} event{'s' if count != 1 else ''}",
+                "tint": "neutral" if count < 5 else "warn",
+                "detail": " · ".join(detail_bits) if detail_bits else None,
+                "progress": min(count / 8, 1.0),
+            }
+        )
 
     # ── Featured sleep ─────────────────────────────────────────────────────
     sleep_m = metrics.get("sleep")
@@ -822,6 +899,7 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
     featured_workout = None
     from shared.db import get_pool as _get_pool
     from datetime import timedelta
+
     _pool = await _get_pool()
     _now = datetime.now(timezone.utc)
     _7d_start = _now - timedelta(days=7)
@@ -833,12 +911,12 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
                WHERE user_id = $1 AND agent='workout' AND type='activity'
                  AND recorded_at >= $2
                GROUP BY day ORDER BY day""",
-            user_id, _7d_start,
+            user_id,
+            _7d_start,
         )
         load_map = {str(r["day"]): (r["minutes"] or 0) for r in load_rows}
         load_history = [
-            load_map.get(str((_now - timedelta(days=6 - i)).date()), 0)
-            for i in range(7)
+            load_map.get(str((_now - timedelta(days=6 - i)).date()), 0) for i in range(7)
         ]
     except Exception:
         load_history = [0, 0, 0, 0, 0, 0, 0]
@@ -873,7 +951,8 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
                WHERE user_id = $1 AND agent='workout' AND type='activity'
                  AND recorded_at >= $2
                ORDER BY recorded_at DESC LIMIT 1""",
-            user_id, _7d_start,
+            user_id,
+            _7d_start,
         )
         if last_row:
             featured_workout = {
@@ -899,11 +978,21 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
             override = profile.get("calorie_goal_override")
             if override:
                 kcal_goal = int(override)
-            elif all([weight_kg_for_macros, profile.get("height_cm"), profile.get("age"),
-                      profile.get("sex"), profile.get("activity_level")]):
+            elif all(
+                [
+                    weight_kg_for_macros,
+                    profile.get("height_cm"),
+                    profile.get("age"),
+                    profile.get("sex"),
+                    profile.get("activity_level"),
+                ]
+            ):
                 kcal_goal = _compute_tdee(
-                    weight_kg_for_macros, profile["height_cm"], profile["age"],
-                    profile["sex"], profile["activity_level"],
+                    weight_kg_for_macros,
+                    profile["height_cm"],
+                    profile["age"],
+                    profile["sex"],
+                    profile["activity_level"],
                 )
         except Exception:
             pass
@@ -934,19 +1023,22 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
         fat = featured_body.get("fatPct")
         if fat is not None:
             body_pills.append(f"Fat {fat}%")
-        agents.append({
-            "agent": "body",
-            "label": "Body",
-            "metric": f"{featured_body['weightKg']} kg",
-            "tint": "neutral",
-            "detail": " · ".join(body_pills) if body_pills else None,
-            "progress": None,
-        })
+        agents.append(
+            {
+                "agent": "body",
+                "label": "Body",
+                "metric": f"{featured_body['weightKg']} kg",
+                "tint": "neutral",
+                "detail": " · ".join(body_pills) if body_pills else None,
+                "progress": None,
+            }
+        )
 
     # ── Rings ──────────────────────────────────────────────────────────────
     recovery_m = metrics.get("recovery")
 
     from shared.db import get_pool as _get_pool
+
     _rings_pool = await _get_pool()
 
     # 7-day average HRV — matches the Garmin watch HRV Status widget
@@ -1056,10 +1148,13 @@ async def finance_upload(
       422 if the PDF doesn't look like a Payoneer Account Statement.
     """
     from shared.telemetry import set_span_user
+
     set_span_user()
     from .payoneer_pdf import parse_payoneer_pdf, PayoneerPdfFormatError
     from .finance_ingest import (
-        ingest_rows, categorize_new, build_upload_summary,
+        ingest_rows,
+        categorize_new,
+        build_upload_summary,
     )
     from .finance_queries import income_for_month, spending_by_category
     from decimal import Decimal
@@ -1126,6 +1221,7 @@ async def chat_file(
       413 if > 50 MB.
     """
     from shared.telemetry import set_span_user
+
     set_span_user()
     from .file_router import route_file
 
@@ -1179,6 +1275,7 @@ def _thread_title(thread_id: str) -> str:
 
 async def _fetch_checkpoint_threads(limit: int = 50) -> list[dict]:
     from shared.db import get_pool
+
     pool = await get_pool()
     rows = await pool.fetch(
         "SELECT thread_id, MAX(created_at) AS updated_at "
@@ -1199,6 +1296,7 @@ async def get_me(user_id: UUID = Depends(current_user)) -> dict:
 @app.get("/me/profile")
 async def get_profile(user_id: UUID = Depends(current_user)) -> dict:
     from .db import get_body_profile, fetch_body_logs
+
     profile = await get_body_profile(user_id)
     # Auto-fill weight from latest body_composition log if not in profile
     weight_kg = profile.get("weight_kg")
@@ -1210,13 +1308,15 @@ async def get_profile(user_id: UUID = Depends(current_user)) -> dict:
         except Exception:
             pass
     tdee_kcal = None
-    if all([
-        profile.get("height_cm"),
-        weight_kg,
-        profile.get("age"),
-        profile.get("sex"),
-        profile.get("activity_level"),
-    ]):
+    if all(
+        [
+            profile.get("height_cm"),
+            weight_kg,
+            profile.get("age"),
+            profile.get("sex"),
+            profile.get("activity_level"),
+        ]
+    ):
         tdee_kcal = _compute_tdee(
             weight_kg,
             profile["height_cm"],
@@ -1238,6 +1338,7 @@ async def get_profile(user_id: UUID = Depends(current_user)) -> dict:
 @app.patch("/me/profile")
 async def update_profile(body: BodyProfileUpdate, user_id: UUID = Depends(current_user)) -> dict:
     from .db import save_body_profile
+
     updates = body.model_dump(exclude_unset=True)
     await save_body_profile(user_id, updates)
     return {"ok": True}
@@ -1288,7 +1389,8 @@ async def list_threads(user_id: UUID = Depends(current_user)) -> list:
             "title": _thread_title(r["thread_id"]),
             "updated_at": (
                 r["updated_at"].astimezone(_tz.utc).isoformat().replace("+00:00", "Z")
-                if r["updated_at"] is not None else None
+                if r["updated_at"] is not None
+                else None
             ),
         }
         for r in rows

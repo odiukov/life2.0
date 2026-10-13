@@ -11,6 +11,7 @@ async def test_update_token_executes_jsonb_merge():
 
     with patch("sync_service.app.db.get_pool", new=AsyncMock(return_value=mock_pool)):
         from sync_service.app.db import update_token
+
         await update_token("user-123", "garmin", "garmin_token", "tok_abc")
 
     mock_conn.execute.assert_called_once()
@@ -26,6 +27,7 @@ async def test_update_token_executes_jsonb_merge():
 @pytest.mark.asyncio
 async def test_get_garmin_token_memory_hit():
     import sync_service.app.session as session
+
     session._garmin_tokens["u1"] = "cached_token"
 
     result = await session.get_garmin_token("u1")
@@ -37,6 +39,7 @@ async def test_get_garmin_token_memory_hit():
 @pytest.mark.asyncio
 async def test_get_garmin_token_db_miss_then_load():
     import sync_service.app.session as session
+
     session._garmin_tokens.clear()
 
     with patch(
@@ -53,6 +56,7 @@ async def test_get_garmin_token_db_miss_then_load():
 @pytest.mark.asyncio
 async def test_get_garmin_token_db_failure_returns_none():
     import sync_service.app.session as session
+
     session._garmin_tokens.clear()
 
     with patch(
@@ -67,6 +71,7 @@ async def test_get_garmin_token_db_failure_returns_none():
 @pytest.mark.asyncio
 async def test_save_garmin_token_updates_memory_and_db():
     import sync_service.app.session as session
+
     session._garmin_tokens.clear()
     mock_update = AsyncMock()
 
@@ -81,9 +86,12 @@ async def test_save_garmin_token_updates_memory_and_db():
 @pytest.mark.asyncio
 async def test_save_garmin_token_db_failure_does_not_raise():
     import sync_service.app.session as session
+
     session._garmin_tokens.clear()
 
-    with patch("sync_service.app.session.update_token", new=AsyncMock(side_effect=Exception("db down"))):
+    with patch(
+        "sync_service.app.session.update_token", new=AsyncMock(side_effect=Exception("db down"))
+    ):
         await session.save_garmin_token("u1", "tok")  # must not raise
 
     assert session._garmin_tokens["u1"] == "tok"
@@ -93,6 +101,7 @@ async def test_save_garmin_token_db_failure_does_not_raise():
 @pytest.mark.asyncio
 async def test_get_yazio_token_db_load():
     import sync_service.app.session as session
+
     session._yazio_tokens.clear()
     stored = {"access_token": "at", "expires_at": "2099-01-01T00:00:00+00:00"}
 
@@ -109,6 +118,7 @@ async def test_get_yazio_token_db_load():
 @pytest.mark.asyncio
 async def test_save_yazio_token_updates_memory_and_db():
     import sync_service.app.session as session
+
     session._yazio_tokens.clear()
     token = {"access_token": "at", "expires_at": "2099-01-01T00:00:00+00:00"}
     mock_update = AsyncMock()

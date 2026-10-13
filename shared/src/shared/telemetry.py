@@ -17,6 +17,7 @@ Env vars:
     LANGFUSE_SECRET_KEY       builds OTLP auth header
     OTEL_EXPORTER_OTLP_ENDPOINT  default http://langfuse-web:3000/api/public/otel
 """
+
 from __future__ import annotations
 
 import base64
@@ -56,14 +57,13 @@ def init_telemetry(
     # Traceloop's default api_endpoint is https://api.traceloop.com and it bails
     # out when no TRACELOOP_API_KEY is set. Point it at our OTLP endpoint so it
     # initializes a real TracerProvider and exports to Langfuse instead.
-    os.environ.setdefault(
-        "TRACELOOP_BASE_URL", os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"]
-    )
+    os.environ.setdefault("TRACELOOP_BASE_URL", os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"])
 
     pub = os.environ.get("LANGFUSE_PUBLIC_KEY")
     sec = os.environ.get("LANGFUSE_SECRET_KEY")
     if pub and sec and "OTEL_EXPORTER_OTLP_HEADERS" not in os.environ:
         from urllib.parse import quote
+
         token = base64.b64encode(f"{pub}:{sec}".encode()).decode()
         # OTEL spec: header VALUES in OTEL_EXPORTER_OTLP_HEADERS must be URL-encoded
         # if they contain '=' or ','. Base64 padding '==' triggers the warning and,
@@ -71,9 +71,7 @@ def init_telemetry(
         auth_value = quote(f"Basic {token}", safe="")
         os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization={auth_value}"
         # Mirror for Traceloop's header reader as well.
-        os.environ.setdefault(
-            "TRACELOOP_HEADERS", os.environ["OTEL_EXPORTER_OTLP_HEADERS"]
-        )
+        os.environ.setdefault("TRACELOOP_HEADERS", os.environ["OTEL_EXPORTER_OTLP_HEADERS"])
 
     capture = os.environ.get("TELEMETRY_CAPTURE_BODIES", "full").lower()
     # In `metadata` mode we disable content capture entirely (cheap, deterministic).
@@ -91,6 +89,7 @@ def init_telemetry(
     # Do this before framework instrumentors so they hook into Traceloop's provider.
     try:
         from traceloop.sdk import Traceloop
+
         Traceloop.init(app_name=service_name, disable_batch=False)
     except Exception as e:
         log.warning("Traceloop.init failed (telemetry will be degraded): %s", e)
@@ -105,6 +104,7 @@ def init_telemetry(
 
     if capture == "consented":
         from shared.consent import install_consent_pipeline
+
         install_consent_pipeline()
     # Stash consent_lookup for later callers that need it.
     global _consent_lookup
@@ -131,12 +131,14 @@ def _ensure_tracer_provider(service_name: str) -> None:
     """
     try:
         from opentelemetry import trace
+
         provider = trace.get_tracer_provider()
         if type(provider).__name__ not in {"ProxyTracerProvider", "NoOpTracerProvider"}:
             return
         from opentelemetry.sdk.resources import Resource, SERVICE_NAME
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
         try:
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
                 OTLPSpanExporter,
@@ -170,6 +172,7 @@ def _instrument_frameworks() -> None:
     if not _is_disabled("httpx"):
         try:
             from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
             HTTPXClientInstrumentor().instrument()
         except ImportError:
             pass
@@ -179,6 +182,7 @@ def _instrument_frameworks() -> None:
     if not _is_disabled("asyncpg"):
         try:
             from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+
             AsyncPGInstrumentor().instrument()
         except ImportError:
             pass
@@ -188,6 +192,7 @@ def _instrument_frameworks() -> None:
     if not _is_disabled("logging"):
         try:
             from opentelemetry.instrumentation.logging import LoggingInstrumentor
+
             LoggingInstrumentor().instrument(set_logging_format=True)
         except ImportError:
             pass
@@ -201,6 +206,7 @@ def instrument_fastapi_app(app) -> None:
         return
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
         FastAPIInstrumentor.instrument_app(app)
     except ImportError:
         log.warning("opentelemetry-instrumentation-fastapi not installed")
@@ -211,6 +217,7 @@ def instrument_fastapi_app(app) -> None:
 def set_span_user(user_id: str | None = None) -> None:
     """Attach langfuse.user.id to current span. None → LANGFUSE_DEFAULT_USER_ID."""
     from opentelemetry import trace
+
     span = trace.get_current_span()
     if span is None or not span.is_recording():
         return
@@ -221,6 +228,7 @@ def set_span_user(user_id: str | None = None) -> None:
 def set_span_session(session_id: str) -> None:
     """Attach langfuse.session.id to current span."""
     from opentelemetry import trace
+
     span = trace.get_current_span()
     if span is None or not span.is_recording():
         return

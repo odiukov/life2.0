@@ -1,4 +1,5 @@
 """nutrition executor emits a log_entry artifact only for log_meal skill."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,7 +47,13 @@ def _artifact_events(queue: _FakeEventQueue):
 
 
 @pytest.mark.asyncio
-@patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.nutrition.app.executor.SKILL_PROMPTS",
+    {
+        "log_meal": AsyncMock(return_value="prompt"),
+        "analyze_nutrition": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -83,7 +90,13 @@ async def test_log_meal_emits_log_entry_artifact(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.nutrition.app.executor.SKILL_PROMPTS",
+    {
+        "log_meal": AsyncMock(return_value="prompt"),
+        "analyze_nutrition": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -101,7 +114,13 @@ async def test_analyze_nutrition_does_not_emit_log_entry(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"log_meal": AsyncMock(return_value="prompt"), "analyze_nutrition": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.nutrition.app.executor.SKILL_PROMPTS",
+    {
+        "log_meal": AsyncMock(return_value="prompt"),
+        "analyze_nutrition": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))

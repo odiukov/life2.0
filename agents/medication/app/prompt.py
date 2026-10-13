@@ -1,4 +1,5 @@
 """Prompt builders for each medication skill."""
+
 from __future__ import annotations
 
 from shared.grounding import GROUNDING_RULES
@@ -58,7 +59,6 @@ async def build_medication_prompt(skill_id: str, params: dict) -> str:
             f"{chip_block}\n"
             "Respond in 4–6 lines plain text: adherence rate per medication, "
             "miss streaks, dose-timing pattern. Redirect mood / sleep / "
-            "recovery effects to the relevant peer. No markdown.\n\n"
-            + GROUNDING_RULES
+            "recovery effects to the relevant peer. No markdown.\n\n" + GROUNDING_RULES
         )
     raise ValueError(f"unknown skill_id: {skill_id}")

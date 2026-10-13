@@ -22,9 +22,10 @@ async def test_call_agent_with_artifact_includes_focus_sources_when_provided():
 
     fake_client = FakeClient()
 
-    with patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"), \
-         patch("orchestrator.app.health_agent.get_client",
-               new=AsyncMock(return_value=fake_client)):
+    with (
+        patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"),
+        patch("orchestrator.app.health_agent.get_client", new=AsyncMock(return_value=fake_client)),
+    ):
         await _call_agent_with_artifact(
             agent="workout",
             message="посоветуй тренировку с учётом сна",
@@ -56,10 +57,14 @@ async def test_call_agent_with_artifact_omits_focus_sources_when_none():
             return _gen()
 
     fake_client = FakeClient()
-    with patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"), \
-         patch("orchestrator.app.health_agent.get_client",
-               new=AsyncMock(return_value=fake_client)):
+    with (
+        patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"),
+        patch("orchestrator.app.health_agent.get_client", new=AsyncMock(return_value=fake_client)),
+    ):
         await _call_agent_with_artifact(
-            agent="workout", message="m", skill="analyze_workout", user_id="u1",
+            agent="workout",
+            message="m",
+            skill="analyze_workout",
+            user_id="u1",
         )
     assert "focus_sources" not in captured["metadata"]

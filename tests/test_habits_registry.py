@@ -17,6 +17,7 @@ async def _cleanup():
     # Reset the shared db pool so each test gets a fresh pool bound to its
     # own event loop (asyncpg pools are not safe to reuse across loops).
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
@@ -47,6 +48,7 @@ async def _cleanup():
 
 def test_normalize_name_kebab_case():
     from agents.habits.app.registry import normalize_name
+
     assert normalize_name("Cold Shower") == "cold-shower"
     assert normalize_name("  No Alcohol  ") == "no-alcohol"
     assert normalize_name("meditation") == "meditation"
@@ -59,10 +61,14 @@ async def test_upsert_and_find_by_name():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     from agents.habits.app import registry
+
     habit_id = await registry.create(
         TEST_USER_ID,
-        name="reg-test-meditation", kind="quantitative",
-        cadence_type="daily", target_value=20, unit="min",
+        name="reg-test-meditation",
+        kind="quantitative",
+        cadence_type="daily",
+        target_value=20,
+        unit="min",
     )
     assert habit_id
 
@@ -77,6 +83,7 @@ async def test_find_by_name_returns_none_for_unknown():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     from agents.habits.app import registry
+
     assert await registry.find_by_name(TEST_USER_ID, "reg-test-nonexistent") is None
 
 
@@ -85,10 +92,13 @@ async def test_archive_hides_from_list_but_allows_recreate():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     from agents.habits.app import registry
+
     first_id = await registry.create(
         TEST_USER_ID,
-        name="reg-test-gym", kind="boolean",
-        cadence_type="weekly", cadence_days=["mon", "wed", "fri"],
+        name="reg-test-gym",
+        kind="boolean",
+        cadence_type="weekly",
+        cadence_days=["mon", "wed", "fri"],
     )
     active = await registry.list_active(TEST_USER_ID)
     assert any(h["id"] == first_id for h in active)
@@ -99,8 +109,10 @@ async def test_archive_hides_from_list_but_allows_recreate():
 
     second_id = await registry.create(
         TEST_USER_ID,
-        name="reg-test-gym", kind="boolean",
-        cadence_type="weekly", cadence_days=["mon", "wed", "fri"],
+        name="reg-test-gym",
+        kind="boolean",
+        cadence_type="weekly",
+        cadence_days=["mon", "wed", "fri"],
     )
     assert second_id != first_id
 
@@ -110,12 +122,17 @@ async def test_create_duplicate_active_name_raises():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     from agents.habits.app import registry
+
     await registry.create(
         TEST_USER_ID,
-        name="reg-test-dup", kind="boolean", cadence_type="daily",
+        name="reg-test-dup",
+        kind="boolean",
+        cadence_type="daily",
     )
     with pytest.raises(asyncpg.UniqueViolationError):
         await registry.create(
             TEST_USER_ID,
-            name="reg-test-dup", kind="boolean", cadence_type="daily",
+            name="reg-test-dup",
+            kind="boolean",
+            cadence_type="daily",
         )

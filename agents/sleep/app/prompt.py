@@ -4,6 +4,7 @@ Composition (per spec §10):
   IDENTITY → DATA → VOCAB → PEER_CONTEXT → MEMORIES → REQUEST
   → PEER_CHIP_RULES (only with peer artifacts) → SKILL_TAIL → GROUNDING_RULES
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -45,14 +46,12 @@ async def build_sleep_prompt(
     recent_logs = await fetch_recent_logs(user_id, "sleep", limit=10)
     memories = await search_memories(user_id, task, limit=5)
 
-    logs_text = "\n".join(
-        f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"
-        for r in recent_logs
-    ) or "No recent sleep logs."
+    logs_text = (
+        "\n".join(f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}" for r in recent_logs)
+        or "No recent sleep logs."
+    )
 
-    memories_text = "\n".join(
-        f"- {m.get('text', '')}" for m in memories
-    ) or "No relevant memories."
+    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) or "No relevant memories."
 
     peer = peer_artifacts if peer_artifacts is not None else (params.get("peer_artifacts") or {})
     peer_section = ""

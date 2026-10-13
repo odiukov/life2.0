@@ -1,4 +1,5 @@
 """HTTP tests for POST /sync/health (HealthKit ingest)."""
+
 from __future__ import annotations
 
 import os
@@ -38,6 +39,7 @@ async def _pool_and_user():
 
 async def _client():
     from orchestrator.app.main import app
+
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -67,7 +69,7 @@ async def test_sync_is_idempotent():
         r1 = await c.post("/sync/health", json={"samples": [_SAMPLE]}, headers=AUTH_HEADER)
         r2 = await c.post("/sync/health", json={"samples": [_SAMPLE]}, headers=AUTH_HEADER)
     assert r1.json()["inserted"] == 1
-    assert r2.json()["inserted"] == 0   # duplicate suppressed
+    assert r2.json()["inserted"] == 0  # duplicate suppressed
 
 
 @pytest.mark.asyncio

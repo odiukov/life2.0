@@ -2,6 +2,7 @@
 
 DB-dependent tests are skipped without POSTGRES_DSN.
 """
+
 import os
 import pytest
 
@@ -23,15 +24,20 @@ from orchestrator.app.agent_detail import (
 def _hist(values: list[float]) -> list[dict]:
     """Build a minimal history list from a list of values."""
     from datetime import date, timedelta
+
     today = date.today()
     return [
-        {"date": (today - timedelta(days=len(values) - 1 - i)).isoformat(),
-         "value": v, "label": str(v)}
+        {
+            "date": (today - timedelta(days=len(values) - 1 - i)).isoformat(),
+            "value": v,
+            "label": str(v),
+        }
         for i, v in enumerate(values)
     ]
 
 
 # Sleep
+
 
 def test_sleep_insight_above_average():
     hist = _hist([6.0, 6.5, 7.0, 6.0, 7.5, 7.0, 8.0])
@@ -46,6 +52,7 @@ def test_sleep_insight_empty_when_insufficient():
 
 # Workout
 
+
 def test_workout_insight_counts_workouts():
     # 3 non-zero days this week
     hist = _hist([5.0, 0.0, 4.0, 0.0, 6.0, 0.0, 0.0])
@@ -59,6 +66,7 @@ def test_workout_insight_empty_when_no_data():
 
 
 # Nutrition
+
 
 def test_nutrition_insight_protein_deficit():
     hist = _hist([2000.0] * 7)
@@ -79,10 +87,13 @@ def test_nutrition_day_bounds_use_utc_day():
 
 # Mood
 
+
 def test_mood_insight_upward_trend():
     hist = _hist([5.0, 5.0, 5.0, 6.0, 7.0, 7.5, 8.0])
     insight = _mood_insight(hist, {})
-    assert "up" in insight.lower() or "trending" in insight.lower() or "improving" in insight.lower()
+    assert (
+        "up" in insight.lower() or "trending" in insight.lower() or "improving" in insight.lower()
+    )
 
 
 def test_mood_insight_empty_when_insufficient():
@@ -91,6 +102,7 @@ def test_mood_insight_empty_when_insufficient():
 
 # Habits
 
+
 def test_habits_insight_streak():
     metrics = {"streak": 7, "completion_7d": 0.85, "missed_names": []}
     insight = _habits_insight(_hist([1.0] * 7), metrics)
@@ -98,6 +110,7 @@ def test_habits_insight_streak():
 
 
 # Recovery
+
 
 def test_recovery_insight_recovered():
     metrics = {"bucket": "recovered", "hrv": 65, "rhr": 52}
@@ -118,6 +131,7 @@ def test_recovery_insight_empty_when_unknown():
 
 # Medication
 
+
 def test_medication_insight_missed():
     hist = _hist([1, 1, 0, 1, 0, 1, 1])  # 2 misses
     metrics = {"adherence_7d": 0.71, "missed_names": ["magnesium", "vitamin D"]}
@@ -133,6 +147,7 @@ def test_medication_insight_perfect():
 
 
 # Finance
+
 
 def test_finance_insight_spending_up():
     # last 7 days: first 4 avg $50/day, last 3 avg $80/day
@@ -269,9 +284,11 @@ async def test_nutrition_detail_returns_today_meals():
                 },
             ]
 
-    with patch("orchestrator.app.db.fetch_nutrition_history", new=AsyncMock(return_value=[])), \
-         patch("orchestrator.app.db.get_pool", new=AsyncMock(return_value=Pool())), \
-         patch("orchestrator.app.db.get_body_profile", new=AsyncMock(return_value={})):
+    with (
+        patch("orchestrator.app.db.fetch_nutrition_history", new=AsyncMock(return_value=[])),
+        patch("orchestrator.app.db.get_pool", new=AsyncMock(return_value=Pool())),
+        patch("orchestrator.app.db.get_body_profile", new=AsyncMock(return_value={})),
+    ):
         detail = await _nutrition_detail(TEST_USER_ID)
 
     assert detail["meals"] == [

@@ -38,21 +38,29 @@ class _Queue:
 async def test_executor_runs_get_latest_body_skill():
     from agents.body.app.executor import BodyAgentExecutor
 
-    fake_llm = SimpleNamespace(ainvoke=AsyncMock(return_value=SimpleNamespace(content="Weight: 79.6 kg")))
+    fake_llm = SimpleNamespace(
+        ainvoke=AsyncMock(return_value=SimpleNamespace(content="Weight: 79.6 kg"))
+    )
 
-    with patch("agents.body.app.executor._get_llm", return_value=fake_llm), \
-         patch("agents.body.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.body.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.body.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.body.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.body.app.prompt.fetch_body_logs", new=AsyncMock(return_value=[])), \
-         patch("agents.body.app.prompt.search_memories", new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.body.app.executor._get_llm", return_value=fake_llm),
+        patch("agents.body.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.body.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.body.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch(
+            "agents.body.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.body.app.prompt.fetch_body_logs", new=AsyncMock(return_value=[])),
+        patch("agents.body.app.prompt.search_memories", new=AsyncMock(return_value=[])),
+    ):
         ctx = _Ctx("сколько я вешу", skill="get_latest_body")
         q = _Queue()
         await BodyAgentExecutor().execute(ctx, q)
 
-    states = [getattr(e, "status", None) and e.status.state for e in q.events if hasattr(e, "status")]
+    states = [
+        getattr(e, "status", None) and e.status.state for e in q.events if hasattr(e, "status")
+    ]
     assert TaskState.completed in states
 
 
@@ -69,7 +77,8 @@ async def test_executor_fails_gracefully_on_unknown_skill():
         await BodyAgentExecutor().execute(ctx, q)
 
     failed_states = [
-        e.status.state for e in q.events
+        e.status.state
+        for e in q.events
         if hasattr(e, "status") and e.status.state == TaskState.failed
     ]
     assert failed_states, "expected failed status when skill cannot be inferred"

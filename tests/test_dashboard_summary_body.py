@@ -38,8 +38,8 @@ def _row(recorded_at, **data):
 @pytest.mark.asyncio
 async def test_featured_body_none_when_no_rows():
     from orchestrator.app.main import _build_featured_body
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = []
         assert await _build_featured_body(USER) is None
 
@@ -47,9 +47,9 @@ async def test_featured_body_none_when_no_rows():
 @pytest.mark.asyncio
 async def test_featured_body_none_when_one_row():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [_row(now, weight_kg=78.4)]
         assert await _build_featured_body(USER) is None
 
@@ -57,9 +57,9 @@ async def test_featured_body_none_when_one_row():
 @pytest.mark.asyncio
 async def test_featured_body_none_when_latest_older_than_60d():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now - timedelta(days=61), weight_kg=78.4),
             _row(now - timedelta(days=91), weight_kg=79.6),
@@ -70,9 +70,9 @@ async def test_featured_body_none_when_latest_older_than_60d():
 @pytest.mark.asyncio
 async def test_featured_body_none_when_latest_missing_weight():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now, body_fat_pct=22.1),  # no weight_kg
             _row(now - timedelta(days=30), weight_kg=79.6, body_fat_pct=22.9),
@@ -83,16 +83,24 @@ async def test_featured_body_none_when_latest_missing_weight():
 @pytest.mark.asyncio
 async def test_featured_body_full_metrics_30d_anchor():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
-            _row(now - timedelta(days=3),
-                 weight_kg=78.4, body_fat_pct=22.1,
-                 muscle_kg=38.5, lean_mass_kg=61.1),
-            _row(now - timedelta(days=33),  # 30 days before latest
-                 weight_kg=79.6, body_fat_pct=22.9,
-                 muscle_kg=38.4, lean_mass_kg=61.5),
+            _row(
+                now - timedelta(days=3),
+                weight_kg=78.4,
+                body_fat_pct=22.1,
+                muscle_kg=38.5,
+                lean_mass_kg=61.1,
+            ),
+            _row(
+                now - timedelta(days=33),  # 30 days before latest
+                weight_kg=79.6,
+                body_fat_pct=22.9,
+                muscle_kg=38.4,
+                lean_mass_kg=61.5,
+            ),
         ]
         result = await _build_featured_body(USER)
 
@@ -114,9 +122,9 @@ async def test_featured_body_full_metrics_30d_anchor():
 @pytest.mark.asyncio
 async def test_featured_body_only_weight_metric_present():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now - timedelta(days=2), weight_kg=78.4),
             _row(now - timedelta(days=32), weight_kg=79.6),
@@ -137,9 +145,9 @@ async def test_featured_body_only_weight_metric_present():
 @pytest.mark.asyncio
 async def test_featured_body_anchor_outside_window():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now - timedelta(days=3), weight_kg=78.4),
             _row(now - timedelta(days=53), weight_kg=82.0),  # 50d before latest
@@ -156,14 +164,11 @@ async def test_featured_body_anchor_outside_window():
 @pytest.mark.asyncio
 async def test_featured_body_sparkline_orders_oldest_to_newest_and_caps_at_8():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
     # 10 weigh-ins, weight = age-in-days (so order is unambiguous)
-    rows = [
-        _row(now - timedelta(days=i), weight_kg=float(i))
-        for i in range(10)
-    ]
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    rows = [_row(now - timedelta(days=i), weight_kg=float(i)) for i in range(10)]
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = rows
         result = await _build_featured_body(USER)
 
@@ -184,26 +189,34 @@ def _make_pool_mock():
 @pytest.mark.asyncio
 async def test_dashboard_summary_includes_featured_body():
     from orchestrator.app.main import dashboard_summary
+
     now = datetime.now(timezone.utc)
     rows = [
-        _row(now - timedelta(days=2),
-             weight_kg=78.4, body_fat_pct=22.1,
-             muscle_kg=38.5, lean_mass_kg=61.1),
-        _row(now - timedelta(days=32),
-             weight_kg=79.6, body_fat_pct=22.9,
-             muscle_kg=38.4, lean_mass_kg=61.5),
+        _row(
+            now - timedelta(days=2),
+            weight_kg=78.4,
+            body_fat_pct=22.1,
+            muscle_kg=38.5,
+            lean_mass_kg=61.1,
+        ),
+        _row(
+            now - timedelta(days=32),
+            weight_kg=79.6,
+            body_fat_pct=22.9,
+            muscle_kg=38.4,
+            lean_mass_kg=61.5,
+        ),
     ]
     pool_mock = _make_pool_mock()
-    with patch("orchestrator.app.main.get_yesterday_metrics",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock, return_value=rows), \
-         patch("orchestrator.app.db.get_body_profile",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.db.fetch_body_logs",
-               new_callable=AsyncMock, return_value=rows), \
-         patch("shared.db.get_pool",
-               new_callable=AsyncMock, return_value=pool_mock):
+    with (
+        patch(
+            "orchestrator.app.main.get_yesterday_metrics", new_callable=AsyncMock, return_value={}
+        ),
+        patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock, return_value=rows),
+        patch("orchestrator.app.db.get_body_profile", new_callable=AsyncMock, return_value={}),
+        patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock, return_value=rows),
+        patch("shared.db.get_pool", new_callable=AsyncMock, return_value=pool_mock),
+    ):
         result = await dashboard_summary(user_id=USER)
 
     assert result["featured_body"] is not None
@@ -223,17 +236,17 @@ async def test_dashboard_summary_includes_featured_body():
 @pytest.mark.asyncio
 async def test_dashboard_summary_omits_body_tile_when_no_rows():
     from orchestrator.app.main import dashboard_summary
+
     pool_mock = _make_pool_mock()
-    with patch("orchestrator.app.main.get_yesterday_metrics",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock, return_value=[]), \
-         patch("orchestrator.app.db.get_body_profile",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.db.fetch_body_logs",
-               new_callable=AsyncMock, return_value=[]), \
-         patch("shared.db.get_pool",
-               new_callable=AsyncMock, return_value=pool_mock):
+    with (
+        patch(
+            "orchestrator.app.main.get_yesterday_metrics", new_callable=AsyncMock, return_value={}
+        ),
+        patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock, return_value=[]),
+        patch("orchestrator.app.db.get_body_profile", new_callable=AsyncMock, return_value={}),
+        patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock, return_value=[]),
+        patch("shared.db.get_pool", new_callable=AsyncMock, return_value=pool_mock),
+    ):
         result = await dashboard_summary(user_id=USER)
 
     assert all(a["agent"] != "body" for a in result["agents"])
@@ -242,9 +255,9 @@ async def test_dashboard_summary_omits_body_tile_when_no_rows():
 @pytest.mark.asyncio
 async def test_featured_body_weight_delta_prev_uses_prior_weighin():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now - timedelta(days=2), weight_kg=77.1),
             _row(now - timedelta(days=10), weight_kg=77.7),
@@ -262,9 +275,9 @@ async def test_featured_body_weight_delta_prev_uses_prior_weighin():
 @pytest.mark.asyncio
 async def test_featured_body_weight_delta_prev_skips_fat_only_rows():
     from orchestrator.app.main import _build_featured_body
+
     now = datetime.now(timezone.utc)
-    with patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock) as mb:
+    with patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock) as mb:
         mb.return_value = [
             _row(now - timedelta(days=2), weight_kg=77.1),
             _row(now - timedelta(days=5), body_fat_pct=23.0),  # no weight_kg
@@ -280,17 +293,17 @@ async def test_featured_body_weight_delta_prev_skips_fat_only_rows():
 @pytest.mark.asyncio
 async def test_dashboard_summary_featured_body_null_when_no_rows():
     from orchestrator.app.main import dashboard_summary
+
     pool_mock = _make_pool_mock()
-    with patch("orchestrator.app.main.get_yesterday_metrics",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.main.fetch_body_logs",
-               new_callable=AsyncMock, return_value=[]), \
-         patch("orchestrator.app.db.get_body_profile",
-               new_callable=AsyncMock, return_value={}), \
-         patch("orchestrator.app.db.fetch_body_logs",
-               new_callable=AsyncMock, return_value=[]), \
-         patch("shared.db.get_pool",
-               new_callable=AsyncMock, return_value=pool_mock):
+    with (
+        patch(
+            "orchestrator.app.main.get_yesterday_metrics", new_callable=AsyncMock, return_value={}
+        ),
+        patch("orchestrator.app.main.fetch_body_logs", new_callable=AsyncMock, return_value=[]),
+        patch("orchestrator.app.db.get_body_profile", new_callable=AsyncMock, return_value={}),
+        patch("orchestrator.app.db.fetch_body_logs", new_callable=AsyncMock, return_value=[]),
+        patch("shared.db.get_pool", new_callable=AsyncMock, return_value=pool_mock),
+    ):
         result = await dashboard_summary(user_id=USER)
 
     assert result["featured_body"] is None

@@ -1,4 +1,5 @@
 """Registry CRUD — wraps shared/db.py medication helpers."""
+
 from __future__ import annotations
 
 import re
@@ -40,7 +41,11 @@ async def create(
     notes: str | None = None,
 ) -> str:
     return await insert_medication(
-        user_id, name=name, dose=dose, schedule=schedule, notes=notes,
+        user_id,
+        name=name,
+        dose=dose,
+        schedule=schedule,
+        notes=notes,
     )
 
 

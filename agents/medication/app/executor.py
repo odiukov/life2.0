@@ -1,4 +1,5 @@
 """MedicationAgentExecutor — dispatches medication skills."""
+
 from __future__ import annotations
 
 import json
@@ -10,8 +11,14 @@ from datetime import datetime, timezone
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import (
-    Artifact, Message, Part, Role,
-    TaskArtifactUpdateEvent, TaskState, TaskStatus, TaskStatusUpdateEvent,
+    Artifact,
+    Message,
+    Part,
+    Role,
+    TaskArtifactUpdateEvent,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
     TextPart,
 )
 from langchain_core.messages import HumanMessage
@@ -21,7 +28,8 @@ from shared.current_user import user_id_from_message
 from shared.intent import infer_skill_and_consults
 from shared.log_entry import make_log_entry_artifact
 from shared.peer import (
-    default_peer_registry, fetch_peer_artifacts,
+    default_peer_registry,
+    fetch_peer_artifacts,
     is_peer_call_from_metadata,
 )
 from shared.skill_ids import Medication
@@ -117,13 +125,21 @@ def _validate_define(parsed: dict) -> dict | None:
 
 
 async def _emit_log_entry(
-    event_queue: EventQueue, task_id: str, context_id: str, summary: str,
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    summary: str,
 ) -> None:
     artifact = make_log_entry_artifact(summary)
-    await event_queue.enqueue_event(TaskArtifactUpdateEvent(
-        task_id=task_id, context_id=context_id, artifact=artifact,
-        append=False, last_chunk=True,
-    ))
+    await event_queue.enqueue_event(
+        TaskArtifactUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            artifact=artifact,
+            append=False,
+            last_chunk=True,
+        )
+    )
 
 
 class MedicationAgentExecutor(AgentExecutor):
@@ -144,8 +160,12 @@ class MedicationAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -167,7 +187,7 @@ class MedicationAgentExecutor(AgentExecutor):
                 else:
                     try:
                         mid = await registry.create(user_id, **validated)
-                        dose_part = f" {validated['dose']}" if validated['dose'] else ""
+                        dose_part = f" {validated['dose']}" if validated["dose"] else ""
                         output = f"tracking '{validated['name']}'{dose_part} · {validated['schedule']} id={mid}"
                     except Exception as e:
                         output = f"medication '{validated['name']}' already tracked"
@@ -191,13 +211,18 @@ class MedicationAgentExecutor(AgentExecutor):
                         "source_skill": Medication.LOG,
                     }
                     await insert_log(
-                        user_id, agent="medication", type_="medication_taken",
-                        data=data, source=params.get("source", "manual"),
+                        user_id,
+                        agent="medication",
+                        type_="medication_taken",
+                        data=data,
+                        source=params.get("source", "manual"),
                     )
                     dose_bit = f" ({data['dose_at_time']})" if data["dose_at_time"] else ""
                     output = f"taken '{med['name']}'{dose_bit}"
                     await _emit_log_entry(
-                        event_queue, task_id, context_id,
+                        event_queue,
+                        task_id,
+                        context_id,
                         f"Принял {med['name']}{dose_bit}",
                     )
 
@@ -222,7 +247,9 @@ class MedicationAgentExecutor(AgentExecutor):
                     output = "archived" if ok else "already archived"
                     if ok:
                         await _emit_log_entry(
-                            event_queue, task_id, context_id,
+                            event_queue,
+                            task_id,
+                            context_id,
                             f"Архивировано: {med['name']}",
                         )
 
@@ -239,8 +266,11 @@ class MedicationAgentExecutor(AgentExecutor):
                         if n:
                             by_name[n] = by_name.get(n, 0) + 1
                     summary_rows = [
-                        {"name": m["name"], "schedule": m["schedule"],
-                         "actual_logs": by_name.get(m["name"], 0)}
+                        {
+                            "name": m["name"],
+                            "schedule": m["schedule"],
+                            "actual_logs": by_name.get(m["name"], 0),
+                        }
                         for m in meds
                     ]
                     if not is_peer_call_from_metadata(metadata):
@@ -252,25 +282,36 @@ class MedicationAgentExecutor(AgentExecutor):
                         )
                     prompt_text = await SKILL_PROMPTS[skill_id](
                         message,
-                        {**params, "window_days": window_days,
-                         "data": json.dumps(summary_rows, ensure_ascii=False),
-                         "peer_artifacts": peer_artifacts},
+                        {
+                            **params,
+                            "window_days": window_days,
+                            "data": json.dumps(summary_rows, ensure_ascii=False),
+                            "peer_artifacts": peer_artifacts,
+                        },
                     )
                     result = await _get_llm().ainvoke([HumanMessage(prompt_text)])
-                    output = result.content if isinstance(result.content, str) else str(result.content)
+                    output = (
+                        result.content if isinstance(result.content, str) else str(result.content)
+                    )
 
             else:
                 output = f"skill '{skill_id}' not implemented yet"
 
             try:
                 await insert_task_record(
-                    agent="medication", task_id=task_id, context_id=context_id,
-                    skill_id=skill_id, input_=params, output=output, state="completed",
+                    agent="medication",
+                    task_id=task_id,
+                    context_id=context_id,
+                    skill_id=skill_id,
+                    input_=params,
+                    output=output,
+                    state="completed",
                 )
             except Exception as e:
                 logger.warning("insert_task_record failed: %s", e)
             try:
-                await upsert_memory(user_id=user_id,
+                await upsert_memory(
+                    user_id=user_id,
                     agent_id="medication",
                     id_=str(uuid.uuid4()),
                     text=output,
@@ -291,8 +332,12 @@ class MedicationAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("medication executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
@@ -307,24 +352,41 @@ def _error_message(text: str) -> Message:
     )
 
 
-async def _emit_status(event_queue: EventQueue, task_id: str, context_id: str,
-                       state: TaskState, error: str | None = None, final: bool = False) -> None:
+async def _emit_status(
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    state: TaskState,
+    error: str | None = None,
+    final: bool = False,
+) -> None:
     status = TaskStatus(state=state)
     if error:
         status.message = _error_message(error)
-    await event_queue.enqueue_event(TaskStatusUpdateEvent(
-        task_id=task_id, context_id=context_id, status=status, final=final,
-    ))
+    await event_queue.enqueue_event(
+        TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=status,
+            final=final,
+        )
+    )
 
 
-async def _emit_artifact(event_queue: EventQueue, task_id: str, context_id: str,
-                         name: str, text: str) -> None:
+async def _emit_artifact(
+    event_queue: EventQueue, task_id: str, context_id: str, name: str, text: str
+) -> None:
     artifact = Artifact(
         artifact_id=str(uuid.uuid4()),
         name=name,
         parts=[Part(root=TextPart(text=text))],
     )
-    await event_queue.enqueue_event(TaskArtifactUpdateEvent(
-        task_id=task_id, context_id=context_id, artifact=artifact,
-        append=False, last_chunk=True,
-    ))
+    await event_queue.enqueue_event(
+        TaskArtifactUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            artifact=artifact,
+            append=False,
+            last_chunk=True,
+        )
+    )

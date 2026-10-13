@@ -1,4 +1,5 @@
 """Tests for orchestrator MCP tool discovery."""
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -9,6 +10,7 @@ async def test_load_mcp_tools_returns_empty_when_no_servers_configured(monkeypat
     monkeypatch.delenv("HA_BASE_URL", raising=False)
     monkeypatch.delenv("HA_TOKEN", raising=False)
     from orchestrator.app.mcp_tools import load_mcp_tools, _MCP_TOOLS
+
     _MCP_TOOLS.clear()
     tools = await load_mcp_tools()
     assert tools == []
@@ -24,22 +26,30 @@ async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
     fake_tool = type("T", (), {"name": "HassTurnOn"})()  # minimal stand-in
 
     class _FakeSession:
-        async def __aenter__(self): return self
-        async def __aexit__(self, *exc): return False
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
 
     class FakeClient:
         last_servers = None
+
         def __init__(self, servers):
             FakeClient.last_servers = servers
+
         def session(self, name):
             return _FakeSession()
 
     async def fake_load(session, server_name=None):
         return [fake_tool]
 
-    with patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient), \
-         patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load):
+    with (
+        patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
+        patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
+    ):
         from orchestrator.app import mcp_tools
+
         mcp_tools._MCP_TOOLS.clear()
         await mcp_tools.close_mcp_sessions()
         tools = await mcp_tools.load_mcp_tools()
@@ -62,11 +72,13 @@ async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
     class FakeClient:
         def __init__(self, servers):
             pass
+
         async def get_tools(self):
             raise RuntimeError("server unreachable")
 
     with patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient):
         from orchestrator.app import mcp_tools
+
         mcp_tools._MCP_TOOLS.clear()
         tools = await mcp_tools.load_mcp_tools()
 
@@ -80,22 +92,32 @@ async def test_load_mcp_tools_caches_by_name(monkeypatch):
     monkeypatch.setenv("HA_TOKEN", "tok")
 
     class FakeTool:
-        def __init__(self, name): self.name = name
+        def __init__(self, name):
+            self.name = name
 
     class _FakeSession:
-        async def __aenter__(self): return self
-        async def __aexit__(self, *exc): return False
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
 
     class FakeClient:
-        def __init__(self, servers): pass
-        def session(self, name): return _FakeSession()
+        def __init__(self, servers):
+            pass
+
+        def session(self, name):
+            return _FakeSession()
 
     async def fake_load(session, server_name=None):
         return [FakeTool("HassTurnOn"), FakeTool("GetLiveContext")]
 
-    with patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient), \
-         patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load):
+    with (
+        patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
+        patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
+    ):
         from orchestrator.app import mcp_tools
+
         mcp_tools._MCP_TOOLS.clear()
         await mcp_tools.close_mcp_sessions()
         await mcp_tools.load_mcp_tools()
@@ -109,5 +131,6 @@ async def test_load_mcp_tools_caches_by_name(monkeypatch):
 
 def test_get_mcp_tool_returns_none_for_unknown_name():
     from orchestrator.app import mcp_tools
+
     mcp_tools._MCP_TOOLS.clear()
     assert mcp_tools.get_mcp_tool("nonexistent-tool") is None

@@ -1,4 +1,5 @@
 """Tests for medication prompt builder."""
+
 import pytest
 
 pytestmark = pytest.mark.asyncio

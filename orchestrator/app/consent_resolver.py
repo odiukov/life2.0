@@ -1,4 +1,5 @@
 """Resolve per-user consent flag from Postgres with in-memory TTL cache."""
+
 from __future__ import annotations
 
 import time

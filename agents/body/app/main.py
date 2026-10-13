@@ -1,4 +1,5 @@
 """Body agent HTTP entrypoint."""
+
 from shared.telemetry import init_telemetry, instrument_fastapi_app
 
 init_telemetry("agent-body")

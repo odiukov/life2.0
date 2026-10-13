@@ -1,4 +1,5 @@
 """MoodAgentExecutor — dispatches to mood skills and persists entries."""
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,8 @@ from shared.current_user import user_id_from_message
 from shared.intent import infer_skill_and_consults
 from shared.llm import build_llm
 from shared.peer import (
-    default_peer_registry, fetch_peer_artifacts,
+    default_peer_registry,
+    fetch_peer_artifacts,
     is_peer_call_from_metadata,
 )
 from shared.vector import upsert_memory
@@ -177,8 +179,12 @@ class MoodAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -189,10 +195,10 @@ class MoodAgentExecutor(AgentExecutor):
             params.setdefault("message", message)
 
             peer_artifacts: dict[str, str] = {}
-            if (
-                skill_id in {"analyze_mood", "get_mood_recommendations"}
-                and not is_peer_call_from_metadata(metadata)
-            ):
+            if skill_id in {
+                "analyze_mood",
+                "get_mood_recommendations",
+            } and not is_peer_call_from_metadata(metadata):
                 peer_artifacts = await fetch_peer_artifacts(
                     default_peer_registry(),
                     PEER_SKILLS,
@@ -241,11 +247,17 @@ class MoodAgentExecutor(AgentExecutor):
                 )
 
             await insert_task_record(
-                agent="mood", task_id=task_id, context_id=context_id,
-                skill_id=skill_id, input_=params, output=output, state="completed",
+                agent="mood",
+                task_id=task_id,
+                context_id=context_id,
+                skill_id=skill_id,
+                input_=params,
+                output=output,
+                state="completed",
             )
             try:
-                await upsert_memory(user_id=user_id,
+                await upsert_memory(
+                    user_id=user_id,
                     agent_id="mood",
                     id_=str(uuid.uuid4()),
                     text=message if skill_id == "log_mood" else output,
@@ -269,8 +281,12 @@ class MoodAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("mood executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
@@ -285,27 +301,44 @@ def _error_message(text: str) -> Message:
     )
 
 
-async def _emit_status(event_queue: EventQueue, task_id: str, context_id: str,
-                       state: TaskState, error: str | None = None, final: bool = False) -> None:
+async def _emit_status(
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    state: TaskState,
+    error: str | None = None,
+    final: bool = False,
+) -> None:
     status = TaskStatus(state=state)
     if error:
         status.message = _error_message(error)
-    await event_queue.enqueue_event(TaskStatusUpdateEvent(
-        task_id=task_id, context_id=context_id, status=status, final=final,
-    ))
+    await event_queue.enqueue_event(
+        TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=status,
+            final=final,
+        )
+    )
 
 
-async def _emit_artifact(event_queue: EventQueue, task_id: str, context_id: str,
-                         name: str, text: str) -> None:
+async def _emit_artifact(
+    event_queue: EventQueue, task_id: str, context_id: str, name: str, text: str
+) -> None:
     artifact = Artifact(
         artifact_id=str(uuid.uuid4()),
         name=name,
         parts=[Part(root=TextPart(text=text))],
     )
-    await event_queue.enqueue_event(TaskArtifactUpdateEvent(
-        task_id=task_id, context_id=context_id, artifact=artifact,
-        append=False, last_chunk=True,
-    ))
+    await event_queue.enqueue_event(
+        TaskArtifactUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            artifact=artifact,
+            append=False,
+            last_chunk=True,
+        )
+    )
 
 
 async def _emit_log_entry_artifact(

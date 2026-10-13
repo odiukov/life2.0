@@ -1,6 +1,7 @@
 # new contract: _call_agent_with_artifact returns 3-tuple (text, log_entry, consulted_peers)
 """A2A tools return Command(update=...) with toolCalls transitions +
 lastLoggedEntry on log_* skills."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -17,11 +18,13 @@ class _FakeRunnableConfig(dict):
 @pytest.mark.asyncio
 @patch(
     "orchestrator.app.health_agent._call_agent_with_artifact",
-    new=AsyncMock(return_value=(
-        "Logged: 30 min run",
-        {"summary": "30 min run", "timestamp": "2026-04-15T10:00:00+00:00"},
-        None,
-    )),
+    new=AsyncMock(
+        return_value=(
+            "Logged: 30 min run",
+            {"summary": "30 min run", "timestamp": "2026-04-15T10:00:00+00:00"},
+            None,
+        )
+    ),
 )
 async def test_ask_workout_log_returns_done_with_log_entry():
     from orchestrator.app.health_agent import ask_workout_agent

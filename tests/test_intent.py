@@ -63,12 +63,16 @@ async def test_focus_sources_filtered_to_candidates():
 async def test_no_metadata_calls_llm_once_returns_skill_and_consult():
     """Without metadata, one LLM call returns both skill_id and consult list."""
     llm = MagicMock()
-    llm.ainvoke = AsyncMock(return_value=SimpleNamespace(
-        content=json.dumps({
-            "skill": "get_workout_recommendations",
-            "consult": ["sleep", "nutrition"],
-        })
-    ))
+    llm.ainvoke = AsyncMock(
+        return_value=SimpleNamespace(
+            content=json.dumps(
+                {
+                    "skill": "get_workout_recommendations",
+                    "consult": ["sleep", "nutrition"],
+                }
+            )
+        )
+    )
     skill_id, consult = await infer_skill_and_consults(
         message="посоветуй тренировку с учётом сна и питания",
         skills=["log_workout", "analyze_workout", "get_workout_recommendations"],
@@ -85,9 +89,9 @@ async def test_no_metadata_calls_llm_once_returns_skill_and_consult():
 async def test_llm_returns_unknown_skill_yields_none():
     """If LLM picks a skill not in the allowed set, skill_id is None."""
     llm = MagicMock()
-    llm.ainvoke = AsyncMock(return_value=SimpleNamespace(
-        content=json.dumps({"skill": "fake_skill", "consult": []})
-    ))
+    llm.ainvoke = AsyncMock(
+        return_value=SimpleNamespace(content=json.dumps({"skill": "fake_skill", "consult": []}))
+    )
     skill_id, consult = await infer_skill_and_consults(
         message="мусор",
         skills=["analyze_workout"],
@@ -119,9 +123,11 @@ async def test_llm_invalid_json_returns_none_and_empty_consult():
 async def test_llm_consult_filtered_to_candidates():
     """LLM hallucinating a peer not in candidate_peers is dropped."""
     llm = MagicMock()
-    llm.ainvoke = AsyncMock(return_value=SimpleNamespace(
-        content=json.dumps({"skill": "analyze_workout", "consult": ["sleep", "ghost_agent"]})
-    ))
+    llm.ainvoke = AsyncMock(
+        return_value=SimpleNamespace(
+            content=json.dumps({"skill": "analyze_workout", "consult": ["sleep", "ghost_agent"]})
+        )
+    )
     _, consult = await infer_skill_and_consults(
         message="anything",
         skills=["analyze_workout"],

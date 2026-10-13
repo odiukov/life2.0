@@ -1,4 +1,5 @@
 """Tests for orchestrator per-agent LangGraph tools."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -64,11 +65,12 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
     async def fake_get_client(url: str):
         return fake
 
-    with patch(
-        "orchestrator.app.health_agent.get_client", side_effect=fake_get_client
-    ), patch(
-        "orchestrator.app.health_agent._resolve_url",
-        return_value="http://sleep-agent:8080",
+    with (
+        patch("orchestrator.app.health_agent.get_client", side_effect=fake_get_client),
+        patch(
+            "orchestrator.app.health_agent._resolve_url",
+            return_value="http://sleep-agent:8080",
+        ),
     ):
         cmd = await ask_sleep_agent.ainvoke(
             _tool_call({"message": "how did I sleep?", "skill": "analyze_sleep"})
@@ -87,17 +89,14 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
 
 @pytest.mark.asyncio
 async def test_ask_sleep_agent_returns_unavailable_when_url_missing():
-    with patch(
-        "orchestrator.app.health_agent._resolve_url", return_value=None
-    ):
-        cmd = await ask_sleep_agent.ainvoke(
-            _tool_call({"message": "hi", "skill": "analyze_sleep"})
-        )
+    with patch("orchestrator.app.health_agent._resolve_url", return_value=None):
+        cmd = await ask_sleep_agent.ainvoke(_tool_call({"message": "hi", "skill": "analyze_sleep"}))
     assert "unavailable" in cmd.update["messages"][0].content.lower()
 
 
 def test_health_agent_exposes_ask_body_agent():
     from orchestrator.app.health_agent import ask_body_agent
+
     assert ask_body_agent is not None
     assert ask_body_agent.name == "ask_body_agent"
 
@@ -105,6 +104,7 @@ def test_health_agent_exposes_ask_body_agent():
 # ---------------------------------------------------------------------------
 # Contract tests: every peer in _AGENT_FROM_TOOL must have a matching @tool
 # ---------------------------------------------------------------------------
+
 
 def test_every_peer_in_agent_from_tool_has_tool():
     """Contract test: every peer registered in _AGENT_FROM_TOOL must have a
@@ -143,16 +143,11 @@ def test_medication_tool_accepts_all_skill_ids():
     tool = health_agent.ask_medication_agent
     # StructuredTool stores the underlying callable in `.coroutine` (async)
     # or `.func` (sync). Prefer coroutine when func is None.
-    underlying = (
-        getattr(tool, "coroutine", None)
-        or getattr(tool, "func", None)
-        or tool
-    )
+    underlying = getattr(tool, "coroutine", None) or getattr(tool, "func", None) or tool
     sig = typing.get_type_hints(underlying)
     skill_type = sig["skill"]
     allowed = set(typing.get_args(skill_type))
     declared = {s.id for s in SKILLS}
     assert allowed == declared, (
-        f"medication tool Literal mismatch: "
-        f"tool={allowed}, skills.py={declared}"
+        f"medication tool Literal mismatch: tool={allowed}, skills.py={declared}"
     )

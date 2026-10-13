@@ -61,17 +61,18 @@ async def test_define_habit_parses_json_and_creates_registry_row():
         captured.update(kwargs)
         return "fake-uuid-1"
 
-    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm(llm_json)), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.registry.create", new=fake_create), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm(llm_json)),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.registry.create", new=fake_create),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("медитация 20 минут каждый день", skill="define_habit"), q,
+            _Ctx("медитация 20 минут каждый день", skill="define_habit"),
+            q,
         )
     assert captured["user_id"] == USER
     assert captured["name"] == "meditation"
@@ -91,18 +92,18 @@ async def test_define_habit_fallback_on_invalid_json_writes_no_row():
         called["n"] += 1
         return "should-not-be-called"
 
-    with patch("agents.habits.app.executor._get_llm",
-               return_value=_fake_llm("i cannot parse this")), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.registry.create", new=fake_create), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("i cannot parse this")),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.registry.create", new=fake_create),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("dunno really", skill="define_habit"), q,
+            _Ctx("dunno really", skill="define_habit"),
+            q,
         )
     assert called["n"] == 0
     states = [e.status.state for e in q.events if hasattr(e, "status")]
@@ -122,20 +123,27 @@ async def test_log_habit_check_resolves_name_and_inserts_log():
         captured["agent"] = agent
 
     async def fake_find(user_id, name):
-        return {
-            "id": "abc-123", "name": "meditation",
-            "kind": "quantitative", "target_value": 20, "unit": "min",
-        } if name == "meditation" else None
+        return (
+            {
+                "id": "abc-123",
+                "name": "meditation",
+                "kind": "quantitative",
+                "target_value": 20,
+                "unit": "min",
+            }
+            if name == "meditation"
+            else None
+        )
 
-    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.insert_log", new=fake_insert_log), \
-         patch("agents.habits.app.executor.registry.find_by_name", new=fake_find), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.insert_log", new=fake_insert_log),
+        patch("agents.habits.app.executor.registry.find_by_name", new=fake_find),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
             _Ctx(
@@ -167,18 +175,19 @@ async def test_log_habit_check_unknown_name_does_not_insert():
     async def fake_find(user_id, name):
         return None
 
-    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.insert_log", new=fake_insert_log), \
-         patch("agents.habits.app.executor.registry.find_by_name", new=fake_find), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.insert_log", new=fake_insert_log),
+        patch("agents.habits.app.executor.registry.find_by_name", new=fake_find),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("/habit nope", skill="log_habit_check", params={"name": "nope"}), q,
+            _Ctx("/habit nope", skill="log_habit_check", params={"name": "nope"}),
+            q,
         )
     assert inserts["n"] == 0
 
@@ -189,45 +198,68 @@ async def test_get_streak_summary_is_deterministic_no_llm():
     from agents.habits.app.executor import HabitsAgentExecutor
 
     habits = [
-        {"id": "h-1", "name": "meditation", "kind": "quantitative",
-         "cadence_type": "daily", "cadence_days": None,
-         "target_value": 20, "unit": "min",
-         "created_at": datetime(2026, 4, 10, tzinfo=timezone.utc)},
-        {"id": "h-2", "name": "cold-shower", "kind": "boolean",
-         "cadence_type": "daily", "cadence_days": None,
-         "target_value": None, "unit": None,
-         "created_at": datetime(2026, 4, 10, tzinfo=timezone.utc)},
+        {
+            "id": "h-1",
+            "name": "meditation",
+            "kind": "quantitative",
+            "cadence_type": "daily",
+            "cadence_days": None,
+            "target_value": 20,
+            "unit": "min",
+            "created_at": datetime(2026, 4, 10, tzinfo=timezone.utc),
+        },
+        {
+            "id": "h-2",
+            "name": "cold-shower",
+            "kind": "boolean",
+            "cadence_type": "daily",
+            "cadence_days": None,
+            "target_value": None,
+            "unit": None,
+            "created_at": datetime(2026, 4, 10, tzinfo=timezone.utc),
+        },
     ]
     now = datetime.now(timezone.utc)
     logs = []
     for days_ago in (0, 1, 2):
-        logs.append({
-            "recorded_at": now - timedelta(days=days_ago),
-            "data": {"habit_id": "h-1", "name": "meditation",
-                     "completed": True, "value": 25, "unit": "min"},
-        })
+        logs.append(
+            {
+                "recorded_at": now - timedelta(days=days_ago),
+                "data": {
+                    "habit_id": "h-1",
+                    "name": "meditation",
+                    "completed": True,
+                    "value": 25,
+                    "unit": "min",
+                },
+            }
+        )
 
     llm_mock = _fake_llm("SHOULD-NOT-APPEAR")
 
-    with patch("agents.habits.app.executor._get_llm", return_value=llm_mock), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.executor.registry.list_active",
-               new=AsyncMock(return_value=habits)), \
-         patch("agents.habits.app.executor.fetch_habit_logs",
-               new=AsyncMock(return_value=logs)), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=habits)), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=logs)):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=llm_mock),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.habits.app.executor.registry.list_active", new=AsyncMock(return_value=habits)
+        ),
+        patch("agents.habits.app.executor.fetch_habit_logs", new=AsyncMock(return_value=logs)),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=habits)),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=logs)),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("/habits", skill="get_streak_summary"), q,
+            _Ctx("/habits", skill="get_streak_summary"),
+            q,
         )
 
     llm_mock.ainvoke.assert_not_called()
-    text_artifacts = [e.artifact.parts[0].root.text for e in q.events
-                      if hasattr(e, "artifact") and e.artifact.name == "analysis"]
+    text_artifacts = [
+        e.artifact.parts[0].root.text
+        for e in q.events
+        if hasattr(e, "artifact") and e.artifact.name == "analysis"
+    ]
     assert text_artifacts, "no analysis artifact emitted"
     combined = "\n".join(text_artifacts)
     assert "meditation" in combined
@@ -249,19 +281,18 @@ async def test_archive_habit_happy_path():
     async def fake_find(user_id, name):
         return {"id": "h-42", "name": "meditation"} if name == "meditation" else None
 
-    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.registry.find_by_name", new=fake_find), \
-         patch("agents.habits.app.executor.registry.archive", new=fake_archive), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.registry.find_by_name", new=fake_find),
+        patch("agents.habits.app.executor.registry.archive", new=fake_archive),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("/habit stop meditation", skill="archive_habit",
-                 params={"name": "meditation"}),
+            _Ctx("/habit stop meditation", skill="archive_habit", params={"name": "meditation"}),
             q,
         )
     assert archived["user_id"] == USER
@@ -279,24 +310,26 @@ async def test_archive_habit_not_found_completes_gracefully():
         # should not be called when name is unknown
         raise AssertionError("archive must not be invoked when habit is missing")
 
-    with patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")), \
-         patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.habits.app.executor.registry.find_by_name", new=fake_find), \
-         patch("agents.habits.app.executor.registry.archive", new=fake_archive), \
-         patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.habits.app.executor._get_llm", return_value=_fake_llm("")),
+        patch("agents.habits.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.habits.app.executor.registry.find_by_name", new=fake_find),
+        patch("agents.habits.app.executor.registry.archive", new=fake_archive),
+        patch("agents.habits.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await HabitsAgentExecutor().execute(
-            _Ctx("/habit stop nope", skill="archive_habit",
-                 params={"name": "nope"}),
+            _Ctx("/habit stop nope", skill="archive_habit", params={"name": "nope"}),
             q,
         )
 
     states = [e.status.state for e in q.events if hasattr(e, "status")]
     assert TaskState.completed in states
-    text_artifacts = [e.artifact.parts[0].root.text for e in q.events
-                      if hasattr(e, "artifact") and e.artifact.name == "analysis"]
+    text_artifacts = [
+        e.artifact.parts[0].root.text
+        for e in q.events
+        if hasattr(e, "artifact") and e.artifact.name == "analysis"
+    ]
     assert any("not found" in t for t in text_artifacts)

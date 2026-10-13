@@ -1,6 +1,7 @@
 """Body agent must consult nutrition + workout via A2A peer-consult, not by
 reading their tables directly. fetch_recent_logs in body/app/prompt.py is a
 red flag for cross-domain reads — see spec §5 + §10."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,5 +28,4 @@ def test_body_prompt_does_not_fetch_workout_logs():
 
 def test_body_prompt_imports_peer_chip_rules():
     src = _read_body_prompt()
-    assert "from shared.peer_chip_rules import" in src \
-        or "from shared.peer_chip_rules" in src
+    assert "from shared.peer_chip_rules import" in src or "from shared.peer_chip_rules" in src

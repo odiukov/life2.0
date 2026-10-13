@@ -4,6 +4,7 @@ Composition (per spec §10):
   IDENTITY → DATA → PEER_CONTEXT → VOCAB → MEMORIES → REQUEST
   → PEER_CHIP_RULES (only with peer artifacts) → SKILL_TAIL → GROUNDING_RULES
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -49,22 +50,23 @@ async def build_workout_prompt(
     body_logs = await fetch_body_logs(user_id, limit=5)
     memories = await search_memories(user_id, task, limit=5)
 
-    workout_text = "\n".join(
-        f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}"
-        for r in workout_logs
-    ) or "No recent workout logs."
+    workout_text = (
+        "\n".join(f"- {r['recorded_at'].date()} | {r['type']} | {r['data']}" for r in workout_logs)
+        or "No recent workout logs."
+    )
 
-    body_text = "\n".join(
-        f"- {r['recorded_at'].date()} | weight={r['data'].get('weight_kg')}kg "
-        f"| fat={r['data'].get('body_fat_pct')}% "
-        f"| muscle={r['data'].get('skeletal_muscle_kg')}kg "
-        f"| lean={r['data'].get('lean_mass_kg')}kg"
-        for r in body_logs[:5]
-    ) or "No body composition data."
+    body_text = (
+        "\n".join(
+            f"- {r['recorded_at'].date()} | weight={r['data'].get('weight_kg')}kg "
+            f"| fat={r['data'].get('body_fat_pct')}% "
+            f"| muscle={r['data'].get('skeletal_muscle_kg')}kg "
+            f"| lean={r['data'].get('lean_mass_kg')}kg"
+            for r in body_logs[:5]
+        )
+        or "No body composition data."
+    )
 
-    memories_text = "\n".join(
-        f"- {m.get('text', '')}" for m in memories
-    ) or "No relevant memories."
+    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) or "No relevant memories."
 
     peer = peer_artifacts if peer_artifacts is not None else (params.get("peer_artifacts") or {})
     peer_section = ""
@@ -87,7 +89,8 @@ async def build_workout_prompt(
         f"{raw_for_date} specifically. Prioritize sessions on/around this "
         f"date in your summary; only mention the broader trend if directly "
         f"relevant.\n"
-        if isinstance(raw_for_date, str) and raw_for_date else ""
+        if isinstance(raw_for_date, str) and raw_for_date
+        else ""
     )
 
     chip_block = f"\n{PEER_CHIP_RULES}" if peer_section else ""

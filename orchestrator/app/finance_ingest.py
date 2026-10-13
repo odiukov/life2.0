@@ -5,6 +5,7 @@ cleanly in tests (see `_get_llm`). `ingest_rows` is idempotent; `categorize_new`
 is best-effort and never raises — rows with failed LLM / bad JSON stay NULL
 and get another chance on the next upload.
 """
+
 from __future__ import annotations
 
 import json
@@ -38,9 +39,19 @@ def _get_llm():
 
 
 _CATEGORIES = [
-    "food", "housing", "transport", "subscriptions", "software",
-    "entertainment", "travel", "health", "utilities", "income",
-    "transfer", "fee", "other",
+    "food",
+    "housing",
+    "transport",
+    "subscriptions",
+    "software",
+    "entertainment",
+    "travel",
+    "health",
+    "utilities",
+    "income",
+    "transfer",
+    "fee",
+    "other",
 ]
 
 _PROMPT_TMPL = (
@@ -89,6 +100,7 @@ async def ingest_rows(user_id: UUID, rows: list[dict[str, Any]]) -> dict[str, An
     inserted, skipped = await upsert_finance_rows(user_id, rows)
 
     from shared.db import fetch_uncategorized_ids
+
     uncat_all = await fetch_uncategorized_ids(user_id)
     incoming_ids = {r["txn_id"] for r in rows}
     # Only IDs from THIS upload that are uncategorized — not the full DB table.
@@ -121,9 +133,7 @@ async def categorize_new(user_id: UUID, uncategorized_ids: list[str]) -> None:
 
     cached = await get_category_cache(user_id, unique_keys)
     # Apply cache hits right away.
-    cache_updates: dict[str, str] = {
-        tid: cached[k] for tid, k in key_by_id.items() if k in cached
-    }
+    cache_updates: dict[str, str] = {tid: cached[k] for tid, k in key_by_id.items() if k in cached}
     if cache_updates:
         await set_transaction_categories(user_id, cache_updates)
 
@@ -139,7 +149,7 @@ async def categorize_new(user_id: UUID, uncategorized_ids: list[str]) -> None:
 
     new_mappings: dict[str, str] = {}
     for i in range(0, len(missing_keys), _BATCH_SIZE):
-        batch = missing_keys[i:i + _BATCH_SIZE]
+        batch = missing_keys[i : i + _BATCH_SIZE]
         listing = "\n".join(f"- {k}: {desc_for_key[k]}" for k in batch)
         prompt = _PROMPT_TMPL.format(listing=listing)
 
@@ -149,7 +159,8 @@ async def categorize_new(user_id: UUID, uncategorized_ids: list[str]) -> None:
             content = getattr(resp, "content", "")
             if isinstance(content, list):
                 content = "".join(
-                    b.get("text", "") for b in content
+                    b.get("text", "")
+                    for b in content
                     if isinstance(b, dict) and b.get("type") == "text"
                 )
             parsed = json.loads(content.strip())
@@ -166,10 +177,7 @@ async def categorize_new(user_id: UUID, uncategorized_ids: list[str]) -> None:
 
     if new_mappings:
         await upsert_category_cache(user_id, new_mappings)
-        row_updates = {
-            tid: new_mappings[k]
-            for tid, k in key_by_id.items() if k in new_mappings
-        }
+        row_updates = {tid: new_mappings[k] for tid, k in key_by_id.items() if k in new_mappings}
         if row_updates:
             await set_transaction_categories(user_id, row_updates)
 
@@ -211,8 +219,7 @@ def build_upload_summary(
 
     if top_categories:
         bits = [
-            f"{name} {_fmt_amount(currency, amount)}"
-            for name, amount, currency in top_categories
+            f"{name} {_fmt_amount(currency, amount)}" for name, amount, currency in top_categories
         ]
         parts.append("Топ категории: " + " · ".join(bits))
 

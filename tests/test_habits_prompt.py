@@ -40,9 +40,9 @@ def check_row():
 
 @pytest.mark.asyncio
 async def test_define_prompt_requests_strict_json_with_kebab_case_rule():
-    with patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])):
+    with patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])):
         from agents.habits.app.prompt import build_habits_prompt
+
         prompt = await build_habits_prompt(
             "define_habit",
             {"user_id": str(USER), "message": "медитация 20 минут каждый день"},
@@ -57,11 +57,14 @@ async def test_define_prompt_requests_strict_json_with_kebab_case_rule():
 
 @pytest.mark.asyncio
 async def test_analyze_prompt_shows_check_history(habit_row, check_row):
-    with patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[habit_row])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[check_row])):
+    with (
+        patch(
+            "agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[habit_row])
+        ),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[check_row])),
+    ):
         from agents.habits.app.prompt import build_habits_prompt
+
         prompt = await build_habits_prompt(
             "analyze_habit", {"user_id": str(USER), "message": "how am I doing"}
         )
@@ -72,11 +75,14 @@ async def test_analyze_prompt_shows_check_history(habit_row, check_row):
 
 @pytest.mark.asyncio
 async def test_analyze_prompt_handles_empty_history(habit_row):
-    with patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[habit_row])), \
-         patch("agents.habits.app.prompt.fetch_habit_logs",
-               new=AsyncMock(return_value=[])):
+    with (
+        patch(
+            "agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[habit_row])
+        ),
+        patch("agents.habits.app.prompt.fetch_habit_logs", new=AsyncMock(return_value=[])),
+    ):
         from agents.habits.app.prompt import build_habits_prompt
+
         prompt = await build_habits_prompt(
             "analyze_habit", {"user_id": str(USER), "message": "trend?"}
         )
@@ -85,9 +91,9 @@ async def test_analyze_prompt_handles_empty_history(habit_row):
 
 @pytest.mark.asyncio
 async def test_streak_prompt_is_deterministic_shape():
-    with patch("agents.habits.app.prompt.fetch_active_habits",
-               new=AsyncMock(return_value=[])):
+    with patch("agents.habits.app.prompt.fetch_active_habits", new=AsyncMock(return_value=[])):
         from agents.habits.app.prompt import build_habits_prompt
+
         prompt = await build_habits_prompt(
             "get_streak_summary", {"user_id": str(USER), "message": "/habits"}
         )

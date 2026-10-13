@@ -87,7 +87,18 @@ def test_map_diary_day_empty_entries_returns_empty():
 
 
 def test_map_diary_day_unknown_meal_type_maps_to_snack():
-    entries = [{"meal_type": 99, "food": {"name": "X", "amount": 10,
-                "energy_kcal": 50, "protein": 1, "carbohydrates": 5, "fat": 1}}]
+    entries = [
+        {
+            "meal_type": 99,
+            "food": {
+                "name": "X",
+                "amount": 10,
+                "energy_kcal": 50,
+                "protein": 1,
+                "carbohydrates": 5,
+                "fat": 1,
+            },
+        }
+    ]
     rows = map_diary_day("2026-04-12", entries)
     assert rows[0]["data"]["meal_type"] == "snack"

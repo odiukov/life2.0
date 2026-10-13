@@ -5,14 +5,34 @@ from sync_service.app.apple_health import map_body_composition
 SAMPLE_PAYLOAD = {
     "data": [
         {"date": "2026-04-14 09:37:16 +0300", "qty": 79.6, "name": "Body Mass", "units": "kg"},
-        {"date": "2026-04-14 09:37:16 +0300", "qty": 26.5, "name": "Body Fat Percentage", "units": "%"},
+        {
+            "date": "2026-04-14 09:37:16 +0300",
+            "qty": 26.5,
+            "name": "Body Fat Percentage",
+            "units": "%",
+        },
         {"date": "2026-04-14 09:37:16 +0300", "qty": 54.6, "name": "Lean Body Mass", "units": "kg"},
-        {"date": "2026-04-14 09:37:16 +0300", "qty": 27.5, "name": "Body Mass Index", "units": "count"},
-        {"date": "2026-04-14 09:37:16 +0300", "qty": 33.1, "name": "Skeletal Muscle Mass", "units": "kg"},
+        {
+            "date": "2026-04-14 09:37:16 +0300",
+            "qty": 27.5,
+            "name": "Body Mass Index",
+            "units": "count",
+        },
+        {
+            "date": "2026-04-14 09:37:16 +0300",
+            "qty": 33.1,
+            "name": "Skeletal Muscle Mass",
+            "units": "kg",
+        },
         {"date": "2026-04-14 09:37:16 +0300", "qty": 3.9, "name": "Bone Mass", "units": "kg"},
         # second measurement on a different day
         {"date": "2026-03-01 08:00:00 +0000", "qty": 81.0, "name": "Body Mass", "units": "kg"},
-        {"date": "2026-03-01 08:00:00 +0000", "qty": 28.1, "name": "Body Fat Percentage", "units": "%"},
+        {
+            "date": "2026-03-01 08:00:00 +0000",
+            "qty": 28.1,
+            "name": "Body Fat Percentage",
+            "units": "%",
+        },
         # unknown metric — should be ignored
         {"date": "2026-04-14 09:37:16 +0300", "qty": 120, "name": "Heart Rate", "units": "bpm"},
     ]
@@ -58,19 +78,60 @@ def test_empty_payload():
 
 def test_map_body_composition_widened_metrics():
     from sync_service.app.apple_health import map_body_composition
+
     payload = {
         "data": [
             {"date": "2026-04-14 09:37:16 +0000", "qty": 79.6, "name": "Body Mass", "units": "kg"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 1633, "name": "Basal Metabolic Rate", "units": "kcal"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 8, "name": "Visceral Fat Grade", "units": "count"},
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 1633,
+                "name": "Basal Metabolic Rate",
+                "units": "kcal",
+            },
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 8,
+                "name": "Visceral Fat Grade",
+                "units": "count",
+            },
             {"date": "2026-04-14 09:37:16 +0000", "qty": 32, "name": "Body Age", "units": "count"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 73, "name": "Body Score", "units": "count"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 18.9, "name": "Subcutaneous Fat Percentage", "units": "%"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 11.7, "name": "Protein Mass", "units": "kg"},
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 73,
+                "name": "Body Score",
+                "units": "count",
+            },
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 18.9,
+                "name": "Subcutaneous Fat Percentage",
+                "units": "%",
+            },
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 11.7,
+                "name": "Protein Mass",
+                "units": "kg",
+            },
             {"date": "2026-04-14 09:37:16 +0000", "qty": 42.9, "name": "Body Water", "units": "kg"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 54.6, "name": "Muscle Mass", "units": "kg"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 21.1, "name": "Body Fat Mass", "units": "kg"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 58.5, "name": "Fat Free Body Weight", "units": "kg"},
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 54.6,
+                "name": "Muscle Mass",
+                "units": "kg",
+            },
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 21.1,
+                "name": "Body Fat Mass",
+                "units": "kg",
+            },
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 58.5,
+                "name": "Fat Free Body Weight",
+                "units": "kg",
+            },
         ],
     }
     rows = map_body_composition(payload)

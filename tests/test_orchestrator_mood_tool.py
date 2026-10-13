@@ -9,8 +9,15 @@ def test_mood_tool_registered_in_graph():
         ask_nutrition_agent,
         ask_body_agent,
     )
+
     # All five peer-agent tools must be importable and distinct.
-    tools = [ask_sleep_agent, ask_workout_agent, ask_nutrition_agent, ask_body_agent, ask_mood_agent]
+    tools = [
+        ask_sleep_agent,
+        ask_workout_agent,
+        ask_nutrition_agent,
+        ask_body_agent,
+        ask_mood_agent,
+    ]
     names = {t.name for t in tools}
     assert len(names) == 5
     assert "ask_mood_agent" in names

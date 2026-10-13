@@ -1,4 +1,5 @@
 """Unit tests for shared.recovery — HealthKit-shape metric contract."""
+
 from __future__ import annotations
 
 from shared.recovery import (
@@ -12,10 +13,10 @@ from shared.recovery import (
 def test_recovered_when_all_four_metrics_improve():
     # All 4 better by >10% vs baseline
     current = {
-        "hrv_sdnn": 60.0,               # +25% vs 48
-        "rhr": 50.0,                    # -12% vs 57 → better (lower)
-        "sleep_efficiency_pct": 95.0,   # +14% vs 83
-        "sleep_duration_h": 8.5,        # +21% vs 7.0
+        "hrv_sdnn": 60.0,  # +25% vs 48
+        "rhr": 50.0,  # -12% vs 57 → better (lower)
+        "sleep_efficiency_pct": 95.0,  # +14% vs 83
+        "sleep_duration_h": 8.5,  # +21% vs 7.0
     }
     baseline = {
         "hrv_sdnn": 48.0,
@@ -28,10 +29,10 @@ def test_recovered_when_all_four_metrics_improve():
 
 def test_depleted_when_3_metrics_worsen():
     current = {
-        "hrv_sdnn": 38.0,               # -21% vs 48 → worse
-        "rhr": 64.0,                    # +12% vs 57 → worse (higher bad)
-        "sleep_efficiency_pct": 72.0,   # -13% vs 83 → worse
-        "sleep_duration_h": 7.0,        # unchanged vs 7.0 → neutral
+        "hrv_sdnn": 38.0,  # -21% vs 48 → worse
+        "rhr": 64.0,  # +12% vs 57 → worse (higher bad)
+        "sleep_efficiency_pct": 72.0,  # -13% vs 83 → worse
+        "sleep_duration_h": 7.0,  # unchanged vs 7.0 → neutral
     }
     baseline = {
         "hrv_sdnn": 48.0,
@@ -51,10 +52,10 @@ def test_unknown_when_fewer_than_three_metrics():
 def test_neutral_when_mixed_signals():
     # 1 better, 1 worse, 2 neutral (within threshold)
     current = {
-        "hrv_sdnn": 55.0,               # +15% vs 48 → better
-        "rhr": 65.0,                    # +14% → worse
-        "sleep_efficiency_pct": 85.0,   # +2.4% → neutral (within 10% threshold)
-        "sleep_duration_h": 7.1,        # +1.4% → neutral
+        "hrv_sdnn": 55.0,  # +15% vs 48 → better
+        "rhr": 65.0,  # +14% → worse
+        "sleep_efficiency_pct": 85.0,  # +2.4% → neutral (within 10% threshold)
+        "sleep_duration_h": 7.1,  # +1.4% → neutral
     }
     baseline = {
         "hrv_sdnn": 48.0,
@@ -84,10 +85,10 @@ def test_compute_deltas_shape():
 
 def test_format_top3_ranks_by_magnitude():
     deltas = {
-        "hrv_sdnn":             {"value": 55, "dir": "↑", "delta": "+10%"},
-        "rhr":                  {"value": 50, "dir": "↓", "delta": "-12%"},
+        "hrv_sdnn": {"value": 55, "dir": "↑", "delta": "+10%"},
+        "rhr": {"value": 50, "dir": "↓", "delta": "-12%"},
         "sleep_efficiency_pct": {"value": 90, "dir": "↑", "delta": "+5%"},
-        "sleep_duration_h":     {"value": 7.5, "dir": "↑", "delta": "+7%"},
+        "sleep_duration_h": {"value": 7.5, "dir": "↑", "delta": "+7%"},
     }
     top = format_top3(deltas)
     assert len(top) == 3
@@ -101,7 +102,7 @@ def test_format_top3_ranks_by_magnitude():
 def test_baseline_mean_with_nones():
     window = [
         {"hrv_sdnn": 50, "rhr": 60, "sleep_efficiency_pct": None, "sleep_duration_h": 7.0},
-        {"hrv_sdnn": 55, "rhr": 58, "sleep_efficiency_pct": 85,   "sleep_duration_h": 7.5},
+        {"hrv_sdnn": 55, "rhr": 58, "sleep_efficiency_pct": 85, "sleep_duration_h": 7.5},
         {"hrv_sdnn": 52, "rhr": None, "sleep_efficiency_pct": 82, "sleep_duration_h": 7.2},
     ]
     b = baseline_mean(window)

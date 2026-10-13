@@ -11,8 +11,12 @@ async def test_fetch_body_logs_filters_by_type():
 
     fake_pool = AsyncMock()
     fake_pool.fetch.return_value = [
-        {"type": "body_composition", "data": {"weight_kg": 79.6},
-         "recorded_at": "2026-04-14", "source": "vihealth"},
+        {
+            "type": "body_composition",
+            "data": {"weight_kg": 79.6},
+            "recorded_at": "2026-04-14",
+            "source": "vihealth",
+        },
     ]
 
     with patch("shared.db.get_pool", new=AsyncMock(return_value=fake_pool)):

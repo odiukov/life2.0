@@ -1,4 +1,5 @@
 """Prompt builders for the 5 mood agent skills."""
+
 from uuid import UUID
 
 from shared.db import fetch_mood_logs
@@ -57,10 +58,8 @@ async def build_mood_prompt(
     history_rows = await fetch_mood_logs(user_id, limit=30)
     memories = await search_memories(user_id, task, limit=5)
 
-    history_text = "\n".join(_format_mood(r) for r in history_rows) \
-        or "No mood entries yet."
-    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) \
-        or "No relevant memories."
+    history_text = "\n".join(_format_mood(r) for r in history_rows) or "No mood entries yet."
+    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) or "No relevant memories."
 
     peer = peer_artifacts if peer_artifacts is not None else (params.get("peer_artifacts") or {})
     peer_section = ""
@@ -117,8 +116,7 @@ async def build_mood_prompt(
         if not history_rows:
             return base + (
                 "\nThere is no mood history. Ask the user to log a few "
-                "entries so you can recommend based on actual data.\n\n"
-                + GROUNDING_RULES
+                "entries so you can recommend based on actual data.\n\n" + GROUNDING_RULES
             )
         return base + (
             "\nRespond in 4–6 lines plain text with 2–3 concrete mood-domain "
@@ -132,8 +130,7 @@ async def build_mood_prompt(
             "\nThe params contain a completed coach-session transcript. "
             "Produce a 3-line plain-text summary of what the user worked "
             "through. Then on a new block labelled EXTRACT: emit the same "
-            "strict JSON schema as log_mood summarizing the session.\n\n"
-            + GROUNDING_RULES
+            "strict JSON schema as log_mood summarizing the session.\n\n" + GROUNDING_RULES
         )
 
     return base + "\n\n" + GROUNDING_RULES

@@ -1,4 +1,5 @@
 """One-shot: re-index existing points in Qdrant `health_memories` with user_id payload."""
+
 from __future__ import annotations
 
 import os

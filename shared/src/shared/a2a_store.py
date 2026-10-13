@@ -1,4 +1,5 @@
 """Postgres-backed TaskStore for the A2A SDK."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -51,7 +52,11 @@ class PostgresTaskStore(TaskStore):
         artifacts = [_artifact_to_dict(a) for a in (task.artifacts or [])]
         history = [m.model_dump(mode="json") for m in (task.history or [])]
         skill_id = (task.metadata or {}).get("skillId") if task.metadata else None
-        state_val = task.status.state.value if hasattr(task.status.state, "value") else str(task.status.state)
+        state_val = (
+            task.status.state.value
+            if hasattr(task.status.state, "value")
+            else str(task.status.state)
+        )
         await pool.execute(
             """
             INSERT INTO tasks (task_id, context_id, agent, skill_id, state, input, output, artifacts, history)
@@ -78,7 +83,8 @@ class PostgresTaskStore(TaskStore):
         row = await pool.fetchrow(
             "SELECT task_id, context_id, state, skill_id, artifacts, history "
             "FROM tasks WHERE task_id = $1 AND agent = $2",
-            task_id, self.agent,
+            task_id,
+            self.agent,
         )
         if row is None:
             return None
@@ -98,5 +104,6 @@ class PostgresTaskStore(TaskStore):
         pool = await get_pool()
         await pool.execute(
             "DELETE FROM tasks WHERE task_id = $1 AND agent = $2",
-            task_id, self.agent,
+            task_id,
+            self.agent,
         )

@@ -3,6 +3,7 @@
 Switches off the legacy _infer_skill_via_llm path in favor of the shared
 infer_skill_and_consults router. Adds peer-consult fan-out (depth-capped
 via is_peer_call)."""
+
 from __future__ import annotations
 
 import json
@@ -12,8 +13,15 @@ import uuid
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import (
-    Artifact, Message, Part, Role, TaskArtifactUpdateEvent,
-    TaskState, TaskStatus, TaskStatusUpdateEvent, TextPart,
+    Artifact,
+    Message,
+    Part,
+    Role,
+    TaskArtifactUpdateEvent,
+    TaskState,
+    TaskStatus,
+    TaskStatusUpdateEvent,
+    TextPart,
 )
 from langchain_core.messages import HumanMessage
 
@@ -23,7 +31,8 @@ from shared.db import insert_task_record
 from shared.intent import infer_skill_and_consults
 from shared.llm import build_llm
 from shared.peer import (
-    default_peer_registry, fetch_peer_artifacts,
+    default_peer_registry,
+    fetch_peer_artifacts,
     is_peer_call_from_metadata,
 )
 from shared.vector import upsert_memory
@@ -92,8 +101,12 @@ class BodyAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -120,10 +133,16 @@ class BodyAgentExecutor(AgentExecutor):
             output = result.content if isinstance(result.content, str) else str(result.content)
 
             await insert_task_record(
-                agent="body", task_id=task_id, context_id=context_id,
-                skill_id=skill_id, input_=params, output=output, state="completed",
+                agent="body",
+                task_id=task_id,
+                context_id=context_id,
+                skill_id=skill_id,
+                input_=params,
+                output=output,
+                state="completed",
             )
-            await upsert_memory(user_id=uid,
+            await upsert_memory(
+                user_id=uid,
                 agent_id="body",
                 id_=str(uuid.uuid4()),
                 text=output,
@@ -144,8 +163,12 @@ class BodyAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("body executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
@@ -160,24 +183,41 @@ def _error_message(text: str) -> Message:
     )
 
 
-async def _emit_status(event_queue: EventQueue, task_id: str, context_id: str,
-                       state: TaskState, error: str | None = None, final: bool = False) -> None:
+async def _emit_status(
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    state: TaskState,
+    error: str | None = None,
+    final: bool = False,
+) -> None:
     status = TaskStatus(state=state)
     if error:
         status.message = _error_message(error)
-    await event_queue.enqueue_event(TaskStatusUpdateEvent(
-        task_id=task_id, context_id=context_id, status=status, final=final,
-    ))
+    await event_queue.enqueue_event(
+        TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=status,
+            final=final,
+        )
+    )
 
 
-async def _emit_artifact(event_queue: EventQueue, task_id: str, context_id: str,
-                         name: str, text: str) -> None:
+async def _emit_artifact(
+    event_queue: EventQueue, task_id: str, context_id: str, name: str, text: str
+) -> None:
     artifact = Artifact(
         artifact_id=str(uuid.uuid4()),
         name=name,
         parts=[Part(root=TextPart(text=text))],
     )
-    await event_queue.enqueue_event(TaskArtifactUpdateEvent(
-        task_id=task_id, context_id=context_id, artifact=artifact,
-        append=False, last_chunk=True,
-    ))
+    await event_queue.enqueue_event(
+        TaskArtifactUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            artifact=artifact,
+            append=False,
+            last_chunk=True,
+        )
+    )

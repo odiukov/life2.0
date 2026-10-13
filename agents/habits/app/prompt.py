@@ -1,4 +1,5 @@
 """Prompt builders for the 5 habits agent skills."""
+
 from uuid import UUID
 
 from shared.db import fetch_active_habits, fetch_habit_logs
@@ -87,12 +88,12 @@ async def build_habits_prompt(
     habit_id = params.get("habit_id") if task == "analyze_habit" else None
     check_rows: list[dict] = []
     if task in ("analyze_habit",):
-        check_rows = await fetch_habit_logs(user_id, habit_id=habit_id, days=int(params.get("days", 30)))
+        check_rows = await fetch_habit_logs(
+            user_id, habit_id=habit_id, days=int(params.get("days", 30))
+        )
 
-    habits_text = "\n".join(f"- {_format_habit(h)}" for h in habit_rows) \
-        or "No active habits."
-    checks_text = "\n".join(_format_check(r) for r in check_rows) \
-        or "No check-ins in window."
+    habits_text = "\n".join(f"- {_format_habit(h)}" for h in habit_rows) or "No active habits."
+    checks_text = "\n".join(_format_check(r) for r in check_rows) or "No check-ins in window."
 
     peer = peer_artifacts if peer_artifacts is not None else (params.get("peer_artifacts") or {})
     peer_section = ""
@@ -109,19 +110,26 @@ async def build_habits_prompt(
     if task == "define_habit":
         # Pure JSON parser — no persona, no peer context, no grounding rules.
         # The whole prompt is the parser instruction.
-        return _SYSTEM_TEMPLATE.format(
-            habits=habits_text, checks=checks_text, task=task, params=params,
-        ) + "\n" + _DEFINE_INSTRUCTIONS
+        return (
+            _SYSTEM_TEMPLATE.format(
+                habits=habits_text,
+                checks=checks_text,
+                task=task,
+                params=params,
+            )
+            + "\n"
+            + _DEFINE_INSTRUCTIONS
+        )
 
     if task in ("log_habit_check", "get_streak_summary", "archive_habit"):
         # Deterministic skills — the executor short-circuits and never sends
         # this prompt to the LLM. Return the legacy stub for observability.
         return _SYSTEM_TEMPLATE.format(
-            habits=habits_text, checks=checks_text, task=task, params=params,
-        ) + (
-            "\nThis skill is handled deterministically by the executor — "
-            "no LLM output is used."
-        )
+            habits=habits_text,
+            checks=checks_text,
+            task=task,
+            params=params,
+        ) + ("\nThis skill is handled deterministically by the executor — no LLM output is used.")
 
     # analyze_habit — full persona composition with peer context + grounding.
     base = (
@@ -139,13 +147,11 @@ async def build_habits_prompt(
     if not check_rows:
         return base + (
             "\nThere are not enough check-ins to analyze yet. Tell the user "
-            "to log a few days first. Plain text, no markdown.\n\n"
-            + GROUNDING_RULES
+            "to log a few days first. Plain text, no markdown.\n\n" + GROUNDING_RULES
         )
     return base + (
         "\nRespond in 4–6 lines plain text: (1) per-habit completion %, "
         "(2) current streak and longest streak, (3) one observation linking "
         "to peer context (e.g. mood, sleep, training) if present. Redirect "
-        "cross-domain prescriptions to peers. No markdown.\n\n"
-        + GROUNDING_RULES
+        "cross-domain prescriptions to peers. No markdown.\n\n" + GROUNDING_RULES
     )

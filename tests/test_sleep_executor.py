@@ -28,15 +28,24 @@ async def test_executor_happy_path_uses_skill_id_and_emits_completed():
 
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="Спал отлично"))
-    with patch("agents.sleep.app.executor._LLM", fake_llm), \
-         patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults",
-               new=AsyncMock(return_value=("analyze_sleep", []))), \
-         patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": AsyncMock(return_value="prompt")}):
+    with (
+        patch("agents.sleep.app.executor._LLM", fake_llm),
+        patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.sleep.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch(
+            "agents.sleep.app.executor.infer_skill_and_consults",
+            new=AsyncMock(return_value=("analyze_sleep", [])),
+        ),
+        patch(
+            "agents.sleep.app.executor.SKILL_PROMPTS",
+            {"analyze_sleep": AsyncMock(return_value="prompt")},
+        ),
+    ):
         executor = SleepAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -53,9 +62,13 @@ async def test_executor_unknown_skill_fails_cleanly():
     event_queue = MagicMock()
     event_queue.enqueue_event = AsyncMock()
 
-    with patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": AsyncMock()}), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults",
-               new=AsyncMock(return_value=(None, []))):
+    with (
+        patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": AsyncMock()}),
+        patch(
+            "agents.sleep.app.executor.infer_skill_and_consults",
+            new=AsyncMock(return_value=(None, [])),
+        ),
+    ):
         executor = SleepAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -75,15 +88,21 @@ async def test_executor_falls_back_to_intent_helper_when_no_skill_id():
     fake_prompt = AsyncMock(return_value="prompt")
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
-    with patch("agents.sleep.app.executor._LLM", fake_llm), \
-         patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults",
-               new=AsyncMock(return_value=("analyze_sleep", []))), \
-         patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": fake_prompt}):
+    with (
+        patch("agents.sleep.app.executor._LLM", fake_llm),
+        patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.sleep.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch(
+            "agents.sleep.app.executor.infer_skill_and_consults",
+            new=AsyncMock(return_value=("analyze_sleep", [])),
+        ),
+        patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": fake_prompt}),
+    ):
         executor = SleepAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -100,13 +119,22 @@ async def test_executor_subprocess_error_marks_failed():
 
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
-    with patch("agents.sleep.app.executor._LLM", fake_llm), \
-         patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.sleep.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults",
-               new=AsyncMock(return_value=("analyze_sleep", []))), \
-         patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.sleep.app.executor._LLM", fake_llm),
+        patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch(
+            "agents.sleep.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch(
+            "agents.sleep.app.executor.infer_skill_and_consults",
+            new=AsyncMock(return_value=("analyze_sleep", [])),
+        ),
+        patch(
+            "agents.sleep.app.executor.SKILL_PROMPTS",
+            {"analyze_sleep": AsyncMock(return_value="p")},
+        ),
+    ):
         executor = SleepAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -128,14 +156,21 @@ async def test_sleep_executor_passes_consult_to_fetch():
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
 
-    with patch("agents.sleep.app.executor._LLM", fake_llm), \
-         patch("agents.sleep.app.executor.fetch_peer_artifacts", new=fake_fetch), \
-         patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.sleep.app.executor.SKILL_PROMPTS", {"analyze_sleep": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.sleep.app.executor._LLM", fake_llm),
+        patch("agents.sleep.app.executor.fetch_peer_artifacts", new=fake_fetch),
+        patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.sleep.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.sleep.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.sleep.app.executor.SKILL_PROMPTS",
+            {"analyze_sleep": AsyncMock(return_value="p")},
+        ),
+    ):
         await SleepAgentExecutor().execute(ctx, event_queue)
 
     _, kwargs = fake_fetch.await_args
@@ -158,14 +193,21 @@ async def test_sleep_executor_get_recommendations_no_longer_hardcodes_workout():
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
 
-    with patch("agents.sleep.app.executor._LLM", fake_llm), \
-         patch("agents.sleep.app.executor.fetch_peer_artifacts", new=fake_fetch), \
-         patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.sleep.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.sleep.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.sleep.app.executor.SKILL_PROMPTS", {"get_sleep_recommendations": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.sleep.app.executor._LLM", fake_llm),
+        patch("agents.sleep.app.executor.fetch_peer_artifacts", new=fake_fetch),
+        patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.sleep.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.sleep.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.sleep.app.executor.SKILL_PROMPTS",
+            {"get_sleep_recommendations": AsyncMock(return_value="p")},
+        ),
+    ):
         await SleepAgentExecutor().execute(ctx, event_queue)
 
     _, kwargs = fake_fetch.await_args

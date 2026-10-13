@@ -14,18 +14,21 @@ def _past_expires_at() -> str:
 
 def test_is_yazio_token_valid_future_expiry():
     from sync_service.app.yazio import is_yazio_token_valid
+
     token = {"access_token": "at", "expires_at": _future_expires_at(3600)}
     assert is_yazio_token_valid(token) is True
 
 
 def test_is_yazio_token_valid_expired():
     from sync_service.app.yazio import is_yazio_token_valid
+
     token = {"access_token": "at", "expires_at": _past_expires_at()}
     assert is_yazio_token_valid(token) is False
 
 
 def test_is_yazio_token_valid_near_expiry():
     from sync_service.app.yazio import is_yazio_token_valid
+
     # 2 minutes left — within 5-minute buffer
     token = {"access_token": "at", "expires_at": _future_expires_at(120)}
     assert is_yazio_token_valid(token) is False
@@ -33,6 +36,7 @@ def test_is_yazio_token_valid_near_expiry():
 
 def test_is_yazio_token_valid_missing_expires_at():
     from sync_service.app.yazio import is_yazio_token_valid
+
     assert is_yazio_token_valid({}) is False
 
 
@@ -87,7 +91,11 @@ async def test_fetch_diary_uses_refresh_token_when_expired():
 
     diary_response = MagicMock()
     diary_response.raise_for_status = MagicMock()
-    diary_response.json.return_value = {"products": [], "simple_products": [], "recipe_portions": []}
+    diary_response.json.return_value = {
+        "products": [],
+        "simple_products": [],
+        "recipe_portions": [],
+    }
 
     post_calls = []
 
@@ -128,7 +136,11 @@ async def test_fetch_diary_falls_back_to_password_when_no_token():
 
     diary_response = MagicMock()
     diary_response.raise_for_status = MagicMock()
-    diary_response.json.return_value = {"products": [], "simple_products": [], "recipe_portions": []}
+    diary_response.json.return_value = {
+        "products": [],
+        "simple_products": [],
+        "recipe_portions": [],
+    }
 
     post_calls = []
 
@@ -175,7 +187,11 @@ async def test_fetch_diary_falls_back_to_password_when_refresh_fails():
 
     diary_response = MagicMock()
     diary_response.raise_for_status = MagicMock()
-    diary_response.json.return_value = {"products": [], "simple_products": [], "recipe_portions": []}
+    diary_response.json.return_value = {
+        "products": [],
+        "simple_products": [],
+        "recipe_portions": [],
+    }
 
     post_calls = []
 

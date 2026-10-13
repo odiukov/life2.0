@@ -7,6 +7,7 @@ from synthetic text via pymupdf at runtime — ensures the public
 `parse_payoneer_pdf(raw: bytes)` path wires up end-to-end with the actual
 library that production uses.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -77,6 +78,7 @@ def _two_page_text() -> str:
 
 
 # ---------- _parse_text: structural ------------------------------------------
+
 
 def test_parse_text_happy_path():
     rows, skipped = _parse_text(_two_page_text())
@@ -170,10 +172,12 @@ def test_parse_text_raises_when_not_account_statement():
 
 # ---------- parse_payoneer_pdf: integration via pymupdf ----------------------
 
+
 def _build_fake_pdf(text_pages: list[str]) -> bytes:
     """Render text pages into a minimal PDF with pymupdf so we exercise the
     get_text() path that production uses."""
     import pymupdf
+
     doc = pymupdf.open()
     for text in text_pages:
         page = doc.new_page(width=595, height=842)

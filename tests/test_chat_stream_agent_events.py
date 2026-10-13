@@ -1,4 +1,5 @@
 """/chat/stream emits AgentRouted and AgentConsulted derived from LangGraph state."""
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,7 @@ def _parse_sse(body: str) -> list[dict]:
     for frame in body.strip().split("\n\n"):
         for line in frame.splitlines():
             if line.startswith("data: "):
-                events.append(json.loads(line[len("data: "):]))
+                events.append(json.loads(line[len("data: ") :]))
     return events
 
 
@@ -26,7 +27,9 @@ def test_chat_stream_includes_routed_and_consulted(monkeypatch):
         yield ("sleep", ["nutrition"], "ok")
 
     monkeypatch.setattr(omain, "_run_graph_with_routing", _fake_run_graph_iter)
-    omain.app.dependency_overrides[current_user] = lambda: UUID("00000000-0000-0000-0000-000000000001")
+    omain.app.dependency_overrides[current_user] = lambda: UUID(
+        "00000000-0000-0000-0000-000000000001"
+    )
     try:
         client = TestClient(omain.app)
         resp = client.post(
@@ -53,10 +56,14 @@ def test_chat_stream_main_when_no_peer_called(monkeypatch):
         yield ("main", [], "hi")
 
     monkeypatch.setattr(omain, "_run_graph_with_routing", _fake_run_graph_iter)
-    omain.app.dependency_overrides[current_user] = lambda: UUID("00000000-0000-0000-0000-000000000001")
+    omain.app.dependency_overrides[current_user] = lambda: UUID(
+        "00000000-0000-0000-0000-000000000001"
+    )
     try:
         client = TestClient(omain.app)
-        resp = client.post("/chat/stream", json={"messages": [{"role": "user", "content": "hello"}]})
+        resp = client.post(
+            "/chat/stream", json={"messages": [{"role": "user", "content": "hello"}]}
+        )
         events = _parse_sse(resp.text)
         routed = next(e for e in events if e["type"] == "AgentRouted")
         assert routed["primary"] == "main"
@@ -92,22 +99,30 @@ def test_run_graph_with_routing_accumulates_parallel_tool_updates(monkeypatch):
 
     async def _fake_astream(_inputs, config=None):
         # Three parallel tool nodes — each carries its own one done-call.
-        yield {"tool_workout": {
-            "toolCalls": [_done("ask_workout_agent", 1)],
-            "messages": [ToolMessage(content="w", tool_call_id="call-1")],
-        }}
-        yield {"tool_nutrition": {
-            "toolCalls": [_done("ask_nutrition_agent", 2)],
-            "messages": [ToolMessage(content="n", tool_call_id="call-2")],
-        }}
-        yield {"tool_sleep": {
-            "toolCalls": [_done("ask_sleep_agent", 3)],
-            "messages": [ToolMessage(content="s", tool_call_id="call-3")],
-        }}
+        yield {
+            "tool_workout": {
+                "toolCalls": [_done("ask_workout_agent", 1)],
+                "messages": [ToolMessage(content="w", tool_call_id="call-1")],
+            }
+        }
+        yield {
+            "tool_nutrition": {
+                "toolCalls": [_done("ask_nutrition_agent", 2)],
+                "messages": [ToolMessage(content="n", tool_call_id="call-2")],
+            }
+        }
+        yield {
+            "tool_sleep": {
+                "toolCalls": [_done("ask_sleep_agent", 3)],
+                "messages": [ToolMessage(content="s", tool_call_id="call-3")],
+            }
+        }
         # Final synthesis — no toolCalls, just the assistant message.
-        yield {"agent": {
-            "messages": [AIMessage(content="here is the combined plan")],
-        }}
+        yield {
+            "agent": {
+                "messages": [AIMessage(content="here is the combined plan")],
+            }
+        }
 
     fake_graph = type("FakeGraph", (), {"astream": staticmethod(_fake_astream)})()
     monkeypatch.setattr(omain, "_graph", fake_graph)
@@ -137,7 +152,9 @@ def test_chat_stream_passes_user_timezone_to_graph(monkeypatch):
         yield ("main", [], "ok")
 
     monkeypatch.setattr(omain, "_run_graph_with_routing", _fake_run_graph_iter)
-    omain.app.dependency_overrides[current_user] = lambda: UUID("00000000-0000-0000-0000-000000000001")
+    omain.app.dependency_overrides[current_user] = lambda: UUID(
+        "00000000-0000-0000-0000-000000000001"
+    )
     try:
         client = TestClient(omain.app)
         resp = client.post(

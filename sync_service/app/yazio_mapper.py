@@ -28,8 +28,7 @@ def map_diary_day(date_str: str, entries: list[dict]) -> list[dict]:
         meal_name, hour = _MEAL_TYPES.get(mt_int, ("snack", 15))
         date_parts = [int(p) for p in date_str.split("-")]
         recorded_at = datetime(
-            date_parts[0], date_parts[1], date_parts[2],
-            hour, 0, 0, tzinfo=timezone.utc
+            date_parts[0], date_parts[1], date_parts[2], hour, 0, 0, tzinfo=timezone.utc
         )
 
         items = []
@@ -51,17 +50,19 @@ def map_diary_day(date_str: str, entries: list[dict]) -> list[dict]:
             totals["carbs_g"] += item["carbs_g"]
             totals["fat_g"] += item["fat_g"]
 
-        rows.append({
-            "agent": "nutrition",
-            "type": "meal",
-            "source": "yazio",
-            "recorded_at": recorded_at,
-            "data": {
-                "meal_type": meal_name,
-                "items": items,
-                "totals": totals,
-                "date": date_str,
-            },
-        })
+        rows.append(
+            {
+                "agent": "nutrition",
+                "type": "meal",
+                "source": "yazio",
+                "recorded_at": recorded_at,
+                "data": {
+                    "meal_type": meal_name,
+                    "items": items,
+                    "totals": totals,
+                    "date": date_str,
+                },
+            }
+        )
 
     return rows

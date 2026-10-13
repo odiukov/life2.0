@@ -3,6 +3,7 @@
 Covers token refresh (fresh, expired, revoked-refresh) with mocks around
 vault.get/put/delete and the Google token endpoint.
 """
+
 from __future__ import annotations
 
 import os
@@ -56,7 +57,8 @@ async def test_expired_token_is_refreshed(monkeypatch):
     monkeypatch.setattr(vault, "get", AsyncMock(return_value=creds))
     monkeypatch.setattr(vault, "put", fake_put)
     monkeypatch.setattr(
-        gc, "_exchange_refresh_token",
+        gc,
+        "_exchange_refresh_token",
         AsyncMock(return_value={"access_token": "NEW", "expires_in": 3600}),
     )
 
@@ -81,7 +83,8 @@ async def test_revoked_refresh_returns_none_and_deletes(monkeypatch):
     monkeypatch.setattr(vault, "get", AsyncMock(return_value=creds))
     monkeypatch.setattr(vault, "delete", fake_delete)
     monkeypatch.setattr(
-        gc, "_exchange_refresh_token",
+        gc,
+        "_exchange_refresh_token",
         AsyncMock(side_effect=httpx.HTTPError("400")),
     )
 
@@ -110,8 +113,7 @@ def test_build_auth_url_contains_expected_params():
     assert "access_type=offline" in url
     assert "response_type=code" in url
     assert (
-        "redirect_uri=com.googleusercontent.apps.test-client-id%3A%2Fintegrations-callback"
-        in url
+        "redirect_uri=com.googleusercontent.apps.test-client-id%3A%2Fintegrations-callback" in url
     )
     assert "code_challenge=CHALLENGE123" in url
     assert "code_challenge_method=S256" in url

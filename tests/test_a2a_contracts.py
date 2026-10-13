@@ -8,6 +8,7 @@ drift apart:
 
 Adding a new skill must touch all three; these tests will catch a missed
 spot at CI time."""
+
 from __future__ import annotations
 
 import importlib
@@ -30,10 +31,7 @@ _AGENT_TO_CLASS = {
 
 def _expected_ids_from_class(cls) -> set[str]:
     """Pull every str-valued class attribute that is not dunder."""
-    return {
-        v for k, v in vars(cls).items()
-        if not k.startswith("_") and isinstance(v, str)
-    }
+    return {v for k, v in vars(cls).items() if not k.startswith("_") and isinstance(v, str)}
 
 
 @pytest.mark.parametrize("agent_name,class_name", list(_AGENT_TO_CLASS.items()))
@@ -47,8 +45,7 @@ def test_agent_card_skill_ids(agent_name, class_name):
     declared = {s.id for s in skills_mod.SKILLS}
 
     assert expected <= declared, (
-        f"{agent_name}: skill_ids declares {expected - declared} "
-        f"that are missing from SKILLS"
+        f"{agent_name}: skill_ids declares {expected - declared} that are missing from SKILLS"
     )
 
 
@@ -85,11 +82,7 @@ def _literal_args(tool_obj) -> set[str]:
     `.coroutine`; sync tools use `.func`. Fall back to the object itself
     if neither attr is set.
     """
-    underlying = (
-        getattr(tool_obj, "coroutine", None)
-        or getattr(tool_obj, "func", None)
-        or tool_obj
-    )
+    underlying = getattr(tool_obj, "coroutine", None) or getattr(tool_obj, "func", None) or tool_obj
     hints = typing.get_type_hints(underlying)
     return set(typing.get_args(hints["skill"]))
 
@@ -100,11 +93,10 @@ def test_orchestrator_tool_literal_matches_skills(tool_name, agent_name):
     declared SKILLS.
     """
     from orchestrator.app import health_agent
+
     skills_mod = importlib.import_module(f"agents.{agent_name}.app.skills")
 
     tool = getattr(health_agent, tool_name)
     declared = {s.id for s in skills_mod.SKILLS}
     allowed = _literal_args(tool)
-    assert allowed == declared, (
-        f"{tool_name}: Literal={allowed} != SKILLS({agent_name})={declared}"
-    )
+    assert allowed == declared, f"{tool_name}: Literal={allowed} != SKILLS({agent_name})={declared}"

@@ -59,12 +59,14 @@ async def test_log_mood_parses_json_and_persists_row():
         captured["data"] = data
         captured["source"] = source
 
-    with patch("agents.mood.app.executor._get_llm", return_value=_fake_llm(llm_json)), \
-         patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.mood.app.executor.insert_log", new=fake_insert_log), \
-         patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])), \
-         patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.mood.app.executor._get_llm", return_value=_fake_llm(llm_json)),
+        patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.mood.app.executor.insert_log", new=fake_insert_log),
+        patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])),
+        patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await MoodAgentExecutor().execute(_Ctx("устал и тревожно", skill="log_mood"), q)
 
@@ -86,12 +88,14 @@ async def test_log_mood_fallback_when_json_invalid():
     async def fake_insert_log(user_id, agent, type_, data, source="manual"):
         captured["data"] = data
 
-    with patch("agents.mood.app.executor._get_llm", return_value=_fake_llm("not json at all")), \
-         patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.mood.app.executor.insert_log", new=fake_insert_log), \
-         patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])), \
-         patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.mood.app.executor._get_llm", return_value=_fake_llm("not json at all")),
+        patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.mood.app.executor.insert_log", new=fake_insert_log),
+        patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])),
+        patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await MoodAgentExecutor().execute(_Ctx("hi", skill="log_mood"), q)
 
@@ -104,12 +108,14 @@ async def test_log_mood_fallback_when_json_invalid():
 async def test_analyze_mood_completes_without_logging():
     from agents.mood.app.executor import MoodAgentExecutor
 
-    with patch("agents.mood.app.executor._get_llm", return_value=_fake_llm("Trend: stable.")), \
-         patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.mood.app.executor.insert_log", new=AsyncMock()) as il, \
-         patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])), \
-         patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])):
+    with (
+        patch("agents.mood.app.executor._get_llm", return_value=_fake_llm("Trend: stable.")),
+        patch("agents.mood.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.mood.app.executor.insert_log", new=AsyncMock()) as il,
+        patch("agents.mood.app.executor.upsert_memory", new=AsyncMock()),
+        patch("agents.mood.app.prompt.fetch_mood_logs", new=AsyncMock(return_value=[])),
+        patch("agents.mood.app.prompt.search_memories", new=AsyncMock(return_value=[])),
+    ):
         q = _Queue()
         await MoodAgentExecutor().execute(_Ctx("trend?", skill="analyze_mood"), q)
 
@@ -126,8 +132,5 @@ async def test_unknown_skill_fails_cleanly():
         q = _Queue()
         await MoodAgentExecutor().execute(_Ctx("???"), q)
 
-    failed = [
-        e for e in q.events
-        if hasattr(e, "status") and e.status.state == TaskState.failed
-    ]
+    failed = [e for e in q.events if hasattr(e, "status") and e.status.state == TaskState.failed]
     assert failed

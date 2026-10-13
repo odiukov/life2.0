@@ -25,6 +25,7 @@ Third-party extension: write your own BaseChatModel subclass per the LangChain
 docs and instantiate it directly in application code — this factory covers
 the shipped providers only.
 """
+
 from __future__ import annotations
 
 import os
@@ -51,9 +52,7 @@ def build_llm(*, provider: str | None = None, model: str | None = None) -> BaseC
     env_provider = provider is None
     provider = (provider or os.environ.get("LLM_PROVIDER", "openrouter")).lower()
     if provider not in _DEFAULT_MODELS:
-        raise ValueError(
-            f"unknown provider: {provider!r}. Supported: {sorted(_DEFAULT_MODELS)}"
-        )
+        raise ValueError(f"unknown provider: {provider!r}. Supported: {sorted(_DEFAULT_MODELS)}")
     if model is None:
         model = (os.environ.get("LLM_MODEL") if env_provider else None) or _DEFAULT_MODELS[provider]
 
@@ -83,10 +82,14 @@ def _build_anthropic(model: str) -> BaseChatModel:
     if token.startswith("sk-ant-oat"):
         headers = {"anthropic-beta": "oauth-2025-04-20"}
         llm.__dict__["_async_client"] = anthropic.AsyncAnthropic(
-            api_key="", auth_token=token, default_headers=headers,
+            api_key="",
+            auth_token=token,
+            default_headers=headers,
         )
         llm.__dict__["_client"] = anthropic.Anthropic(
-            api_key="", auth_token=token, default_headers=headers,
+            api_key="",
+            auth_token=token,
+            default_headers=headers,
         )
     return llm
 

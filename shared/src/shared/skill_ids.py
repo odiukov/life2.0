@@ -12,6 +12,7 @@ Each agent has a class with `Final` string constants AND a corresponding
 attributes, so tool signatures use the Literal form. Values stay in sync
 because they are written once at module load.
 """
+
 from __future__ import annotations
 
 from typing import Final, Literal
@@ -23,9 +24,7 @@ class Sleep:
     RECOMMENDATIONS: Final = "get_sleep_recommendations"
 
 
-SleepSkillId = Literal[
-    "log_sleep", "analyze_sleep", "get_sleep_recommendations"
-]
+SleepSkillId = Literal["log_sleep", "analyze_sleep", "get_sleep_recommendations"]
 
 
 class Workout:
@@ -34,9 +33,7 @@ class Workout:
     RECOMMENDATIONS: Final = "get_workout_recommendations"
 
 
-WorkoutSkillId = Literal[
-    "log_workout", "analyze_workout", "get_workout_recommendations"
-]
+WorkoutSkillId = Literal["log_workout", "analyze_workout", "get_workout_recommendations"]
 
 
 class Nutrition:
@@ -47,7 +44,9 @@ class Nutrition:
 
 
 NutritionSkillId = Literal[
-    "log_meal", "analyze_nutrition", "get_nutrition_recommendations",
+    "log_meal",
+    "analyze_nutrition",
+    "get_nutrition_recommendations",
     "set_body_profile",
 ]
 
@@ -68,7 +67,9 @@ class Mood:
 
 
 MoodSkillId = Literal[
-    "log_mood", "analyze_mood", "get_mood_recommendations",
+    "log_mood",
+    "analyze_mood",
+    "get_mood_recommendations",
     "coach_session",
 ]
 
@@ -82,8 +83,11 @@ class Habits:
 
 
 HabitsSkillId = Literal[
-    "define_habit", "log_habit_check", "analyze_habit",
-    "get_streak_summary", "archive_habit",
+    "define_habit",
+    "log_habit_check",
+    "analyze_habit",
+    "get_streak_summary",
+    "archive_habit",
 ]
 
 
@@ -93,9 +97,7 @@ class Recovery:
     RECOMMENDATIONS: Final = "get_recommendations"
 
 
-RecoverySkillId = Literal[
-    "get_readiness", "analyze_recovery_trend", "get_recommendations"
-]
+RecoverySkillId = Literal["get_readiness", "analyze_recovery_trend", "get_recommendations"]
 
 
 class Medication:
@@ -107,6 +109,9 @@ class Medication:
 
 
 MedicationSkillId = Literal[
-    "define_medication", "log_medication", "list_active",
-    "analyze_adherence", "archive_medication",
+    "define_medication",
+    "log_medication",
+    "list_active",
+    "analyze_adherence",
+    "archive_medication",
 ]

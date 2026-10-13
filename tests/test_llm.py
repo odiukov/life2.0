@@ -1,4 +1,5 @@
 """Unit tests for shared.llm.build_llm — pure env-driven, no network."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,9 +14,15 @@ from shared.llm import build_llm
 
 @pytest.fixture(autouse=True)
 def _clear_env(monkeypatch):
-    for k in ("LLM_PROVIDER", "LLM_MODEL", "ANTHROPIC_API_KEY",
-              "OPENROUTER_API_KEY", "GEMINI_API_KEY", "OLLAMA_HOST",
-              "GROQ_API_KEY"):
+    for k in (
+        "LLM_PROVIDER",
+        "LLM_MODEL",
+        "ANTHROPIC_API_KEY",
+        "OPENROUTER_API_KEY",
+        "GEMINI_API_KEY",
+        "OLLAMA_HOST",
+        "GROQ_API_KEY",
+    ):
         monkeypatch.delenv(k, raising=False)
 
 

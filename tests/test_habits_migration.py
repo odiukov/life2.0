@@ -20,8 +20,15 @@ async def test_habits_table_exists_with_expected_columns():
         await conn.close()
     cols = {r["column_name"] for r in rows}
     assert cols == {
-        "id", "name", "kind", "cadence_type", "cadence_days",
-        "target_value", "unit", "created_at", "archived_at",
+        "id",
+        "name",
+        "kind",
+        "cadence_type",
+        "cadence_days",
+        "target_value",
+        "unit",
+        "created_at",
+        "archived_at",
         "user_id",
     }
 

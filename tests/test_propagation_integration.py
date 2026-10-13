@@ -1,4 +1,5 @@
 """Cross-service traceparent propagation via httpx + FastAPI auto-instrumentors."""
+
 import pytest
 import httpx
 
@@ -6,11 +7,14 @@ import httpx
 @pytest.fixture(autouse=True)
 def reset_telemetry():
     import shared.telemetry as t
+
     t._INITIALIZED = False
     from opentelemetry.test.globals_test import reset_trace_globals
+
     reset_trace_globals()
     try:
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
         HTTPXClientInstrumentor().uninstrument()
     except Exception:
         pass
@@ -34,6 +38,7 @@ async def test_trace_id_propagates_from_caller_to_callee(monkeypatch):
 
     from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
     HTTPXClientInstrumentor().instrument()
 
     app_b = FastAPI()
@@ -48,17 +53,23 @@ async def test_trace_id_propagates_from_caller_to_callee(monkeypatch):
 
     @app_a.get("/caller")
     async def caller():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app_b), base_url="http://b") as c:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app_b), base_url="http://b"
+        ) as c:
             r = await c.get("/callee")
             return r.json()
 
     FastAPIInstrumentor.instrument_app(app_a)
 
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app_a), base_url="http://a") as client_outer:
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app_a), base_url="http://a"
+    ) as client_outer:
         r = await client_outer.get("/caller")
         assert r.status_code == 200
 
     provider.force_flush()
     spans = exporter.get_finished_spans()
     trace_ids = {s.context.trace_id for s in spans}
-    assert len(trace_ids) == 1, f"Expected 1 trace, got {len(trace_ids)}: spans = {[(s.name, s.context.trace_id) for s in spans]}"
+    assert len(trace_ids) == 1, (
+        f"Expected 1 trace, got {len(trace_ids)}: spans = {[(s.name, s.context.trace_id) for s in spans]}"
+    )

@@ -3,6 +3,7 @@
 Uses httpx.MockTransport so the request Google would actually receive is
 asserted — path, query, body, auth header — without a network call.
 """
+
 from __future__ import annotations
 
 import json
@@ -69,9 +70,7 @@ async def test_list_events_returns_empty_when_google_omits_items():
     from orchestrator.app.google_calendar_api import list_events
 
     with _with_token(), _transport(handler):
-        assert await list_events(
-            USER, time_min="a", time_max="b"
-        ) == []
+        assert await list_events(USER, time_min="a", time_max="b") == []
 
 
 async def test_create_event_wraps_start_and_end_in_datetime_objects():

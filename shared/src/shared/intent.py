@@ -2,6 +2,7 @@
 and _infer_skill_via_llm in workout/sleep/nutrition executors. Returns the skill
 ID plus the peer agents to consult, in one LLM call. Honors metadata.skillId
 (skip LLM entirely) and metadata.focus_sources (override consult list)."""
+
 from __future__ import annotations
 
 import json
@@ -37,9 +38,7 @@ def _mandatory_consults_prompt_block() -> str:
     """
     if not MANDATORY_CONSULTS:
         return ""
-    lines = [
-        "MANDATORY CONSULTS (always added on top of your choice for these skills):"
-    ]
+    lines = ["MANDATORY CONSULTS (always added on top of your choice for these skills):"]
     for skill, peers in MANDATORY_CONSULTS.items():
         lines.append(f"  {skill} -> {', '.join(peers)}")
     return "\n".join(lines) + "\n\n"
@@ -98,9 +97,7 @@ async def infer_skill_and_consults(
     meta_skill = _meta_get(metadata, "skillId")
     meta_focus = _meta_get(metadata, "focus_sources")
     focus_override = (
-        [p for p in meta_focus if p in peers_list]
-        if isinstance(meta_focus, list)
-        else None
+        [p for p in meta_focus if p in peers_list] if isinstance(meta_focus, list) else None
     )
 
     if meta_skill in skills_list:
@@ -115,7 +112,7 @@ async def infer_skill_and_consults(
 
     prompt = (
         "You are a router. Output strict JSON only — no prose, no code fences.\n"
-        "Schema: {\"skill\": <one of skills>, \"consult\": [<zero or more of peers>]}\n\n"
+        'Schema: {"skill": <one of skills>, "consult": [<zero or more of peers>]}\n\n'
         f"Available skills: {', '.join(skills_list)}\n"
         f"Available peers: {', '.join(peers_list) or '(none)'}\n\n"
         "Pick the skill that matches the user's intent. Pick consult peers ONLY when "

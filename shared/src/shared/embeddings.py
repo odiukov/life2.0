@@ -4,6 +4,7 @@ Wraps the generativelanguage.googleapis.com embedContent endpoint.
 Requests 768-dim vectors via Matryoshka truncation (outputDimensionality=768).
 Raises EmbeddingError on any failure.
 """
+
 from __future__ import annotations
 
 import os

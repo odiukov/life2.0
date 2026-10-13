@@ -4,6 +4,7 @@ Talks to the Google Calendar REST API directly via google_calendar_api.
 Never raises; returns None/[] when the user has not connected the calendar,
 the day has no events, or Google errors out.
 """
+
 from __future__ import annotations
 
 import logging
@@ -109,9 +110,7 @@ async def fetch_calendar_events(
     except CalendarNotConnected:
         return []
     except TimeoutError:
-        logger.warning(
-            "calendar list timed out after %.1fs", _CALENDAR_TIMEOUT_SECONDS
-        )
+        logger.warning("calendar list timed out after %.1fs", _CALENDAR_TIMEOUT_SECONDS)
         return []
     except Exception as e:
         logger.warning("calendar list failed: %s", e)
@@ -134,9 +133,7 @@ async def fetch_calendar_shape(
     """
     if user_id is None:
         return None
-    events = await fetch_calendar_events(
-        user_id, target_date, timezone_name=timezone_name
-    )
+    events = await fetch_calendar_events(user_id, target_date, timezone_name=timezone_name)
 
     if not events:
         return None

@@ -1,4 +1,5 @@
 """Tests for shared.current_user.user_id_from_message — strict mode."""
+
 from __future__ import annotations
 
 from uuid import UUID

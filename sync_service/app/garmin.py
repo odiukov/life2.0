@@ -13,7 +13,9 @@ def _get_dates(days: int = 7) -> list[str]:
     return [(today - timedelta(days=i)).isoformat() for i in range(days)]
 
 
-def _fetch_sync(days: int, email: str, password: str, token_in: str | None = None) -> tuple[dict, str]:
+def _fetch_sync(
+    days: int, email: str, password: str, token_in: str | None = None
+) -> tuple[dict, str]:
     """Synchronous Garmin fetch — called via asyncio.to_thread."""
     client = Garmin(email, password)
     client.login(tokenstore=token_in)
@@ -63,7 +65,9 @@ def _fetch_sync(days: int, email: str, password: str, token_in: str | None = Non
     }, token_out
 
 
-async def fetch_all(days: int, email: str, password: str, token_in: str | None = None) -> tuple[dict, str]:
+async def fetch_all(
+    days: int, email: str, password: str, token_in: str | None = None
+) -> tuple[dict, str]:
     """Async wrapper: runs the blocking Garmin client in a thread pool."""
     return await asyncio.to_thread(_fetch_sync, days, email, password, token_in)
 

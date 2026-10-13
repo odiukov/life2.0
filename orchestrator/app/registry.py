@@ -1,4 +1,5 @@
 """Agent discovery — resolves AgentCards via A2A SDK."""
+
 import logging
 import os
 

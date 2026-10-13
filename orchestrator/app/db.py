@@ -5,7 +5,13 @@ from datetime import datetime, timezone, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from shared.db import fetch_active_habits, fetch_habit_logs, fetch_active_medications, fetch_medication_logs, fetch_body_logs
+from shared.db import (
+    fetch_active_habits,
+    fetch_habit_logs,
+    fetch_active_medications,
+    fetch_medication_logs,
+    fetch_body_logs,
+)
 from .recovery_context import fetch_recovery_shape
 
 _pool: asyncpg.Pool | None = None
@@ -77,7 +83,11 @@ async def get_stats(user_id: UUID) -> dict:
                 WHERE agent=$2 AND created_at >= $5
             ) combined
             """,
-            user_id, agent, types, week_ago, two_weeks_ago
+            user_id,
+            agent,
+            types,
+            week_ago,
+            two_weeks_ago,
         )
         tw = int(row["this_week"]) if row else 0
         pw = int(row["prev_week"]) if row else 0
@@ -95,7 +105,10 @@ async def get_stats(user_id: UUID) -> dict:
             ) combined
             GROUP BY day
             """,
-            user_id, agent, types, day_starts[0]
+            user_id,
+            agent,
+            types,
+            day_starts[0],
         )
         daily_map = {r["day"]: int(r["cnt"]) for r in daily_rows}
         daily = [daily_map.get(d.date(), 0) for d in day_starts]
@@ -118,19 +131,23 @@ async def get_stats(user_id: UUID) -> dict:
 
     combined = []
     for r in health_rows:
-        combined.append({
-            "agent": r["agent"],
-            "task_type": r["type"],
-            "message": _describe_log({"type": r["type"], "data": r["data"]}),
-            "created_at": r["ts"].isoformat(),
-        })
+        combined.append(
+            {
+                "agent": r["agent"],
+                "task_type": r["type"],
+                "message": _describe_log({"type": r["type"], "data": r["data"]}),
+                "created_at": r["ts"].isoformat(),
+            }
+        )
     for r in task_rows:
-        combined.append({
-            "agent": r["agent"],
-            "task_type": r["type"],
-            "message": ((r["input"] or {}).get("message", "") or "")[:80],
-            "created_at": r["ts"].isoformat(),
-        })
+        combined.append(
+            {
+                "agent": r["agent"],
+                "task_type": r["type"],
+                "message": ((r["input"] or {}).get("message", "") or "")[:80],
+                "created_at": r["ts"].isoformat(),
+            }
+        )
 
     combined.sort(key=lambda x: x["created_at"], reverse=True)
     activity = combined[:10]
@@ -185,7 +202,8 @@ async def get_health_summary(user_id: UUID) -> dict:
             user_id,
         )
         hrv = (
-            int(hrv_row["hrv_rmssd"]) if hrv_row and hrv_row["hrv_rmssd"]
+            int(hrv_row["hrv_rmssd"])
+            if hrv_row and hrv_row["hrv_rmssd"]
             else d.get("hrv_weekly_avg")
         )
         sleep = {
@@ -222,7 +240,8 @@ async def get_health_summary(user_id: UUID) -> dict:
            AVG((data->>'duration_seconds')::float / 3600) AS hours
            FROM health_logs WHERE user_id = $1 AND agent='sleep' AND type='sleep_session' AND recorded_at >= $2
            GROUP BY day""",
-        user_id, day_starts[0]
+        user_id,
+        day_starts[0],
     )
     sleep_map = {r["day"]: round(float(r["hours"]), 1) for r in sleep_daily}
     sleep_hours = [sleep_map.get(d.date(), 0) for d in day_starts]
@@ -233,7 +252,8 @@ async def get_health_summary(user_id: UUID) -> dict:
            SUM((data->>'duration_seconds')::float / 60) AS minutes
            FROM health_logs WHERE user_id = $1 AND agent='workout' AND type='activity' AND recorded_at >= $2
            GROUP BY day""",
-        user_id, day_starts[0]
+        user_id,
+        day_starts[0],
     )
     workout_map = {r["day"]: round(float(r["minutes"])) for r in workout_daily}
     workout_minutes = [workout_map.get(d.date(), 0) for d in day_starts]
@@ -244,7 +264,8 @@ async def get_health_summary(user_id: UUID) -> dict:
            SUM((data->'totals'->>'kcal')::float) AS calories
            FROM health_logs WHERE user_id = $1 AND agent='nutrition' AND type='meal' AND recorded_at >= $2
            GROUP BY day""",
-        user_id, day_starts[0]
+        user_id,
+        day_starts[0],
     )
     nutrition_map = {r["day"]: round(float(r["calories"])) for r in nutrition_daily}
     nutrition_calories = [nutrition_map.get(d.date(), 0) for d in day_starts]
@@ -287,8 +308,7 @@ async def get_tasks_today(agent: str) -> int:
     pool = await get_pool()
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     row = await pool.fetchrow(
-        "SELECT COUNT(*) as cnt FROM tasks WHERE agent=$1 AND created_at >= $2",
-        agent, today_start
+        "SELECT COUNT(*) as cnt FROM tasks WHERE agent=$1 AND created_at >= $2", agent, today_start
     )
     return int(row["cnt"]) if row else 0
 
@@ -331,7 +351,9 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
     sleep_row = await pool.fetchrow(_sleep_sql, user_id, "garmin", day_start - timedelta(hours=36))
     _sleep_source = "Garmin"
     if not sleep_row:
-        sleep_row = await pool.fetchrow(_sleep_sql, user_id, "SourceProxy", day_start - timedelta(hours=36))
+        sleep_row = await pool.fetchrow(
+            _sleep_sql, user_id, "SourceProxy", day_start - timedelta(hours=36)
+        )
         _sleep_source = "Apple Health"
     sleep = None
     if sleep_row:
@@ -342,10 +364,13 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
             "WHERE user_id = $1 AND agent = 'sleep' AND type = 'hrv_status' "
             "  AND recorded_at >= $2 AND recorded_at < $3 "
             "ORDER BY recorded_at DESC LIMIT 1",
-            user_id, day_start - timedelta(hours=36), day_end,
+            user_id,
+            day_start - timedelta(hours=36),
+            day_end,
         )
         hrv = (
-            int(hrv_row["hrv_rmssd"]) if hrv_row and hrv_row["hrv_rmssd"]
+            int(hrv_row["hrv_rmssd"])
+            if hrv_row and hrv_row["hrv_rmssd"]
             else (int(sleep_row["hrv_weekly_avg"]) if sleep_row["hrv_weekly_avg"] else None)
         )
         sleep = {
@@ -406,11 +431,15 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
             ORDER BY recorded_at DESC
             LIMIT 1
             """,
-            user_id, day_start, day_end,
+            user_id,
+            day_start,
+            day_end,
         )
         if hk_workout_row and hk_workout_row["exercise_minutes"]:
             mins = int(hk_workout_row["exercise_minutes"] or 0)
-            dist = int((hk_workout_row["distance_m"] or 0) + (hk_workout_row["distance_cycling_m"] or 0))
+            dist = int(
+                (hk_workout_row["distance_m"] or 0) + (hk_workout_row["distance_cycling_m"] or 0)
+            )
             workout = {
                 "total_calories": int(hk_workout_row["active_kcal"] or 0),
                 "total_distance_meters": dist,
@@ -434,7 +463,9 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
           AND source = 'yazio'
           AND recorded_at >= $2 AND recorded_at < $3
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     nutrition = None
     if nutrition_row and nutrition_row["kcal"] is not None:
@@ -459,7 +490,9 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
             ORDER BY recorded_at DESC
             LIMIT 1
             """,
-            user_id, day_start, day_end,
+            user_id,
+            day_start,
+            day_end,
         )
         if hk_nutrition_row and hk_nutrition_row["kcal"]:
             nutrition = {
@@ -486,7 +519,9 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
         WHERE user_id = $1 AND type = 'mood'
           AND recorded_at >= $2 AND recorded_at < $3
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     mood = None
     if mood_row and mood_row["count"] and int(mood_row["count"]) > 0:
@@ -498,13 +533,23 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
                 raw_tags = []
         mood = {
             "count": int(mood_row["count"]),
-            "avg_score": round(float(mood_row["avg_score"]), 1) if mood_row["avg_score"] is not None else None,
-            "avg_stress": round(float(mood_row["avg_stress"]), 1) if mood_row["avg_stress"] is not None else None,
-            "avg_energy": round(float(mood_row["avg_energy"]), 1) if mood_row["avg_energy"] is not None else None,
+            "avg_score": round(float(mood_row["avg_score"]), 1)
+            if mood_row["avg_score"] is not None
+            else None,
+            "avg_stress": round(float(mood_row["avg_stress"]), 1)
+            if mood_row["avg_stress"] is not None
+            else None,
+            "avg_energy": round(float(mood_row["avg_energy"]), 1)
+            if mood_row["avg_energy"] is not None
+            else None,
             "last_valence": mood_row["last_valence"],
             "last_tags": raw_tags or [],
-            "first_score": int(mood_row["first_score"]) if mood_row["first_score"] is not None else None,
-            "last_score": int(mood_row["last_score"]) if mood_row["last_score"] is not None else None,
+            "first_score": int(mood_row["first_score"])
+            if mood_row["first_score"] is not None
+            else None,
+            "last_score": int(mood_row["last_score"])
+            if mood_row["last_score"] is not None
+            else None,
         }
 
     # Habits: two-piece roll-up (yesterday backward + today todo).
@@ -582,10 +627,12 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
         for h in habit_defs:
             if not _expected_on(h, today_weekday):
                 continue
-            today_items.append({
-                "name": h["name"],
-                "done": _complete(h, by_habit_day.get((h["id"], today_key), [])),
-            })
+            today_items.append(
+                {
+                    "name": h["name"],
+                    "done": _complete(h, by_habit_day.get((h["id"], today_key), [])),
+                }
+            )
 
         habits = {
             "expected_yesterday": expected_y,
@@ -601,6 +648,7 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
 
     # Calendar — forward-looking (today, not yesterday).
     from .calendar_context import fetch_calendar_shape
+
     calendar = await fetch_calendar_shape(now_kyiv.date(), user_id)
 
     # Medication: current active list + last 7d of taken events
@@ -611,24 +659,22 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
         med_active = [{"name": m["name"], "schedule": m["schedule"]} for m in med_rows]
         log_rows = await fetch_medication_logs(user_id, days=7)
         med_logs = [
-            {"name": (r.get("data") or {}).get("name"),
-             "recorded_at": r.get("recorded_at")}
+            {"name": (r.get("data") or {}).get("name"), "recorded_at": r.get("recorded_at")}
             for r in log_rows
         ]
     except Exception as e:
         # don't fail the whole summary if medication query breaks
         import logging
+
         logging.getLogger(__name__).warning("medication metrics failed: %s", e)
 
-    medication = (
-        {"active": med_active, "logs": med_logs}
-        if med_active else None
-    )
+    medication = {"active": med_active, "logs": med_logs} if med_active else None
 
     try:
         body_rows_raw = await fetch_body_logs(user_id, limit=60)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning("body metrics fetch failed: %s", e)
         body_rows_raw = []
 
@@ -637,13 +683,15 @@ async def get_yesterday_metrics(user_id: UUID, use_today: bool = False) -> dict:
         recent = []
         for r in body_rows_raw:
             d = r.get("data") or {}
-            recent.append({
-                "weight_kg": d.get("weight_kg"),
-                "body_fat_pct": d.get("body_fat_pct"),
-                "lean_mass_kg": d.get("lean_mass_kg"),
-                "bmi": d.get("bmi"),
-                "recorded_at": r["recorded_at"],
-            })
+            recent.append(
+                {
+                    "weight_kg": d.get("weight_kg"),
+                    "body_fat_pct": d.get("body_fat_pct"),
+                    "lean_mass_kg": d.get("lean_mass_kg"),
+                    "bmi": d.get("bmi"),
+                    "recorded_at": r["recorded_at"],
+                }
+            )
         # "recent_90d" is aspirational — shape is up-to-60 most-recent rows, no
         # time filter (see fetch_body_logs). Real window is cadence-dependent.
         body = {"latest": recent[0], "recent_90d": recent}
@@ -787,7 +835,8 @@ async def fetch_sleep_history(user_id: UUID, days: int = 7) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     result = []
     for r in rows:
@@ -829,11 +878,15 @@ async def fetch_workout_history(user_id: UUID, days: int = 7) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
-        {"date": r["date"], "value": float(r["value"]),
-         "label": f"{int(r['value'])} min" if r["value"] > 0 else "—"}
+        {
+            "date": r["date"],
+            "value": float(r["value"]),
+            "label": f"{int(r['value'])} min" if r["value"] > 0 else "—",
+        }
         for r in rows
     ]
 
@@ -865,11 +918,15 @@ async def fetch_nutrition_history(user_id: UUID, days: int = 7) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
-        {"date": r["date"], "value": float(r["value"]),
-         "label": f"{int(r['value'])} kcal" if r["value"] > 0 else "—"}
+        {
+            "date": r["date"],
+            "value": float(r["value"]),
+            "label": f"{int(r['value'])} kcal" if r["value"] > 0 else "—",
+        }
         for r in rows
     ]
 
@@ -901,11 +958,15 @@ async def fetch_mood_history(user_id: UUID, days: int = 7) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
-        {"date": r["date"], "value": float(r["value"]),
-         "label": f"{r['value']:.1f}" if r["value"] > 0 else "—"}
+        {
+            "date": r["date"],
+            "value": float(r["value"]),
+            "label": f"{r['value']:.1f}" if r["value"] > 0 else "—",
+        }
         for r in rows
     ]
 
@@ -924,11 +985,13 @@ async def fetch_recovery_history(user_id: UUID, days: int = 7) -> list[dict]:
         key = d.isoformat()
         day_data = metrics.get(key) or {}
         hrv = day_data.get("hrv") or 0.0
-        result.append({
-            "date": key,
-            "value": float(hrv),
-            "label": f"{int(hrv)} ms" if hrv else "—",
-        })
+        result.append(
+            {
+                "date": key,
+                "value": float(hrv),
+                "label": f"{int(hrv)} ms" if hrv else "—",
+            }
+        )
     return result
 
 
@@ -959,7 +1022,8 @@ async def fetch_habits_history(user_id: UUID, days: int = 30) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
         {"date": r["date"], "value": float(r["value"]), "label": "✅" if r["value"] else "⬜"}
@@ -992,7 +1056,8 @@ async def fetch_medication_history(user_id: UUID, days: int = 30) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
         {"date": r["date"], "value": float(r["value"]), "label": "✅" if r["value"] else "⬜"}
@@ -1033,10 +1098,14 @@ async def fetch_finance_history(user_id: UUID, days: int = 7) -> list[dict]:
         LEFT JOIN raw ON raw.d = dates.d
         ORDER BY dates.d
         """,
-        user_id, days,
+        user_id,
+        days,
     )
     return [
-        {"date": r["date"], "value": float(r["value"]),
-         "label": f"${r['value']:.0f}" if r["value"] > 0 else "—"}
+        {
+            "date": r["date"],
+            "value": float(r["value"]),
+            "label": f"${r['value']:.0f}" if r["value"] > 0 else "—",
+        }
         for r in rows
     ]

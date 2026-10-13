@@ -14,6 +14,7 @@ across re-uploads (idempotent via ON CONFLICT DO NOTHING).
 The parser is split so `_parse_text` can be unit-tested directly against a
 synthetic string, and `parse_payoneer_pdf(bytes)` wraps pymupdf.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -28,7 +29,11 @@ class PayoneerPdfFormatError(ValueError):
 
 
 _TABLE_HEADER: tuple[str, ...] = (
-    "Date", "Description", "Amount", "Currency", "Running Balance",
+    "Date",
+    "Description",
+    "Amount",
+    "Currency",
+    "Running Balance",
 )
 _FOOTER_PREFIX = "©"
 _ACCOUNT_STATEMENT_MARKER = "Account Statement"
@@ -58,7 +63,7 @@ def _find_period(lines: list[str], limit: int) -> str:
 def _find_table_start(lines: list[str]) -> int | None:
     """Return the index AFTER the 5-line table header, or None."""
     for i in range(len(lines) - len(_TABLE_HEADER) + 1):
-        if tuple(lines[i:i + len(_TABLE_HEADER)]) == _TABLE_HEADER:
+        if tuple(lines[i : i + len(_TABLE_HEADER)]) == _TABLE_HEADER:
             return i + len(_TABLE_HEADER)
     return None
 
@@ -74,8 +79,9 @@ def _parse_amount(raw: str) -> Decimal:
     return Decimal(cleaned)
 
 
-def _txn_id(period: str, date_str: str, desc: str, amount: Decimal,
-            currency: str, running: Decimal) -> str:
+def _txn_id(
+    period: str, date_str: str, desc: str, amount: Decimal, currency: str, running: Decimal
+) -> str:
     raw_key = f"{period}|{date_str}|{desc}|{amount}|{currency}|{running}"
     digest = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()[:16]
     return f"pyn-pdf-{digest}"
@@ -90,9 +96,7 @@ def _parse_text(text: str) -> tuple[list[dict[str, Any]], int]:
     lines = _clean_lines(text)
 
     if not any(ln.startswith(_ACCOUNT_STATEMENT_MARKER) for ln in lines[:30]):
-        raise PayoneerPdfFormatError(
-            "missing 'Account Statement' marker — not a Payoneer PDF"
-        )
+        raise PayoneerPdfFormatError("missing 'Account Statement' marker — not a Payoneer PDF")
 
     start = _find_table_start(lines)
     if start is None:
@@ -107,7 +111,7 @@ def _parse_text(text: str) -> tuple[list[dict[str, Any]], int]:
 
     i = start
     while i + 4 < len(lines):
-        group = lines[i:i + 5]
+        group = lines[i : i + 5]
         date_str, desc, amount_str, currency, running_str = group
 
         try:
@@ -133,21 +137,23 @@ def _parse_text(text: str) -> tuple[list[dict[str, Any]], int]:
         direction = "IN" if amount >= 0 else "OUT"
         abs_amount = abs(amount)
 
-        rows.append({
-            "txn_id": _txn_id(period, date_str, desc, abs_amount, currency, running),
-            "ts": ts,
-            "direction": direction,
-            "amount": abs_amount,
-            "currency": currency,
-            "description": desc,
-            "raw": {
-                "date": date_str,
-                "amount": amount_str,
+        rows.append(
+            {
+                "txn_id": _txn_id(period, date_str, desc, abs_amount, currency, running),
+                "ts": ts,
+                "direction": direction,
+                "amount": abs_amount,
                 "currency": currency,
-                "running_balance": running_str,
-                "period": period,
-            },
-        })
+                "description": desc,
+                "raw": {
+                    "date": date_str,
+                    "amount": amount_str,
+                    "currency": currency,
+                    "running_balance": running_str,
+                    "period": period,
+                },
+            }
+        )
         i += 5
 
     return rows, skipped

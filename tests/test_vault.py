@@ -1,4 +1,5 @@
 """Round-trip test for orchestrator.app.vault (dev backend against local postgres)."""
+
 from __future__ import annotations
 
 import os
@@ -28,7 +29,8 @@ async def _pool_and_seed_user():
     yield
     async with _sdb._pool.acquire() as c:
         await c.execute(
-            "DELETE FROM public.integrations_credentials WHERE user_id=$1", USER,
+            "DELETE FROM public.integrations_credentials WHERE user_id=$1",
+            USER,
         )
         await c.execute("DELETE FROM public.users WHERE id=$1", USER)
     await _sdb.close_db_pool()

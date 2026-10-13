@@ -28,14 +28,21 @@ async def test_executor_happy_path_uses_skill_id_and_emits_completed():
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
     fake_intent = AsyncMock(return_value=("analyze_nutrition", []))
-    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": AsyncMock(return_value="prompt")}):
+    with (
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.nutrition.app.executor.SKILL_PROMPTS",
+            {"analyze_nutrition": AsyncMock(return_value="prompt")},
+        ),
+    ):
         executor = NutritionAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -53,8 +60,10 @@ async def test_executor_unknown_skill_fails_cleanly():
     event_queue.enqueue_event = AsyncMock()
 
     fake_intent = AsyncMock(return_value=(None, []))
-    with patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": AsyncMock()}), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent):
+    with (
+        patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": AsyncMock()}),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+    ):
         executor = NutritionAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -75,14 +84,18 @@ async def test_executor_falls_back_to_intent_helper_when_no_skill_id():
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
     fake_intent = AsyncMock(return_value=("analyze_nutrition", []))
-    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": fake_prompt}):
+    with (
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": fake_prompt}),
+    ):
         executor = NutritionAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -100,12 +113,19 @@ async def test_executor_subprocess_error_marks_failed():
     fake_llm = MagicMock()
     fake_llm.ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
     fake_intent = AsyncMock(return_value=("analyze_nutrition", []))
-    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor.SKILL_PROMPTS", {"analyze_nutrition": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.nutrition.app.executor.SKILL_PROMPTS",
+            {"analyze_nutrition": AsyncMock(return_value="p")},
+        ),
+    ):
         executor = NutritionAgentExecutor()
         await executor.execute(ctx, event_queue)
 
@@ -122,22 +142,30 @@ async def test_nutrition_consult_list_propagates_to_fetch():
     from agents.nutrition.app.executor import NutritionAgentExecutor
 
     ctx = _ctx("посоветуй питание с учётом сна")  # no skillId
-    event_queue = MagicMock(); event_queue.enqueue_event = AsyncMock()
+    event_queue = MagicMock()
+    event_queue.enqueue_event = AsyncMock()
 
     fake_intent = AsyncMock(return_value=("get_nutrition_recommendations", ["sleep"]))
     fake_fetch = AsyncMock(return_value={"sleep": "S"})
-    fake_llm = MagicMock(); fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
     import uuid as _uuid
 
-    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=fake_fetch), \
-         patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor.SKILL_PROMPTS",
-               {"get_nutrition_recommendations": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=fake_fetch),
+        patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.nutrition.app.executor.SKILL_PROMPTS",
+            {"get_nutrition_recommendations": AsyncMock(return_value="p")},
+        ),
+    ):
         await NutritionAgentExecutor().execute(ctx, event_queue)
 
     _, kwargs = fake_fetch.await_args
@@ -152,7 +180,9 @@ async def test_nutrition_metadata_focus_sources_passed_to_intent():
 
     parts = [Part(root=TextPart(text="посоветуй питание"))]
     msg = Message(
-        role="user", parts=parts, message_id="m1",
+        role="user",
+        parts=parts,
+        message_id="m1",
         metadata={"skillId": "get_nutrition_recommendations", "focus_sources": ["workout"]},
     )
     ctx = MagicMock()
@@ -161,19 +191,27 @@ async def test_nutrition_metadata_focus_sources_passed_to_intent():
     ctx.task_id = "task-1"
     ctx.current_task = None
 
-    event_queue = MagicMock(); event_queue.enqueue_event = AsyncMock()
+    event_queue = MagicMock()
+    event_queue.enqueue_event = AsyncMock()
     fake_intent = AsyncMock(return_value=("get_nutrition_recommendations", ["workout"]))
-    fake_llm = MagicMock(); fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock(return_value=MagicMock(content="ok"))
 
-    with patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})), \
-         patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor.SKILL_PROMPTS",
-               {"get_nutrition_recommendations": AsyncMock(return_value="p")}):
+    with (
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={})),
+        patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()),
+        patch("agents.nutrition.app.executor.upsert_memory", new=AsyncMock()),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch(
+            "agents.nutrition.app.executor.SKILL_PROMPTS",
+            {"get_nutrition_recommendations": AsyncMock(return_value="p")},
+        ),
+    ):
         await NutritionAgentExecutor().execute(ctx, event_queue)
 
     _, kwargs = fake_intent.await_args
@@ -190,21 +228,29 @@ async def test_nutrition_set_body_profile_skips_peer_fetch_and_llm():
     from agents.nutrition.app.executor import NutritionAgentExecutor
 
     ctx = _ctx("set my height to 180", skill_id="set_body_profile")
-    event_queue = MagicMock(); event_queue.enqueue_event = AsyncMock()
+    event_queue = MagicMock()
+    event_queue.enqueue_event = AsyncMock()
     import uuid as _uuid
 
     fake_intent = AsyncMock(return_value=("set_body_profile", []))
     fake_fetch = AsyncMock(return_value={})
-    fake_llm = MagicMock(); fake_llm.ainvoke = AsyncMock()  # must NOT be called
+    fake_llm = MagicMock()
+    fake_llm.ainvoke = AsyncMock()  # must NOT be called
 
-    with patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent), \
-         patch("agents.nutrition.app.executor._LLM", fake_llm), \
-         patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=fake_fetch), \
-         patch("agents.nutrition.app.executor._execute_set_body_profile",
-               new=AsyncMock(return_value="profile saved")), \
-         patch("agents.nutrition.app.executor.user_id_from_message",
-               new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000"))), \
-         patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()):
+    with (
+        patch("agents.nutrition.app.executor.infer_skill_and_consults", new=fake_intent),
+        patch("agents.nutrition.app.executor._LLM", fake_llm),
+        patch("agents.nutrition.app.executor.fetch_peer_artifacts", new=fake_fetch),
+        patch(
+            "agents.nutrition.app.executor._execute_set_body_profile",
+            new=AsyncMock(return_value="profile saved"),
+        ),
+        patch(
+            "agents.nutrition.app.executor.user_id_from_message",
+            new=AsyncMock(return_value=_uuid.UUID("00000000-0000-0000-0000-000000000000")),
+        ),
+        patch("agents.nutrition.app.executor.insert_task_record", new=AsyncMock()),
+    ):
         await NutritionAgentExecutor().execute(ctx, event_queue)
 
     # intent helper was called (cheap — short-circuits internally on metadata.skillId)

@@ -16,11 +16,7 @@ def test_extracts_sex_age_height_weight_single_line():
 
 
 def test_extracts_female():
-    text = (
-        "Gender Age Height\n"
-        "Female 28 165 cm\n"
-        "Weight 60.0(50.0–65.0) 100.0 Normal\n"
-    )
+    text = "Gender Age Height\nFemale 28 165 cm\nWeight 60.0(50.0–65.0) 100.0 Normal\n"
     result = _extract_profile_from_text(text)
     assert result["sex"] == "female"
     assert result["age"] == 28
@@ -70,11 +66,14 @@ def test_extract_profile_fields_vision_malformed_json():
     fake_shared_llm = MagicMock()
     fake_shared_llm.build_llm.return_value = fake_llm
 
-    with patch.dict(sys.modules, {
-        "pymupdf": fake_pymupdf,
-        "shared.llm": fake_shared_llm,
-        "langchain_core.messages": MagicMock(),
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "pymupdf": fake_pymupdf,
+            "shared.llm": fake_shared_llm,
+            "langchain_core.messages": MagicMock(),
+        },
+    ):
         result = _extract_profile_fields_vision(b"fake-pdf")
 
     assert result == {}

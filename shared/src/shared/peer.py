@@ -1,4 +1,5 @@
 """Peer-agent consultation over A2A v0.2+ (SDK ClientFactory API)."""
+
 from __future__ import annotations
 
 import asyncio
@@ -89,7 +90,8 @@ async def call_peer(
             metadata["for_date"] = for_date
         message_with_hint = (
             f"{message_text}\n\nFocus on data for {for_date} (YYYY-MM-DD)."
-            if for_date else message_text
+            if for_date
+            else message_text
         )
         message = Message(
             role=Role.user,
@@ -124,13 +126,13 @@ async def fetch_peer_artifacts(
     """Parallel peer calls; user_id + for_date propagate into each Message.metadata."""
     coros = {
         name: call_peer(
-            info["url"], peer_task_names[name],
-            user_id=user_id, for_date=for_date,
+            info["url"],
+            peer_task_names[name],
+            user_id=user_id,
+            for_date=for_date,
         )
         for name, info in peer_agents.items()
-        if name in peer_task_names
-        and info.get("url")
-        and (needed is None or name in needed)
+        if name in peer_task_names and info.get("url") and (needed is None or name in needed)
     }
     if not coros:
         return {}

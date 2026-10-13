@@ -11,6 +11,7 @@ VOCAB[agent]    — 5–8 concept anchors the LLM may invoke when grounded by
 Both are pure data — no rendering logic. Prompt builders read these constants
 and concatenate them as part of the standard composition.
 """
+
 from __future__ import annotations
 
 

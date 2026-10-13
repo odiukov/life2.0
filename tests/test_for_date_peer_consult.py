@@ -1,5 +1,6 @@
 """Verify sleep agent passes `for_date=yesterday` when consulting peers, and
 that nutrition/workout prompts honor the param to scope to that calendar day."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -28,8 +29,10 @@ async def test_call_peer_propagates_for_date_in_metadata():
 
     with patch("shared.peer.get_client", AsyncMock(return_value=client)):
         await peer.call_peer(
-            "http://x:1/", "analyze_nutrition",
-            user_id="u1", for_date="2026-04-30",
+            "http://x:1/",
+            "analyze_nutrition",
+            user_id="u1",
+            for_date="2026-04-30",
         )
 
     assert captured["metadata"]["for_date"] == "2026-04-30"
@@ -87,7 +90,7 @@ async def test_nutrition_prompt_uses_for_date_when_provided():
     """When for_date is passed, "Today (...)" header must read the target day."""
     from agents.nutrition.app import prompt as nut_prompt
 
-    target = (datetime.now(timezone.utc).date() - timedelta(days=1))
+    target = datetime.now(timezone.utc).date() - timedelta(days=1)
 
     async def _zero_logs(*_a, **_k):
         return []
@@ -101,14 +104,15 @@ async def test_nutrition_prompt_uses_for_date_when_provided():
     async def _no_memories(*_a, **_k):
         return []
 
-    with patch.object(nut_prompt, "fetch_recent_logs", _zero_logs), \
-         patch.object(nut_prompt, "fetch_body_logs", _no_body), \
-         patch.object(nut_prompt, "get_body_profile", _no_profile), \
-         patch.object(nut_prompt, "search_memories", _no_memories):
+    with (
+        patch.object(nut_prompt, "fetch_recent_logs", _zero_logs),
+        patch.object(nut_prompt, "fetch_body_logs", _no_body),
+        patch.object(nut_prompt, "get_body_profile", _no_profile),
+        patch.object(nut_prompt, "search_memories", _no_memories),
+    ):
         text = await nut_prompt.build_nutrition_prompt(
             "analyze_nutrition",
-            {"user_id": "00000000-0000-0000-0000-000000000001",
-             "for_date": target.isoformat()},
+            {"user_id": "00000000-0000-0000-0000-000000000001", "for_date": target.isoformat()},
         )
 
     assert f"Day ({target.isoformat()})" in text
@@ -129,10 +133,12 @@ async def test_nutrition_prompt_defaults_to_today_without_for_date():
     async def _none(*_a, **_k):
         return None
 
-    with patch.object(nut_prompt, "fetch_recent_logs", _zero), \
-         patch.object(nut_prompt, "fetch_body_logs", _zero), \
-         patch.object(nut_prompt, "get_body_profile", _none), \
-         patch.object(nut_prompt, "search_memories", _zero):
+    with (
+        patch.object(nut_prompt, "fetch_recent_logs", _zero),
+        patch.object(nut_prompt, "fetch_body_logs", _zero),
+        patch.object(nut_prompt, "get_body_profile", _none),
+        patch.object(nut_prompt, "search_memories", _zero),
+    ):
         text = await nut_prompt.build_nutrition_prompt(
             "analyze_nutrition",
             {"user_id": "00000000-0000-0000-0000-000000000001"},
@@ -151,13 +157,14 @@ async def test_workout_prompt_surfaces_focus_date_when_provided():
     async def _zero(*_a, **_k):
         return []
 
-    with patch.object(w_prompt, "fetch_recent_logs", _zero), \
-         patch.object(w_prompt, "fetch_body_logs", _zero), \
-         patch.object(w_prompt, "search_memories", _zero):
+    with (
+        patch.object(w_prompt, "fetch_recent_logs", _zero),
+        patch.object(w_prompt, "fetch_body_logs", _zero),
+        patch.object(w_prompt, "search_memories", _zero),
+    ):
         text = await w_prompt.build_workout_prompt(
             "analyze_workout",
-            {"user_id": "00000000-0000-0000-0000-000000000001",
-             "for_date": "2026-04-30"},
+            {"user_id": "00000000-0000-0000-0000-000000000001", "for_date": "2026-04-30"},
         )
 
     assert "Peer-consult focus date: 2026-04-30" in text
@@ -170,9 +177,11 @@ async def test_workout_prompt_omits_focus_date_section_when_absent():
     async def _zero(*_a, **_k):
         return []
 
-    with patch.object(w_prompt, "fetch_recent_logs", _zero), \
-         patch.object(w_prompt, "fetch_body_logs", _zero), \
-         patch.object(w_prompt, "search_memories", _zero):
+    with (
+        patch.object(w_prompt, "fetch_recent_logs", _zero),
+        patch.object(w_prompt, "fetch_body_logs", _zero),
+        patch.object(w_prompt, "search_memories", _zero),
+    ):
         text = await w_prompt.build_workout_prompt(
             "analyze_workout",
             {"user_id": "00000000-0000-0000-0000-000000000001"},

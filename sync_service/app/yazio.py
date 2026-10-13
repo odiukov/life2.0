@@ -202,27 +202,35 @@ async def fetch_diary(
             authenticated = False
             if token_in and token_in.get("refresh_token"):
                 try:
-                    auth = await client.post("/oauth/token", json={
-                        "client_id": CLIENT_ID,
-                        "client_secret": CLIENT_SECRET,
-                        "grant_type": "refresh_token",
-                        "refresh_token": token_in["refresh_token"],
-                    })
+                    auth = await client.post(
+                        "/oauth/token",
+                        json={
+                            "client_id": CLIENT_ID,
+                            "client_secret": CLIENT_SECRET,
+                            "grant_type": "refresh_token",
+                            "refresh_token": token_in["refresh_token"],
+                        },
+                    )
                     auth.raise_for_status()
                     token_out = _build_token_out(auth.json())
                     auth_h = {"Authorization": f"Bearer {token_out['access_token']}"}
                     authenticated = True
                 except Exception as e:
-                    logger.warning("Yazio refresh_token failed, falling back to password grant: %s", e)
+                    logger.warning(
+                        "Yazio refresh_token failed, falling back to password grant: %s", e
+                    )
 
             if not authenticated:
-                auth = await client.post("/oauth/token", json={
-                    "client_id": CLIENT_ID,
-                    "client_secret": CLIENT_SECRET,
-                    "grant_type": "password",
-                    "username": email,
-                    "password": password,
-                })
+                auth = await client.post(
+                    "/oauth/token",
+                    json={
+                        "client_id": CLIENT_ID,
+                        "client_secret": CLIENT_SECRET,
+                        "grant_type": "password",
+                        "username": email,
+                        "password": password,
+                    },
+                )
                 auth.raise_for_status()
                 token_out = _build_token_out(auth.json())
                 if not token_out.get("access_token"):

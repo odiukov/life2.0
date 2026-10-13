@@ -1,5 +1,6 @@
 """End-to-end style: each peer's executor emits a `consulted_peers` artifact
 when peer_artifacts is non-empty."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -35,10 +36,14 @@ async def test_sleep_executor_emits_consulted_peers(monkeypatch) -> None:
     class FakeCtx:
         task_id = "t1"
         context_id = "c1"
-        message = type("M", (), {
-            "parts": [type("P", (), {"root": type("R", (), {"text": "analyze"})()})()],
-            "metadata": {"skillId": "analyze_sleep"},
-        })()
+        message = type(
+            "M",
+            (),
+            {
+                "parts": [type("P", (), {"root": type("R", (), {"text": "analyze"})()})()],
+                "metadata": {"skillId": "analyze_sleep"},
+            },
+        )()
 
     async def _fake_user_id(_msg):  # noqa: ANN001
         return "user-1"
@@ -50,12 +55,18 @@ async def test_sleep_executor_emits_consulted_peers(monkeypatch) -> None:
     monkeypatch.setattr(sleep_exec, "fetch_peer_artifacts", _fake_peers)
     monkeypatch.setattr(sleep_exec, "insert_task_record", AsyncMock())
     monkeypatch.setattr(sleep_exec, "upsert_memory", AsyncMock())
-    monkeypatch.setattr(sleep_exec, "_get_llm", lambda: type("L", (), {
-        "ainvoke": AsyncMock(return_value=type("R", (), {"content": "ok"})())
-    })())
+    monkeypatch.setattr(
+        sleep_exec,
+        "_get_llm",
+        lambda: type(
+            "L", (), {"ainvoke": AsyncMock(return_value=type("R", (), {"content": "ok"})())}
+        )(),
+    )
+
     # Skip persistence side effects
     async def _fake_prompt(_msg, _params):
         return "prompt"
+
     monkeypatch.setitem(sleep_exec.SKILL_PROMPTS, "analyze_sleep", _fake_prompt)
 
     await SleepAgentExecutor().execute(FakeCtx(), fake_queue)

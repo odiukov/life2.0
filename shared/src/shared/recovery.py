@@ -16,6 +16,7 @@ contract replaces the old Garmin Body Battery source.
 All metrics can be None → the metric is skipped. <3 metrics available overall
 → bucket = 'unknown'.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,8 +29,7 @@ _METRIC_LABELS = {
 }
 
 
-def _cmp(current: float, baseline: float, threshold_pct: float,
-         prefer: str) -> int:
+def _cmp(current: float, baseline: float, threshold_pct: float, prefer: str) -> int:
     """Return +1 (better), -1 (worse), 0 (within noise).
 
     prefer='higher' → current > baseline*(1+threshold_pct) is better.
@@ -54,10 +54,10 @@ def _cmp(current: float, baseline: float, threshold_pct: float,
 # (noise threshold, preference) per metric. 10% threshold for bucket gates
 # matches the design spec §4.4 after the HealthKit switch.
 _THRESHOLDS = {
-    "hrv_sdnn":              (0.10, "higher"),
-    "rhr":                   (0.10, "lower"),
-    "sleep_efficiency_pct":  (0.10, "higher"),
-    "sleep_duration_h":      (0.10, "higher"),
+    "hrv_sdnn": (0.10, "higher"),
+    "rhr": (0.10, "lower"),
+    "sleep_efficiency_pct": (0.10, "higher"),
+    "sleep_duration_h": (0.10, "higher"),
 }
 
 
@@ -146,12 +146,14 @@ def format_top3(deltas: dict) -> list[dict]:
         d = deltas.get(metric) or {}
         if d.get("value") is None:
             continue
-        candidates.append({
-            "label": _METRIC_LABELS[metric],
-            "value": d["value"],
-            "dir": d.get("dir"),
-            "delta": d.get("delta"),
-        })
+        candidates.append(
+            {
+                "label": _METRIC_LABELS[metric],
+                "value": d["value"],
+                "dir": d.get("dir"),
+                "delta": d.get("delta"),
+            }
+        )
     candidates.sort(key=lambda m: -_delta_magnitude(m.get("delta")))
     return candidates[:3]
 

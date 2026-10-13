@@ -1,5 +1,6 @@
 """Emit a `consulted_peers` artifact so callers can see which peer agents
 were consulted by an A2A peer during a single skill run."""
+
 from __future__ import annotations
 
 import uuid

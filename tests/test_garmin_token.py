@@ -14,6 +14,7 @@ def test_fetch_sync_passes_token_in_to_login():
 
     with patch("sync_service.app.garmin.Garmin", mock_cls):
         from sync_service.app.garmin import _fetch_sync
+
         _fetch_sync(1, "a@b.com", "pass", token_in="existing_token")
 
     mock_client.login.assert_called_once_with(tokenstore="existing_token")
@@ -25,6 +26,7 @@ def test_fetch_sync_passes_none_tokenstore_to_login_when_no_token():
 
     with patch("sync_service.app.garmin.Garmin", mock_cls):
         from sync_service.app.garmin import _fetch_sync
+
         _fetch_sync(1, "a@b.com", "pass", token_in=None)
 
     mock_client.login.assert_called_once_with(tokenstore=None)
@@ -37,6 +39,7 @@ def test_fetch_sync_returns_empty_string_when_dumps_raises():
 
     with patch("sync_service.app.garmin.Garmin", mock_cls):
         from sync_service.app.garmin import _fetch_sync
+
         data, token_out = _fetch_sync(1, "a@b.com", "pass", token_in=None)
 
     assert token_out == ""
@@ -48,6 +51,7 @@ def test_fetch_sync_returns_token_out():
 
     with patch("sync_service.app.garmin.Garmin", mock_cls):
         from sync_service.app.garmin import _fetch_sync
+
         data, token_out = _fetch_sync(1, "a@b.com", "pass", token_in=None)
 
     assert token_out == "garth_serialized_xyz"

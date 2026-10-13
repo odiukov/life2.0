@@ -7,6 +7,7 @@ from a2a.types import AgentCard, AgentCapabilities
 @pytest.fixture(autouse=True)
 def reset_caches():
     from shared import a2a_clients
+
     a2a_clients._card_cache.clear()
     a2a_clients._client_cache.clear()
     yield

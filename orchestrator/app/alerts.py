@@ -6,6 +6,7 @@ which resolve via shared.i18n at construction time. Locale is fixed to
 "en" for the literal `message` rendering; mobile reads message_key +
 message_params over the wire and resolves locally.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -35,8 +36,10 @@ class Alert:
             raise ValueError("Alert needs message or message_key")
         if not self.message and self.message_key:
             from shared.i18n import t
+
             object.__setattr__(
-                self, "message",
+                self,
+                "message",
                 t(self.message_key, locale="en", **self.message_params),
             )
         if not self.title:

@@ -1,4 +1,5 @@
 """workout executor emits a log_entry artifact only for log_workout skill."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,7 +47,13 @@ def _artifact_events(queue: _FakeEventQueue):
 
 
 @pytest.mark.asyncio
-@patch("agents.workout.app.executor.SKILL_PROMPTS", {"log_workout": AsyncMock(return_value="prompt"), "analyze_workout": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.workout.app.executor.SKILL_PROMPTS",
+    {
+        "log_workout": AsyncMock(return_value="prompt"),
+        "analyze_workout": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -83,7 +90,13 @@ async def test_log_workout_emits_log_entry_artifact(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.workout.app.executor.SKILL_PROMPTS", {"log_workout": AsyncMock(return_value="prompt"), "analyze_workout": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.workout.app.executor.SKILL_PROMPTS",
+    {
+        "log_workout": AsyncMock(return_value="prompt"),
+        "analyze_workout": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -101,7 +114,13 @@ async def test_analyze_workout_does_not_emit_log_entry(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.workout.app.executor.SKILL_PROMPTS", {"log_workout": AsyncMock(return_value="prompt"), "analyze_workout": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.workout.app.executor.SKILL_PROMPTS",
+    {
+        "log_workout": AsyncMock(return_value="prompt"),
+        "analyze_workout": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.workout.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.workout.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.workout.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))

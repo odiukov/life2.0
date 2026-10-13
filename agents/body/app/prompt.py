@@ -1,5 +1,6 @@
 """Body-agent prompt builder. Cross-domain context comes from peer_artifacts,
 not direct DB reads — see spec §5."""
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -57,10 +58,11 @@ async def build_body_prompt(
     body_logs = await fetch_body_logs(user_id, limit=30)
     memories = await search_memories(user_id, task, limit=5)
 
-    body_text = "\n".join(_format_body(r) for r in body_logs) \
+    body_text = (
+        "\n".join(_format_body(r) for r in body_logs)
         or "No body composition measurements yet — ask the user to upload a ViHealth PDF."
-    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) \
-        or "No relevant memories."
+    )
+    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) or "No relevant memories."
 
     # Body's prompt builder is invoked from skills.py with peer_artifacts now
     # threaded through the executor → params dict. Read either form.

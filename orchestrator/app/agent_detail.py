@@ -2,6 +2,7 @@
 
 Public API: get_agent_detail(agent_id, user_id) -> dict
 """
+
 from __future__ import annotations
 
 import logging
@@ -11,7 +12,17 @@ from uuid import UUID
 logger = logging.getLogger(__name__)
 
 VALID_AGENT_IDS = frozenset(
-    ["sleep", "workout", "nutrition", "mood", "habits", "recovery", "medication", "finance", "calendar"]
+    [
+        "sleep",
+        "workout",
+        "nutrition",
+        "mood",
+        "habits",
+        "recovery",
+        "medication",
+        "finance",
+        "calendar",
+    ]
 )
 
 
@@ -82,7 +93,9 @@ def _format_nutrition_meal(row: dict) -> dict:
         "label": meal_type.replace("_", " ").title(),
         "items": items,
         "kcal": int(round(float(totals.get("kcal") or 0))),
-        "recorded_at": recorded_at.isoformat() if hasattr(recorded_at, "isoformat") else recorded_at,
+        "recorded_at": recorded_at.isoformat()
+        if hasattr(recorded_at, "isoformat")
+        else recorded_at,
     }
 
 
@@ -211,7 +224,9 @@ async def _sleep_detail(user_id: UUID) -> dict:
 
     kyiv = ZoneInfo("Europe/Kyiv")
     now_kyiv = datetime.now(kyiv)
-    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(days=1)
+    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(
+        days=1
+    )
     pool = await get_pool()
     # 36h lookback gives slack for late Garmin sync while taking the most recent session
     row = await pool.fetchrow(
@@ -225,7 +240,8 @@ async def _sleep_detail(user_id: UUID) -> dict:
           AND recorded_at >= $2
         ORDER BY recorded_at DESC LIMIT 1
         """,
-        user_id, day_start - timedelta(hours=36),
+        user_id,
+        day_start - timedelta(hours=36),
     )
     metrics: dict = {}
     if row:
@@ -254,7 +270,9 @@ async def _workout_detail(user_id: UUID) -> dict:
 
     kyiv = ZoneInfo("Europe/Kyiv")
     now_kyiv = datetime.now(kyiv)
-    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(days=1)
+    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(
+        days=1
+    )
     day_end = day_start + timedelta(days=1)
     pool = await get_pool()
     row = await pool.fetchrow(
@@ -268,7 +286,9 @@ async def _workout_detail(user_id: UUID) -> dict:
         WHERE user_id = $1 AND agent = 'workout' AND type = 'activity'
           AND recorded_at >= $2 AND recorded_at < $3
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     metrics: dict = {}
     if row and row["dur_sec"]:
@@ -305,7 +325,9 @@ async def _nutrition_detail(user_id: UUID) -> dict:
         WHERE user_id = $1 AND agent = 'nutrition' AND type = 'meal'
           AND recorded_at >= $2 AND recorded_at < $3
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     metrics: dict = {}
     if row and row["kcal"] is not None:
@@ -323,13 +345,16 @@ async def _nutrition_detail(user_id: UUID) -> dict:
           AND recorded_at >= $2 AND recorded_at < $3
         ORDER BY recorded_at ASC
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     meals = [_format_nutrition_meal(dict(r)) for r in meal_rows]
 
     # Body profile for goals
     try:
         from .db import get_body_profile
+
         profile = await get_body_profile(user_id)
         if profile.get("tdee"):
             metrics["goal_kcal"] = int(profile["tdee"])
@@ -358,7 +383,9 @@ async def _mood_detail(user_id: UUID) -> dict:
 
     kyiv = ZoneInfo("Europe/Kyiv")
     now_kyiv = datetime.now(kyiv)
-    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(days=1)
+    day_start = datetime(now_kyiv.year, now_kyiv.month, now_kyiv.day, tzinfo=kyiv) - timedelta(
+        days=1
+    )
     day_end = day_start + timedelta(days=1)
     pool = await get_pool()
     row = await pool.fetchrow(
@@ -373,7 +400,9 @@ async def _mood_detail(user_id: UUID) -> dict:
         WHERE user_id = $1 AND agent = 'mood' AND type = 'mood'
           AND recorded_at >= $2 AND recorded_at < $3
         """,
-        user_id, day_start, day_end,
+        user_id,
+        day_start,
+        day_end,
     )
     metrics: dict = {}
     if row and row["score"] is not None:
@@ -430,14 +459,25 @@ async def _habits_detail(user_id: UUID) -> dict:
         else:
             break
 
-    completion_7d = len([d for d in completed_days
-                         if (today - timedelta(days=6)).isoformat() <= d <= today.isoformat()]) / 7.0
+    completion_7d = (
+        len(
+            [
+                d
+                for d in completed_days
+                if (today - timedelta(days=6)).isoformat() <= d <= today.isoformat()
+            ]
+        )
+        / 7.0
+    )
 
     # Missed yesterday
     yesterday = (today - timedelta(days=1)).isoformat()
-    missed_logs = {(r.get("data") or {}).get("habit_id") for r in logs
-                   if r["recorded_at"].astimezone(kyiv).date().isoformat() == yesterday
-                   and (r.get("data") or {}).get("completed")}
+    missed_logs = {
+        (r.get("data") or {}).get("habit_id")
+        for r in logs
+        if r["recorded_at"].astimezone(kyiv).date().isoformat() == yesterday
+        and (r.get("data") or {}).get("completed")
+    }
     missed_names = [h["name"] for h in habit_defs if h["id"] not in missed_logs][:3]
 
     metrics = {
@@ -503,14 +543,22 @@ async def _medication_detail(user_id: UUID) -> dict:
     kyiv = ZoneInfo("Europe/Kyiv")
     today = datetime.now(kyiv).date()
     taken_days = {r["recorded_at"].astimezone(kyiv).date().isoformat() for r in logs_7d}
-    adherence_7d = len([
-        d for d in [
-            (today - timedelta(days=i)).isoformat() for i in range(7)
-        ] if d in taken_days
-    ]) / 7.0
+    adherence_7d = (
+        len(
+            [
+                d
+                for d in [(today - timedelta(days=i)).isoformat() for i in range(7)]
+                if d in taken_days
+            ]
+        )
+        / 7.0
+    )
 
-    taken_names_2d = {(r.get("data") or {}).get("name") for r in logs_7d
-                      if r["recorded_at"].astimezone(kyiv).date() >= today - timedelta(days=2)}
+    taken_names_2d = {
+        (r.get("data") or {}).get("name")
+        for r in logs_7d
+        if r["recorded_at"].astimezone(kyiv).date() >= today - timedelta(days=2)
+    }
     missed_names = [m["name"] for m in meds if m["name"] not in taken_names_2d]
 
     metrics = {
@@ -539,6 +587,7 @@ async def _finance_detail(user_id: UUID) -> dict:
     try:
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
         month_str = datetime.now(ZoneInfo("Europe/Kyiv")).strftime("%Y-%m")
         categories = await spending_by_category(user_id, month_str)
         if categories:
@@ -606,15 +655,15 @@ async def _calendar_detail(user_id: UUID) -> dict:
 # ── Dispatcher ────────────────────────────────────────────────────────────────
 
 _BUILDERS = {
-    "sleep":      _sleep_detail,
-    "workout":    _workout_detail,
-    "nutrition":  _nutrition_detail,
-    "mood":       _mood_detail,
-    "habits":     _habits_detail,
-    "recovery":   _recovery_detail,
+    "sleep": _sleep_detail,
+    "workout": _workout_detail,
+    "nutrition": _nutrition_detail,
+    "mood": _mood_detail,
+    "habits": _habits_detail,
+    "recovery": _recovery_detail,
     "medication": _medication_detail,
-    "finance":    _finance_detail,
-    "calendar":   _calendar_detail,
+    "finance": _finance_detail,
+    "calendar": _calendar_detail,
 }
 
 

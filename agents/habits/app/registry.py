@@ -3,6 +3,7 @@
 Canonical name form is lowercase kebab-case single-token (no spaces).
 `normalize_name` applies this form to user input.
 """
+
 from __future__ import annotations
 
 import re
@@ -42,7 +43,8 @@ async def find_by_name(user_id: UUID, raw_name: str) -> Optional[dict]:
         "SELECT id::text AS id, name, kind, cadence_type, cadence_days, "
         "target_value, unit, created_at FROM habits "
         "WHERE user_id = $1 AND name = $2 AND archived_at IS NULL",
-        user_id, target,
+        user_id,
+        target,
     )
     return dict(row) if row else None
 
@@ -63,8 +65,13 @@ async def create(
     if not canonical:
         raise ValueError("habit name cannot be empty")
     return await insert_habit(
-        user_id, name=canonical, kind=kind, cadence_type=cadence_type,
-        cadence_days=cadence_days, target_value=target_value, unit=unit,
+        user_id,
+        name=canonical,
+        kind=kind,
+        cadence_type=cadence_type,
+        cadence_days=cadence_days,
+        target_value=target_value,
+        unit=unit,
     )
 
 

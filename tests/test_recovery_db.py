@@ -2,6 +2,7 @@
 
 Uses the live dev Postgres; inserts synthetic rows and cleans up afterwards.
 Skips when POSTGRES_DSN is not set."""
+
 import os
 import pytest
 import asyncpg
@@ -22,6 +23,7 @@ _TEST_USER_ID = UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 @pytest.fixture
 async def _clean_synthetic_rows():
     """Clean any synthetic test rows before and after each test."""
+
     async def _clean():
         if not _has_db():
             return
@@ -33,6 +35,7 @@ async def _clean_synthetic_rows():
             )
         finally:
             await conn.close()
+
     await _clean()
     yield
     await _clean()
@@ -48,7 +51,8 @@ async def _seed_user():
     try:
         await conn.execute(
             "INSERT INTO public.users (id, name, timezone) VALUES ($1, $2, 'UTC') ON CONFLICT DO NOTHING",
-            _TEST_USER_ID, "test-recovery",
+            _TEST_USER_ID,
+            "test-recovery",
         )
     finally:
         await conn.close()
@@ -65,40 +69,56 @@ async def test_fetch_recovery_metrics_joins_sleep_and_daily_stats(_clean_synthet
     conn = await asyncpg.connect(dsn)
     try:
         import json
+
         day1 = datetime.now(timezone.utc) - timedelta(days=30)
         day2 = datetime.now(timezone.utc) - timedelta(days=31)
 
         await conn.execute(
             "INSERT INTO health_logs (user_id, agent, type, data, recorded_at, source) "
             "VALUES ($1, $2, $3, $4::jsonb, $5, $6)",
-            _TEST_USER_ID, "sleep", "sleep_session",
+            _TEST_USER_ID,
+            "sleep",
+            "sleep_session",
             json.dumps({"hrv_weekly_avg": 45, "score": 82, "source_tag": "recovery-test"}),
-            day1, "garmin-test",
+            day1,
+            "garmin-test",
         )
         await conn.execute(
             "INSERT INTO health_logs (user_id, agent, type, data, recorded_at, source) "
             "VALUES ($1, $2, $3, $4::jsonb, $5, $6)",
-            _TEST_USER_ID, "sleep", "daily_stats",
-            json.dumps({
-                "resting_hr": 58, "stress_avg": 34,
-                "body_battery_min": 25, "body_battery_max": 85,
-                "source_tag": "recovery-test",
-            }),
-            day1, "garmin-test",
+            _TEST_USER_ID,
+            "sleep",
+            "daily_stats",
+            json.dumps(
+                {
+                    "resting_hr": 58,
+                    "stress_avg": 34,
+                    "body_battery_min": 25,
+                    "body_battery_max": 85,
+                    "source_tag": "recovery-test",
+                }
+            ),
+            day1,
+            "garmin-test",
         )
         await conn.execute(
             "INSERT INTO health_logs (user_id, agent, type, data, recorded_at, source) "
             "VALUES ($1, $2, $3, $4::jsonb, $5, $6)",
-            _TEST_USER_ID, "sleep", "sleep_session",
+            _TEST_USER_ID,
+            "sleep",
+            "sleep_session",
             json.dumps({"hrv_weekly_avg": 43, "score": 79, "source_tag": "recovery-test"}),
-            day2, "garmin-test",
+            day2,
+            "garmin-test",
         )
     finally:
         await conn.close()
 
     from shared.db import fetch_recovery_metrics
+
     # Pool cache reset (same pattern as habits-registry tests)
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
@@ -109,6 +129,7 @@ async def test_fetch_recovery_metrics_joins_sleep_and_daily_stats(_clean_synthet
 
     # Find our day1 (30 days ago) and day2 (31 days ago) in the Kyiv-TZ keyed dict.
     from zoneinfo import ZoneInfo
+
     _tz = ZoneInfo("Europe/Kyiv")
     key1 = day1.astimezone(_tz).date().isoformat()
     key2 = day2.astimezone(_tz).date().isoformat()
@@ -144,28 +165,36 @@ async def test_fetch_recovery_metrics_prefers_hrv_status_over_sleep_dto(_clean_s
     conn = await asyncpg.connect(dsn)
     try:
         import json
+
         day1 = datetime.now(timezone.utc) - timedelta(days=32)
         # sleep_session says HRV=46 (the buggy value)
         await conn.execute(
             "INSERT INTO health_logs (user_id, agent, type, data, recorded_at, source) "
             "VALUES ($1, $2, $3, $4::jsonb, $5, $6)",
-            _TEST_USER_ID, "sleep", "sleep_session",
+            _TEST_USER_ID,
+            "sleep",
+            "sleep_session",
             json.dumps({"hrv_weekly_avg": 46, "score": 80, "source_tag": "recovery-test"}),
-            day1, "garmin-test",
+            day1,
+            "garmin-test",
         )
         # hrv_status says HRV=38 (what the watch shows)
         await conn.execute(
             "INSERT INTO health_logs (user_id, agent, type, data, recorded_at, source) "
             "VALUES ($1, $2, $3, $4::jsonb, $5, $6)",
-            _TEST_USER_ID, "sleep", "hrv_status",
+            _TEST_USER_ID,
+            "sleep",
+            "hrv_status",
             json.dumps({"hrv_rmssd": 38, "status": "BALANCED", "source_tag": "recovery-test"}),
-            day1, "garmin-test",
+            day1,
+            "garmin-test",
         )
     finally:
         await conn.close()
 
     from shared.db import fetch_recovery_metrics
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
@@ -173,6 +202,7 @@ async def test_fetch_recovery_metrics_prefers_hrv_status_over_sleep_dto(_clean_s
     metrics = await fetch_recovery_metrics(_TEST_USER_ID, days=40)
 
     from zoneinfo import ZoneInfo
+
     key1 = day1.astimezone(ZoneInfo("Europe/Kyiv")).date().isoformat()
     assert metrics[key1]["hrv"] == 38
     assert metrics[key1]["hrv_sdnn"] == 38
@@ -189,6 +219,7 @@ async def test_fetch_recovery_metrics_empty_when_no_data(_clean_synthetic_rows):
     # Just check shape: dict with str keys → dict with six numeric-or-None fields.
     from shared.db import fetch_recovery_metrics
     import shared.db as _sdb
+
     # Reset pool — previous test may have closed it already; just clear the ref
     _sdb._pool = None
 

@@ -3,6 +3,7 @@
 Runs with AUTH_MODE=dev + DEV_FALLBACK_OWNER=false + X-User-Id header
 so auth is stable and scoped to a synthetic user.
 """
+
 from __future__ import annotations
 
 import os
@@ -41,6 +42,7 @@ async def _pool_and_user():
 async def _client():
     # Import app lazily so env vars above are honoured on module load
     from orchestrator.app.main import app
+
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -163,6 +165,7 @@ async def test_garmin_connect_rejects_invalid_credentials(monkeypatch):
 
 
 # -------- Preflight tests --------
+
 
 @pytest.mark.asyncio
 async def test_preflight_garmin_detected_when_recent_samples_exist():

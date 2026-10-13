@@ -145,9 +145,21 @@ Extract the following (use null if not visible):
 Return ONLY valid JSON, no explanation."""
 
 _METRICS_FLOAT_KEYS = (
-    "weight_kg", "body_fat_kg", "body_fat_pct", "bone_mass_kg", "protein_kg",
-    "body_water_kg", "muscle_kg", "skeletal_muscle_kg", "bmi", "body_score",
-    "visceral_fat_grade", "bmr_kcal", "fat_free_kg", "subcutaneous_fat_pct", "body_age",
+    "weight_kg",
+    "body_fat_kg",
+    "body_fat_pct",
+    "bone_mass_kg",
+    "protein_kg",
+    "body_water_kg",
+    "muscle_kg",
+    "skeletal_muscle_kg",
+    "bmi",
+    "body_score",
+    "visceral_fat_grade",
+    "bmr_kcal",
+    "fat_free_kg",
+    "subcutaneous_fat_pct",
+    "body_age",
 )
 
 
@@ -170,18 +182,21 @@ def _parse_vihealth_pdf_vision(pdf_bytes: bytes) -> dict[str, Any]:
     b64 = base64.standard_b64encode(pix.tobytes("png")).decode()
 
     llm = build_llm(provider=provider, model=model)
-    response = llm.invoke([
-        HumanMessage(content=[
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-            {"type": "text", "text": _METRICS_EXTRACTION_PROMPT},
-        ])
-    ])
+    response = llm.invoke(
+        [
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    {"type": "text", "text": _METRICS_EXTRACTION_PROMPT},
+                ]
+            )
+        ]
+    )
 
     content = response.content
     if isinstance(content, list):
         content = "".join(
-            b.get("text", "") for b in content
-            if isinstance(b, dict) and b.get("type") == "text"
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
         )
     raw = re.sub(r"^```[a-z]*\n?", "", content.strip())
     raw = re.sub(r"\n?```$", "", raw)
@@ -204,7 +219,12 @@ def _parse_vihealth_pdf_vision(pdf_bytes: bytes) -> dict[str, Any]:
     ts_str = extracted.get("recorded_at")
     if ts_str:
         ts = str(ts_str).strip()
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d %b %Y, %H:%M:%S", "%d %b %Y %H:%M:%S"):
+        for fmt in (
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%d %H:%M:%S",
+            "%d %b %Y, %H:%M:%S",
+            "%d %b %Y %H:%M:%S",
+        ):
             try:
                 recorded_at = datetime.strptime(ts, fmt).replace(tzinfo=timezone.utc)
                 break
@@ -215,10 +235,12 @@ def _parse_vihealth_pdf_vision(pdf_bytes: bytes) -> dict[str, Any]:
         # Stable fallback: derive a fixed datetime from the PDF bytes hash
         # so repeated scans of the same file never produce a new DB row.
         import hashlib
+
         digest = hashlib.sha256(pdf_bytes).digest()
         # Use first 4 bytes as a day offset from epoch (max ~11 000 days ≈ year 2000)
         day_offset = int.from_bytes(digest[:4], "big") % 4000
         from datetime import date, timedelta
+
         fake_day = date(2000, 1, 1) + timedelta(days=day_offset)
         recorded_at = datetime(fake_day.year, fake_day.month, fake_day.day, tzinfo=timezone.utc)
 
@@ -266,6 +288,7 @@ def extract_profile_fields(pdf_bytes: bytes) -> dict[str, Any]:
     if pdfplumber is None:
         raise RuntimeError("pdfplumber is not installed")
     import io
+
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         text = "\n".join(page.extract_text() or "" for page in pdf.pages)
     result = _extract_profile_from_text(text)
@@ -308,18 +331,21 @@ def _extract_profile_fields_vision(pdf_bytes: bytes) -> dict[str, Any]:
     b64 = base64.standard_b64encode(pix.tobytes("png")).decode()
 
     llm = build_llm(provider=provider, model=model)
-    response = llm.invoke([
-        HumanMessage(content=[
-            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-            {"type": "text", "text": _PROFILE_EXTRACTION_PROMPT},
-        ])
-    ])
+    response = llm.invoke(
+        [
+            HumanMessage(
+                content=[
+                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    {"type": "text", "text": _PROFILE_EXTRACTION_PROMPT},
+                ]
+            )
+        ]
+    )
 
     content = response.content
     if isinstance(content, list):
         content = "".join(
-            b.get("text", "") for b in content
-            if isinstance(b, dict) and b.get("type") == "text"
+            b.get("text", "") for b in content if isinstance(b, dict) and b.get("type") == "text"
         )
     raw = re.sub(r"^```[a-z]*\n?", "", content.strip())
     raw = re.sub(r"\n?```$", "", raw)

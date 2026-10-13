@@ -1,4 +1,5 @@
 """Unit tests for the orchestrator focus_sources auto-detector + peer-registry helper."""
+
 from __future__ import annotations
 
 
@@ -65,11 +66,13 @@ def test_autodetect_state_none_returns_empty():
 
 
 def test_autodetect_uses_latest_human_message():
-    state = {"messages": [
-        HumanMessage(content="random hello"),
-        AIMessage(content="hi"),
-        HumanMessage(content="как я спал учитывая питание"),
-    ]}
+    state = {
+        "messages": [
+            HumanMessage(content="random hello"),
+            AIMessage(content="hi"),
+            HumanMessage(content="как я спал учитывая питание"),
+        ]
+    }
     out = _autodetect_focus_sources(state, "sleep", ("workout", "nutrition"))
     assert out == ["nutrition"]
 
@@ -100,10 +103,17 @@ def test_merge_auto_only():
 
 def test_default_peer_registry_includes_all_eight_peers():
     from shared.peer import default_peer_registry
+
     reg = default_peer_registry()
     assert set(reg.keys()) == {
-        "sleep", "workout", "nutrition", "body",
-        "mood", "habits", "recovery", "medication",
+        "sleep",
+        "workout",
+        "nutrition",
+        "body",
+        "mood",
+        "habits",
+        "recovery",
+        "medication",
     }
     for name, info in reg.items():
         assert info["url"].startswith("http://")
@@ -111,6 +121,7 @@ def test_default_peer_registry_includes_all_eight_peers():
 
 def test_default_peer_registry_respects_env_override(monkeypatch):
     from shared.peer import default_peer_registry
+
     monkeypatch.setenv("WORKOUT_AGENT_URL", "http://override-workout:9999/")
     reg = default_peer_registry()
     assert reg["workout"]["url"] == "http://override-workout:9999/"

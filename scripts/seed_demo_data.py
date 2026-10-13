@@ -11,6 +11,7 @@ integration. Every value is generated — nothing here comes from a real person.
 Requires the stack to be up (`docker compose up -d`); talks to Postgres on
 localhost:5432 using the credentials from .env.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -74,8 +75,15 @@ HABITS = [
     ("a1000000-0000-4000-8000-000000000001", "Morning walk", "boolean", "daily", None, None, None),
     ("a1000000-0000-4000-8000-000000000002", "Read 20 pages", "boolean", "daily", None, None, None),
     ("a1000000-0000-4000-8000-000000000003", "Water", "quantitative", "daily", None, 2.5, "L"),
-    ("a1000000-0000-4000-8000-000000000004", "Strength training", "boolean", "weekly",
-     ["tue", "thu", "sat"], None, None),
+    (
+        "a1000000-0000-4000-8000-000000000004",
+        "Strength training",
+        "boolean",
+        "weekly",
+        ["tue", "thu", "sat"],
+        None,
+        None,
+    ),
 ]
 
 MEDICATIONS = [
@@ -127,7 +135,7 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
     out: list[str] = [
         "INSERT INTO users (id, name, timezone, preferences) VALUES "
         f"('{DEMO_USER_ID}', '{DEMO_USER_NAME}', '{DEMO_TIMEZONE}', "
-        "'{\"locale\": \"en\"}'::jsonb) ON CONFLICT (id) DO NOTHING;"
+        '\'{"locale": "en"}\'::jsonb) ON CONFLICT (id) DO NOTHING;'
     ]
 
     today = date.today()
@@ -152,7 +160,10 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
         bedtime = wake - timedelta(seconds=duration + awake)
         out.append(
             health_log(
-                "sleep", "sleep_session", "garmin", wake,
+                "sleep",
+                "sleep_session",
+                "garmin",
+                wake,
                 {
                     "score": score,
                     "avg_hr": round(rng.uniform(54, 66), 1),
@@ -171,7 +182,10 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
         rmssd = int(rng.gauss(43, 6))
         out.append(
             health_log(
-                "sleep", "hrv_status", "garmin", wake + timedelta(minutes=5),
+                "sleep",
+                "hrv_status",
+                "garmin",
+                wake + timedelta(minutes=5),
                 {
                     "hrv_rmssd": rmssd,
                     "status": "BALANCED" if 34 <= rmssd <= 52 else "UNBALANCED",
@@ -184,7 +198,10 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
         steps = int(rng.gauss(8600, 2600))
         out.append(
             health_log(
-                "sleep", "daily_stats", "garmin", local(day, 22),
+                "sleep",
+                "daily_stats",
+                "garmin",
+                local(day, 22),
                 {
                     "steps": max(1200, steps),
                     "resting_hr": int(rng.gauss(58, 3)),
@@ -202,7 +219,10 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
             jitter = rng.uniform(0.85, 1.15)
             out.append(
                 health_log(
-                    "workout", "activity", "garmin", local(day, rng.choice([7, 12, 18, 19, 20]), rng.randint(0, 55)),
+                    "workout",
+                    "activity",
+                    "garmin",
+                    local(day, rng.choice([7, 12, 18, 19, 20]), rng.randint(0, 55)),
                     {
                         "name": name,
                         "activity_type": kind,
@@ -229,7 +249,9 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
             }
             out.append(
                 health_log(
-                    "nutrition", "meal", "yazio",
+                    "nutrition",
+                    "meal",
+                    "yazio",
                     local(day, hour, rng.randint(0, 50)),
                     {
                         "date": day.isoformat(),
@@ -247,10 +269,13 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
             lean = round(weight - fat_kg, 1)
             out.append(
                 health_log(
-                    "body", "body_composition", "manual", local(day, 7, 25),
+                    "body",
+                    "body_composition",
+                    "manual",
+                    local(day, 7, 25),
                     {
                         "weight_kg": round(weight, 1),
-                        "bmi": round(weight / (1.79 ** 2), 1),
+                        "bmi": round(weight / (1.79**2), 1),
                         "body_fat_pct": fat_pct,
                         "body_fat_kg": fat_kg,
                         "lean_mass_kg": lean,
@@ -275,7 +300,10 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
             mood_score = max(3, min(9, int(rng.gauss(7.0, 1.1))))
             out.append(
                 health_log(
-                    "mood", "mood", "manual", local(day, 21, rng.randint(0, 45)),
+                    "mood",
+                    "mood",
+                    "manual",
+                    local(day, 21, rng.randint(0, 45)),
                     {
                         "mood_score": mood_score,
                         "energy": max(1, min(10, mood_score + rng.randint(-2, 2))),
@@ -309,7 +337,9 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
                 continue
             out.append(
                 health_log(
-                    "medication", "medication_taken", "manual",
+                    "medication",
+                    "medication_taken",
+                    "manual",
                     local(day, 9, rng.randint(0, 40)),
                     {"name": med_name, "dose_at_time": dose, "source_skill": "log_medication"},
                 )
@@ -319,7 +349,8 @@ def build_statements(days: int, rng: random.Random) -> list[str]:
         target_sql = "NULL" if target is None else str(target)
         unit_sql = "NULL" if unit is None else f"'{sql_escape(unit)}'"
         days_sql = (
-            "NULL" if not cadence_days
+            "NULL"
+            if not cadence_days
             else "ARRAY[" + ", ".join(f"'{d}'" for d in cadence_days) + "]::text[]"
         )
         out.append(
@@ -350,7 +381,21 @@ def run_sql(sql: str, env: dict[str, str]) -> None:
     user = env.get("POSTGRES_USER", "lifeagents")
     db = env.get("POSTGRES_DB", "lifeagents")
     proc = subprocess.run(
-        ["docker", "compose", "exec", "-T", "postgres", "psql", "-U", user, "-d", db, "-v", "ON_ERROR_STOP=1", "-q"],
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "postgres",
+            "psql",
+            "-U",
+            user,
+            "-d",
+            db,
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-q",
+        ],
         cwd=REPO_ROOT,
         input=sql,
         text=True,
@@ -364,9 +409,13 @@ def run_sql(sql: str, env: dict[str, str]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=int, default=21, help="How many days of history to generate")
-    parser.add_argument("--seed", type=int, default=20260828, help="RNG seed, for reproducible data")
+    parser.add_argument(
+        "--seed", type=int, default=20260828, help="RNG seed, for reproducible data"
+    )
     parser.add_argument("--reset", action="store_true", help="Delete existing demo rows first")
-    parser.add_argument("--print-only", action="store_true", help="Print SQL instead of executing it")
+    parser.add_argument(
+        "--print-only", action="store_true", help="Print SQL instead of executing it"
+    )
     args = parser.parse_args()
 
     env = load_env()

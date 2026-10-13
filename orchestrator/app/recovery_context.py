@@ -3,6 +3,7 @@
 Reuses the SAME bucket + deltas logic as agents/recovery/ — neither re-implements
 the rule set. Returns None when data is insufficient (bucket='unknown').
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,8 +36,9 @@ async def fetch_recovery_shape(user_id: UUID, target_date: date) -> dict | None:
         current = metrics[latest[0]]
         target_key = latest[0]
 
-    baseline_days = [metrics[k] for k in sorted(metrics.keys(), reverse=True)
-                     if k != target_key][:7]
+    baseline_days = [metrics[k] for k in sorted(metrics.keys(), reverse=True) if k != target_key][
+        :7
+    ]
     baseline = baseline_mean(baseline_days)
 
     bucket = compute_bucket(current, baseline)

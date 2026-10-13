@@ -1,4 +1,5 @@
 """HTTP-level tests for /agent/{name}/stream pass-through."""
+
 from __future__ import annotations
 
 import json
@@ -17,7 +18,7 @@ def _parse_sse(body: str) -> list[dict]:
     for frame in body.strip().split("\n\n"):
         for line in frame.splitlines():
             if line.startswith("data: "):
-                events.append(json.loads(line[len("data: "):]))
+                events.append(json.loads(line[len("data: ") :]))
     return events
 
 
@@ -34,9 +35,12 @@ def app(monkeypatch):
 
 def test_unknown_agent_returns_404(app, monkeypatch):
     from orchestrator.app import agent_passthrough as ap
+
     monkeypatch.setattr(ap, "get_agent_url", lambda _name: None)
     client = TestClient(app)
-    resp = client.post("/agent/nonexistent/stream", json={"messages": [{"role": "user", "content": "hi"}]})
+    resp = client.post(
+        "/agent/nonexistent/stream", json={"messages": [{"role": "user", "content": "hi"}]}
+    )
     assert resp.status_code == 404
 
 
@@ -91,7 +95,9 @@ def test_peer_error_emits_error_text_and_finishes(app, monkeypatch):
     events = _parse_sse(resp.text)
     types = [e["type"] for e in events]
     assert "AgentRouted" in types
-    assert any("peer down" in (e.get("delta") or "") for e in events if e["type"] == "TextMessageContent")
+    assert any(
+        "peer down" in (e.get("delta") or "") for e in events if e["type"] == "TextMessageContent"
+    )
     assert types[-1] == "RunFinished"
 
 
@@ -100,7 +106,14 @@ async def test_stream_peer_call_extracts_analysis_and_consulted_peers(monkeypatc
     """stream_peer_call yields normalized events from real A2A artifacts."""
     from orchestrator.app import agent_passthrough as ap
     from a2a.types import (
-        Artifact, DataPart, Message as A2AMessage, Part, Task, TaskState, TaskStatus, TextPart,
+        Artifact,
+        DataPart,
+        Message as A2AMessage,
+        Part,
+        Task,
+        TaskState,
+        TaskStatus,
+        TextPart,
     )
 
     monkeypatch.setattr(ap, "get_agent_url", lambda _n: "http://sleep:8001")
@@ -113,11 +126,13 @@ async def test_stream_peer_call_extracts_analysis_and_consulted_peers(monkeypatc
                 status=TaskStatus(state=TaskState.completed),
                 artifacts=[
                     Artifact(
-                        artifact_id="a1", name="analysis",
+                        artifact_id="a1",
+                        name="analysis",
                         parts=[Part(root=TextPart(text="You slept 7h."))],
                     ),
                     Artifact(
-                        artifact_id="a2", name="consulted_peers",
+                        artifact_id="a2",
+                        name="consulted_peers",
                         parts=[Part(root=DataPart(data={"peers": ["nutrition"]}))],
                     ),
                 ],

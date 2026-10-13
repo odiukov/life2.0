@@ -9,6 +9,7 @@ Embeddings come from Gemini `gemini-embedding-001` (768 dims, Matryoshka). Embed
 Qdrant failures are logged and swallowed — memory is best-effort; the Postgres
 `health_logs` table is source of truth.
 """
+
 from __future__ import annotations
 
 import hashlib

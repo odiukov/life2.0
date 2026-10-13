@@ -4,6 +4,7 @@
 raises ValueError on missing/malformed metadata. Every peer call must
 supply user_id (see shared/peer.py::call_peer).
 """
+
 from __future__ import annotations
 
 from uuid import UUID

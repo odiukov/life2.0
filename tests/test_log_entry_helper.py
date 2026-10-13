@@ -1,5 +1,6 @@
 """Test the make_log_entry_artifact helper produces the canonical shape
 that orchestrator's _extract_log_entry_from_task expects."""
+
 from datetime import datetime, timezone
 
 

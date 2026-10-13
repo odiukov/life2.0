@@ -33,6 +33,7 @@ Source naming convention (must be respected by all integrations):
   Sync-service paths       → 'apple_health'
   Aggregated rows          → 'HealthKit' (sleep_session / daily_stats)
 """
+
 from __future__ import annotations
 
 import logging
@@ -53,16 +54,28 @@ _ASLEEP_STAGES = {1, 3, 4, 5}  # not inBed, not awake
 # ---------------------------------------------------------------------------
 _SOURCE_PRIORITY: list[str] = [
     # Direct API integrations
-    "garmin", "oura", "whoop", "polar", "withings", "eight_sleep", "eight-sleep",
+    "garmin",
+    "oura",
+    "whoop",
+    "polar",
+    "withings",
+    "eight_sleep",
+    "eight-sleep",
     "yazio",
     # Dedicated device apps via HealthKit (most reliable hardware)
-    "Garmin Connect", "Oura", "WHOOP", "Polar Flow",
+    "Garmin Connect",
+    "Oura",
+    "WHOOP",
+    "Polar Flow",
     # Apple Watch (reliable wearable)
     "Fitness",
     # iPhone (pedometer only, lower accuracy)
-    "iPhone", "Health",
+    "iPhone",
+    "Health",
     # Generic / our own sync tags
-    "apple_health", "apple-health", "HealthKit",
+    "apple_health",
+    "apple-health",
+    "HealthKit",
 ]
 
 
@@ -131,6 +144,7 @@ _DAILY_LATEST_TYPES = (
 async def aggregate_for_user(user_id: UUID) -> dict:
     """Re-aggregate sleep + daily rows from raw HealthKit samples for user_id."""
     from shared.db import get_pool
+
     pool = await get_pool()
     counts = {"sleep_sessions": 0, "daily_stats": 0, "workouts": 0, "nutrition_days": 0}
     async with pool.acquire() as c:
@@ -167,9 +181,7 @@ async def _rollup_sleep(c, user_id: UUID) -> int:
     count = 0
     for night, samples in per_night.items():
         # Pick the best source for this night and use only its samples.
-        best_source = min(
-            {s["source"] or "HealthKit" for s in samples}, key=_source_rank
-        )
+        best_source = min({s["source"] or "HealthKit" for s in samples}, key=_source_rank)
         winning = [s for s in samples if (s["source"] or "HealthKit") == best_source]
 
         stages: dict[str, int] = defaultdict(int)
@@ -216,7 +228,9 @@ async def _rollup_sleep(c, user_id: UUID) -> int:
             ON CONFLICT (user_id, source, type, recorded_at) DO UPDATE
               SET data = EXCLUDED.data, agent = EXCLUDED.agent
             """,
-            user_id, night_midnight, agg_payload,
+            user_id,
+            night_midnight,
+            agg_payload,
         )
         count += 1
     return count
@@ -238,14 +252,15 @@ async def _rollup_daily(c, user_id: UUID) -> int:
         WHERE user_id = $1 AND type = ANY($2::text[])
         ORDER BY recorded_at
         """,
-        user_id, all_types,
+        user_id,
+        all_types,
     )
     if not rows:
         return 0
 
     # Structure: per_day[day][type][source] = list of (recorded_at, value)
-    per_day: dict[str, dict[str, dict[str, list[tuple[datetime, float]]]]] = (
-        defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    per_day: dict[str, dict[str, dict[str, list[tuple[datetime, float]]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
     )
 
     for r in rows:
@@ -309,7 +324,10 @@ async def _rollup_daily(c, user_id: UUID) -> int:
             ON CONFLICT (user_id, source, type, recorded_at) DO UPDATE
               SET data = EXCLUDED.data
             """,
-            user_id, day_midnight, payload, row_source,
+            user_id,
+            day_midnight,
+            payload,
+            row_source,
         )
         count += 1
     return count
@@ -325,6 +343,7 @@ def _night_of(dt: datetime) -> str:
     if dt.hour >= 18:
         return dt.date().isoformat()
     from datetime import timedelta
+
     return (dt - timedelta(days=1)).date().isoformat()
 
 
@@ -383,7 +402,10 @@ async def _rollup_workouts(c, user_id: UUID) -> int:
             ON CONFLICT (user_id, source, type, recorded_at) DO UPDATE
               SET data = EXCLUDED.data, agent = EXCLUDED.agent
             """,
-            user_id, r["recorded_at"], activity_data, src,
+            user_id,
+            r["recorded_at"],
+            activity_data,
+            src,
         )
         count += 1
     return count
@@ -412,7 +434,8 @@ async def _rollup_daily_nutrition(c, user_id: UUID) -> int:
           AND type = ANY($2::text[])
         ORDER BY recorded_at
         """,
-        user_id, list(_DIETARY_TO_MACRO.keys()),
+        user_id,
+        list(_DIETARY_TO_MACRO.keys()),
     )
     if not rows:
         return 0
@@ -443,7 +466,9 @@ async def _rollup_daily_nutrition(c, user_id: UUID) -> int:
             ON CONFLICT (user_id, source, type, recorded_at) DO UPDATE
               SET data = EXCLUDED.data
             """,
-            user_id, day_midnight, meal_data,
+            user_id,
+            day_midnight,
+            meal_data,
         )
         count += 1
     return count

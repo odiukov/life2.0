@@ -52,7 +52,9 @@ async def test_get_hydrates_task():
         "context_id": "ctx-1",
         "state": "completed",
         "skill_id": "analyze_sleep",
-        "artifacts": [{"artifact_id": "a-1", "name": "analysis", "parts": [{"type": "text", "text": "hi"}]}],
+        "artifacts": [
+            {"artifact_id": "a-1", "name": "analysis", "parts": [{"type": "text", "text": "hi"}]}
+        ],
         "history": [],
     }
     fake_pool = AsyncMock()

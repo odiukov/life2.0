@@ -1,4 +1,5 @@
 """Contract tests for orchestrator.app.mcp_tools.get_user_mcp_tools."""
+
 from __future__ import annotations
 
 import asyncio

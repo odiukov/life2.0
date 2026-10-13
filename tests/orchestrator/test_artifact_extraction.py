@@ -1,5 +1,6 @@
 # new contract: _call_agent_with_artifact returns 3-tuple (text, log_entry, consulted_peers)
 """_call_agent_with_artifact extracts text + log_entry from A2A Task artifacts."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -53,7 +54,9 @@ async def test_extracts_text_and_log_entry(get_client_mock, _url_mock):
     get_client_mock.return_value = _FakeClient(task)
     from orchestrator.app.health_agent import _call_agent_with_artifact
 
-    text, log_entry, consulted_peers = await _call_agent_with_artifact("workout", "30 min run", "log_workout")
+    text, log_entry, consulted_peers = await _call_agent_with_artifact(
+        "workout", "30 min run", "log_workout"
+    )
     assert text == "Logged: 30 min run"
     assert log_entry == {"summary": "30 min run", "timestamp": "2026-04-15T10:00:00+00:00"}
     assert consulted_peers is None
@@ -67,7 +70,9 @@ async def test_no_log_entry_when_absent(get_client_mock, _url_mock):
     get_client_mock.return_value = _FakeClient(task)
     from orchestrator.app.health_agent import _call_agent_with_artifact
 
-    text, log_entry, consulted_peers = await _call_agent_with_artifact("sleep", "how did I sleep?", "analyze_sleep")
+    text, log_entry, consulted_peers = await _call_agent_with_artifact(
+        "sleep", "how did I sleep?", "analyze_sleep"
+    )
     assert text == "analysis text"
     assert log_entry is None
     assert consulted_peers is None

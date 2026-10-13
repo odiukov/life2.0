@@ -8,6 +8,7 @@ are inserted as plain text — they are NOT escaped against containing
 {otherKey} sequences. Callers must sanitize user-controlled input if more
 than one param key is present.
 """
+
 from __future__ import annotations
 
 import json
@@ -15,6 +16,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
 
 def _find_locales() -> Path:
     override = os.environ.get("LIFE_I18N_LOCALES_DIR")

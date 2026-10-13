@@ -15,15 +15,18 @@ _job_tracer = _otel_trace.get_tracer("sync.scheduler")
 
 def traced_job(name: str):
     """Wrap an APScheduler-scheduled async function in a root span."""
+
     def deco(fn):
         async def wrapped(*a, **kw):
             with _job_tracer.start_as_current_span(f"sync.{name}") as span:
                 span.set_attribute("job.name", name)
                 set_span_user()
                 return await fn(*a, **kw)
+
         wrapped.__name__ = fn.__name__
         wrapped.__doc__ = fn.__doc__
         return wrapped
+
     return deco
 
 
@@ -47,9 +50,7 @@ def start_scheduler() -> None:
     )
 
     scheduler.start()
-    logger.info(
-        f"Scheduler started: daily sync at {local_hour:02d}:00 {local_tz}"
-    )
+    logger.info(f"Scheduler started: daily sync at {local_hour:02d}:00 {local_tz}")
 
 
 @traced_job("daily_sync")

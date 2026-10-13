@@ -24,7 +24,9 @@ async def do_sync(days: int = 7) -> dict:
 
     for user_id, creds in user_creds:
         token_in = await session.get_garmin_token(user_id)
-        raw, token_out = await fetch_all(days, email=creds["email"], password=creds["password"], token_in=token_in)
+        raw, token_out = await fetch_all(
+            days, email=creds["email"], password=creds["password"], token_in=token_in
+        )
         if token_out:
             await session.save_garmin_token(user_id, token_out)
 
@@ -99,7 +101,9 @@ async def do_nutrition_sync(days: int = 2) -> dict:
 
     for user_id, creds in user_creds:
         token_in = await session.get_yazio_token(user_id)
-        raw, token_out = await fetch_diary(days, email=creds["email"], password=creds["password"], token_in=token_in)
+        raw, token_out = await fetch_diary(
+            days, email=creds["email"], password=creds["password"], token_in=token_in
+        )
         await session.save_yazio_token(user_id, token_out)
 
         rows: list[dict] = []

@@ -2,6 +2,7 @@
 called as a peer (metadata.is_peer_call=True). Today this is masked because
 non-mandatory skills get an empty consult list, but a future addition to
 MANDATORY_CONSULTS would regress into depth-2 fan-out without this guard."""
+
 from __future__ import annotations
 
 import types
@@ -41,10 +42,16 @@ async def test_executor_skips_peer_fetch_when_is_peer_call_true(agent):
     valid_skills = list(skills_mod.SKILL_PROMPTS.keys())
     # Pick a peer-consuming analytical skill if present, else the first skill.
     skill_pref = [
-        "analyze_sleep", "analyze_workout", "analyze_nutrition",
-        "analyze_body_trend", "analyze_mood", "analyze_recovery_trend",
-        "get_recommendations", "get_workout_recommendations",
-        "get_nutrition_recommendations", "get_sleep_recommendations",
+        "analyze_sleep",
+        "analyze_workout",
+        "analyze_nutrition",
+        "analyze_body_trend",
+        "analyze_mood",
+        "analyze_recovery_trend",
+        "get_recommendations",
+        "get_workout_recommendations",
+        "get_nutrition_recommendations",
+        "get_sleep_recommendations",
         "get_mood_recommendations",
     ]
     skill_id = next((s for s in skill_pref if s in valid_skills), valid_skills[0])
@@ -74,20 +81,22 @@ async def test_executor_skips_peer_fetch_when_is_peer_call_true(agent):
     queue = MagicMock()
     queue.enqueue_event = AsyncMock()
 
-    with patch.object(mod, "_get_llm", return_value=fake_llm), \
-         patch.object(mod, "fetch_peer_artifacts", _spy_fetch), \
-         patch.object(mod, "user_id_from_message", _no_user), \
-         patch.object(mod, "insert_task_record", _no_op), \
-         patch.object(mod, "upsert_memory", _no_op):
+    with (
+        patch.object(mod, "_get_llm", return_value=fake_llm),
+        patch.object(mod, "fetch_peer_artifacts", _spy_fetch),
+        patch.object(mod, "user_id_from_message", _no_user),
+        patch.object(mod, "insert_task_record", _no_op),
+        patch.object(mod, "upsert_memory", _no_op),
+    ):
         # Also stub the prompt builder so it doesn't hit DB.
         async def _stub_prompt(message, params):
             return "stub prompt"
+
         with patch.dict(skills_mod.SKILL_PROMPTS, {skill_id: _stub_prompt}):
             executor_cls = next(
-                v for k, v in mod.__dict__.items()
-                if isinstance(v, type)
-                and k.endswith("AgentExecutor")
-                and k != "AgentExecutor"
+                v
+                for k, v in mod.__dict__.items()
+                if isinstance(v, type) and k.endswith("AgentExecutor") and k != "AgentExecutor"
             )
             executor = executor_cls()
             await executor.execute(ctx, queue)

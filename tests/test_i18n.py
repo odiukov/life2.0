@@ -1,4 +1,5 @@
 """Tests for shared.i18n — JSON bundle reader + interpolation."""
+
 from __future__ import annotations
 
 from shared.i18n import t, _interpolate

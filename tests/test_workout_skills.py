@@ -16,7 +16,11 @@ def test_agent_card_has_required_fields():
 def test_skill_prompts_covers_all_skills():
     from agents.workout.app.skills import SKILL_PROMPTS
 
-    assert set(SKILL_PROMPTS.keys()) == {"log_workout", "analyze_workout", "get_workout_recommendations"}
+    assert set(SKILL_PROMPTS.keys()) == {
+        "log_workout",
+        "analyze_workout",
+        "get_workout_recommendations",
+    }
 
 
 @pytest.mark.asyncio
@@ -27,5 +31,7 @@ async def test_analyze_workout_prompt_uses_message_and_params(monkeypatch):
         return f"STUB::{task}::{params.get('message', '')}"
 
     monkeypatch.setattr(skills, "build_workout_prompt", _mock_build)
-    prompt = await skills.SKILL_PROMPTS["analyze_workout"]("как тренировки", {"peer_artifacts": {"sleep": "ok"}})
+    prompt = await skills.SKILL_PROMPTS["analyze_workout"](
+        "как тренировки", {"peer_artifacts": {"sleep": "ok"}}
+    )
     assert prompt == "STUB::analyze_workout::как тренировки"

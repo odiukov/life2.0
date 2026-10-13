@@ -1,4 +1,5 @@
 """HabitsAgentExecutor — dispatches habit skills, computes streaks deterministically."""
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,8 @@ from shared.current_user import user_id_from_message
 from shared.intent import infer_skill_and_consults
 from shared.llm import build_llm
 from shared.peer import (
-    default_peer_registry, fetch_peer_artifacts,
+    default_peer_registry,
+    fetch_peer_artifacts,
     is_peer_call_from_metadata,
 )
 from shared.vector import upsert_memory
@@ -137,8 +139,12 @@ def _validate_define(parsed: dict) -> dict | None:
     else:
         target, unit = None, None
     return {
-        "name": name, "kind": kind, "cadence_type": cad_type,
-        "cadence_days": cad_days, "target_value": target, "unit": unit,
+        "name": name,
+        "kind": kind,
+        "cadence_type": cad_type,
+        "cadence_days": cad_days,
+        "target_value": target,
+        "unit": unit,
     }
 
 
@@ -242,8 +248,12 @@ class HabitsAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -284,8 +294,10 @@ class HabitsAgentExecutor(AgentExecutor):
                     name = params.get("name") or message
                     habit = await registry.find_by_name(user_id, name)
                 if habit is None:
-                    output = ("habit not found — `/habits` lists active ones, "
-                              "`/habit new ...` creates one")
+                    output = (
+                        "habit not found — `/habits` lists active ones, "
+                        "`/habit new ...` creates one"
+                    )
                 else:
                     value = params.get("value")
                     unit = params.get("unit") or habit.get("unit")
@@ -307,10 +319,15 @@ class HabitsAgentExecutor(AgentExecutor):
                     if note:
                         data["note"] = note
                     await insert_log(
-                        user_id, agent="habits", type_="habit",
-                        data=data, source=params.get("source", "manual"),
+                        user_id,
+                        agent="habits",
+                        type_="habit",
+                        data=data,
+                        source=params.get("source", "manual"),
                     )
-                    val_bit = f" ({data.get('value')}{data.get('unit','')})" if "value" in data else ""
+                    val_bit = (
+                        f" ({data.get('value')}{data.get('unit', '')})" if "value" in data else ""
+                    )
                     output = f"checked '{habit['name']}'{val_bit}"
                     await _emit_log_entry_artifact(event_queue, task_id, context_id, message)
 
@@ -346,19 +363,27 @@ class HabitsAgentExecutor(AgentExecutor):
                     output = "archived" if ok else "already archived"
                     if ok:
                         await _emit_log_entry_artifact(
-                            event_queue, task_id, context_id,
+                            event_queue,
+                            task_id,
+                            context_id,
                             f"Архивирована привычка: {resolved_name or habit_id}",
                         )
 
             try:
                 await insert_task_record(
-                    agent="habits", task_id=task_id, context_id=context_id,
-                    skill_id=skill_id, input_=params, output=output, state="completed",
+                    agent="habits",
+                    task_id=task_id,
+                    context_id=context_id,
+                    skill_id=skill_id,
+                    input_=params,
+                    output=output,
+                    state="completed",
                 )
             except Exception as e:
                 logger.warning("insert_task_record failed: %s", e)
             try:
-                await upsert_memory(user_id=user_id,
+                await upsert_memory(
+                    user_id=user_id,
                     agent_id="habits",
                     id_=str(uuid.uuid4()),
                     text=message if skill_id == "log_habit_check" else output,
@@ -379,8 +404,12 @@ class HabitsAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("habits executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
@@ -395,27 +424,44 @@ def _error_message(text: str) -> Message:
     )
 
 
-async def _emit_status(event_queue: EventQueue, task_id: str, context_id: str,
-                       state: TaskState, error: str | None = None, final: bool = False) -> None:
+async def _emit_status(
+    event_queue: EventQueue,
+    task_id: str,
+    context_id: str,
+    state: TaskState,
+    error: str | None = None,
+    final: bool = False,
+) -> None:
     status = TaskStatus(state=state)
     if error:
         status.message = _error_message(error)
-    await event_queue.enqueue_event(TaskStatusUpdateEvent(
-        task_id=task_id, context_id=context_id, status=status, final=final,
-    ))
+    await event_queue.enqueue_event(
+        TaskStatusUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            status=status,
+            final=final,
+        )
+    )
 
 
-async def _emit_artifact(event_queue: EventQueue, task_id: str, context_id: str,
-                         name: str, text: str) -> None:
+async def _emit_artifact(
+    event_queue: EventQueue, task_id: str, context_id: str, name: str, text: str
+) -> None:
     artifact = Artifact(
         artifact_id=str(uuid.uuid4()),
         name=name,
         parts=[Part(root=TextPart(text=text))],
     )
-    await event_queue.enqueue_event(TaskArtifactUpdateEvent(
-        task_id=task_id, context_id=context_id, artifact=artifact,
-        append=False, last_chunk=True,
-    ))
+    await event_queue.enqueue_event(
+        TaskArtifactUpdateEvent(
+            task_id=task_id,
+            context_id=context_id,
+            artifact=artifact,
+            append=False,
+            last_chunk=True,
+        )
+    )
 
 
 async def _emit_log_entry_artifact(

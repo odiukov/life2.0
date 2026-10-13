@@ -3,6 +3,7 @@
 Mounts the A2A SDK Starlette application at the root of a FastAPI app that
 keeps /health for compatibility with docker-compose healthchecks.
 """
+
 from shared.telemetry import init_telemetry, instrument_fastapi_app
 
 init_telemetry("agent-nutrition")

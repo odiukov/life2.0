@@ -1,12 +1,16 @@
 """Tests for medication agent skill declarations."""
+
 from agents.medication.app.skills import SKILLS, build_agent_card, SKILL_PROMPTS
 
 
 def test_5_skills_declared():
     ids = [s.id for s in SKILLS]
     assert ids == [
-        "define_medication", "log_medication", "list_active",
-        "analyze_adherence", "archive_medication",
+        "define_medication",
+        "log_medication",
+        "list_active",
+        "analyze_adherence",
+        "archive_medication",
     ]
 
 

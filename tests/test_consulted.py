@@ -1,6 +1,7 @@
 """consulted_peers artifact must always be emitted, even when the peer
 list is empty — frontend distinguishes 'no peers consulted' from
 'call dropped'."""
+
 import pytest
 
 pytestmark = pytest.mark.asyncio

@@ -10,6 +10,7 @@ Two modes, selected by `AUTH_MODE` env var:
     Used during local development before the Supabase project lands.
     Never enable in production.
 """
+
 from __future__ import annotations
 
 import json
@@ -130,10 +131,12 @@ async def _ensure_user_row(user_id: UUID) -> None:
     # Late import: `shared.db.get_pool` would trigger asyncpg init at module
     # load otherwise, and tests stub the env before it's imported.
     from shared.db import get_pool
+
     pool = await get_pool()
     async with pool.acquire() as c:
         await c.execute(
             "INSERT INTO public.users (id, name, timezone) "
             "VALUES ($1, $2, 'UTC') ON CONFLICT (id) DO NOTHING",
-            user_id, f"supabase:{str(user_id)[:8]}",
+            user_id,
+            f"supabase:{str(user_id)[:8]}",
         )

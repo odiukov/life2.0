@@ -41,12 +41,16 @@ async def test_define_happy_path_creates_row():
     fake_llm_json = (
         '{"name": "magnesium", "dose": "200mg", "schedule": "daily 21:00", "notes": null}'
     )
-    with patch("agents.medication.app.executor.user_id_from_message",
-               AsyncMock(return_value=UUID("00000000-0000-0000-0000-000000000001"))), \
-         patch("agents.medication.app.executor._get_llm") as get_llm, \
-         patch("agents.medication.app.executor.registry.create", AsyncMock(return_value="uuid-abc")), \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        patch(
+            "agents.medication.app.executor.user_id_from_message",
+            AsyncMock(return_value=UUID("00000000-0000-0000-0000-000000000001")),
+        ),
+        patch("agents.medication.app.executor._get_llm") as get_llm,
+        patch("agents.medication.app.executor.registry.create", AsyncMock(return_value="uuid-abc")),
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         llm = AsyncMock()
         llm.ainvoke = AsyncMock(return_value=type("R", (), {"content": fake_llm_json})())
         get_llm.return_value = llm
@@ -70,11 +74,15 @@ async def test_define_invalid_llm_response():
     from agents.medication.app.executor import MedicationAgentExecutor
     from uuid import UUID
 
-    with patch("agents.medication.app.executor.user_id_from_message",
-               AsyncMock(return_value=UUID("00000000-0000-0000-0000-000000000001"))), \
-         patch("agents.medication.app.executor._get_llm") as get_llm, \
-         patch("agents.medication.app.executor.insert_task_record", AsyncMock()), \
-         patch("agents.medication.app.executor.upsert_memory", AsyncMock()):
+    with (
+        patch(
+            "agents.medication.app.executor.user_id_from_message",
+            AsyncMock(return_value=UUID("00000000-0000-0000-0000-000000000001")),
+        ),
+        patch("agents.medication.app.executor._get_llm") as get_llm,
+        patch("agents.medication.app.executor.insert_task_record", AsyncMock()),
+        patch("agents.medication.app.executor.upsert_memory", AsyncMock()),
+    ):
         llm = AsyncMock()
         llm.ainvoke = AsyncMock(return_value=type("R", (), {"content": "not json"})())
         get_llm.return_value = llm

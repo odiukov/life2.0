@@ -2,6 +2,7 @@
 
 Currency is never converted — aggregations are keyed per-currency dicts.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal

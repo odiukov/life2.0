@@ -1,4 +1,5 @@
 """Nutrition-agent prompt builder."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -20,9 +21,7 @@ def _format_log(r: dict) -> str:
         meal_type = data.get("meal_type", "")
         totals = data.get("totals", {})
         items = data.get("items", [])
-        items_str = ", ".join(
-            f"{item['name']} {item['amount_g']}g" for item in items
-        )
+        items_str = ", ".join(f"{item['name']} {item['amount_g']}g" for item in items)
         kcal = round(totals.get("kcal", 0))
         protein = round(totals.get("protein_g", 0), 1)
         carbs = round(totals.get("carbs_g", 0), 1)
@@ -76,18 +75,21 @@ async def build_nutrition_prompt(
     is_today = target_date == datetime.now(timezone.utc).date()
     target_label = "Today" if is_today else f"Day ({target_date})"
     target_logs = [
-        r for r in nutrition_logs
+        r
+        for r in nutrition_logs
         if r["recorded_at"].date() == target_date and r.get("source") == "yazio"
     ]
     today_kcal = round(sum(r["data"].get("totals", {}).get("kcal", 0) for r in target_logs))
-    today_protein = round(sum(r["data"].get("totals", {}).get("protein_g", 0) for r in target_logs), 1)
+    today_protein = round(
+        sum(r["data"].get("totals", {}).get("protein_g", 0) for r in target_logs), 1
+    )
     today_carbs = round(sum(r["data"].get("totals", {}).get("carbs_g", 0) for r in target_logs), 1)
     today_fat = round(sum(r["data"].get("totals", {}).get("fat_g", 0) for r in target_logs), 1)
 
-    nutrition_text = "\n".join(_format_log(r) for r in nutrition_logs) or "No recent nutrition logs."
-    memories_text = "\n".join(
-        f"- {m.get('text', '')}" for m in memories
-    ) or "No relevant memories."
+    nutrition_text = (
+        "\n".join(_format_log(r) for r in nutrition_logs) or "No recent nutrition logs."
+    )
+    memories_text = "\n".join(f"- {m.get('text', '')}" for m in memories) or "No relevant memories."
 
     if body_rows:
         d = body_rows[0]["data"]
@@ -122,8 +124,11 @@ async def build_nutrition_prompt(
         if bmr:
             activity = (body_profile or {}).get("activity_level", "")
             multipliers = {
-                "sedentary": 1.2, "lightly_active": 1.375,
-                "moderately_active": 1.55, "very_active": 1.725, "extra_active": 1.9,
+                "sedentary": 1.2,
+                "lightly_active": 1.375,
+                "moderately_active": 1.55,
+                "very_active": 1.725,
+                "extra_active": 1.9,
             }
             multiplier = multipliers.get(activity, 1.375)
             calorie_goal = round(bmr * multiplier)

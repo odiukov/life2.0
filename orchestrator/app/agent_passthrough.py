@@ -1,6 +1,7 @@
 """Thin pass-through route: mobile slash tags hit `/agent/{name}/stream` to
 talk to a single peer directly. The orchestrator's LangGraph router never sees
 the message — we just relay text to the A2A peer and stream events back."""
+
 from __future__ import annotations
 
 import json
@@ -24,9 +25,7 @@ def _sse(event: dict) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
-async def stream_peer_call(
-    *, agent: str, message: str, user_id: str
-) -> AsyncIterator[dict]:
+async def stream_peer_call(*, agent: str, message: str, user_id: str) -> AsyncIterator[dict]:
     """Call the peer via A2A; yield normalized event dicts the route can wrap as SSE.
 
     Yields:
@@ -93,15 +92,23 @@ async def agent_stream(name: str, req: dict, user_id: UUID = Depends(current_use
         try:
             async for ev in stream_peer_call(agent=name, message=text, user_id=str(user_id)):
                 if ev["type"] == "text":
-                    yield _sse({"type": "TextMessageContent", "messageId": message_id, "delta": ev["delta"]})
+                    yield _sse(
+                        {
+                            "type": "TextMessageContent",
+                            "messageId": message_id,
+                            "delta": ev["delta"],
+                        }
+                    )
                 elif ev["type"] == "consulted":
                     yield _sse({"type": "AgentConsulted", "peers": ev["peers"]})
         except Exception as e:  # noqa: BLE001 — surface as text frame, never break the stream
-            yield _sse({
-                "type": "TextMessageContent",
-                "messageId": message_id,
-                "delta": f"Error: {e}",
-            })
+            yield _sse(
+                {
+                    "type": "TextMessageContent",
+                    "messageId": message_id,
+                    "delta": f"Error: {e}",
+                }
+            )
         yield _sse({"type": "TextMessageEnd", "messageId": message_id})
         yield _sse({"type": "RunFinished", "threadId": thread_id, "runId": run_id})
 

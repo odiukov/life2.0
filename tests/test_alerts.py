@@ -46,6 +46,7 @@ def test_alert_back_compat_explicit_message_still_works():
 
 def test_alert_rejects_when_neither_message_nor_key_given():
     import pytest
+
     with pytest.raises(ValueError, match="message"):
         Alert(rule_id="x", severity="warn", category="wellness")
 
@@ -57,7 +58,10 @@ def test_alert_title_auto_derived_when_empty():
 
 def test_alert_explicit_title_preserved():
     a = Alert(
-        rule_id="sleep.no_data.1d", severity="info", message="m",
-        category="wellness", title="Custom Title",
+        rule_id="sleep.no_data.1d",
+        severity="info",
+        message="m",
+        category="wellness",
+        title="Custom Title",
     )
     assert a.title == "Custom Title"

@@ -101,12 +101,14 @@ def map_body_composition(payload: dict[str, Any]) -> list[dict]:
     for day_key, metrics in by_date.items():
         if not metrics:
             continue
-        rows.append({
-            "agent": "workout",
-            "type": "body_composition",
-            "data": metrics,
-            "recorded_at": by_date_dt[day_key],
-            "source": "apple_health",
-        })
+        rows.append(
+            {
+                "agent": "workout",
+                "type": "body_composition",
+                "data": metrics,
+                "recorded_at": by_date_dt[day_key],
+                "source": "apple_health",
+            }
+        )
 
     return rows

@@ -1,4 +1,5 @@
 """sleep executor emits a log_entry artifact only for log_sleep skill."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,7 +47,13 @@ def _artifact_events(queue: _FakeEventQueue):
 
 
 @pytest.mark.asyncio
-@patch("agents.sleep.app.executor.SKILL_PROMPTS", {"log_sleep": AsyncMock(return_value="prompt"), "analyze_sleep": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.sleep.app.executor.SKILL_PROMPTS",
+    {
+        "log_sleep": AsyncMock(return_value="prompt"),
+        "analyze_sleep": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -86,7 +93,13 @@ async def test_log_sleep_emits_log_entry_artifact(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.sleep.app.executor.SKILL_PROMPTS", {"log_sleep": AsyncMock(return_value="prompt"), "analyze_sleep": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.sleep.app.executor.SKILL_PROMPTS",
+    {
+        "log_sleep": AsyncMock(return_value="prompt"),
+        "analyze_sleep": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))
@@ -104,7 +117,13 @@ async def test_analyze_sleep_does_not_emit_log_entry(mock_llm):
 
 
 @pytest.mark.asyncio
-@patch("agents.sleep.app.executor.SKILL_PROMPTS", {"log_sleep": AsyncMock(return_value="prompt"), "analyze_sleep": AsyncMock(return_value="prompt")})
+@patch(
+    "agents.sleep.app.executor.SKILL_PROMPTS",
+    {
+        "log_sleep": AsyncMock(return_value="prompt"),
+        "analyze_sleep": AsyncMock(return_value="prompt"),
+    },
+)
 @patch("agents.sleep.app.executor.insert_task_record", new=AsyncMock())
 @patch("agents.sleep.app.executor.upsert_memory", new=AsyncMock())
 @patch("agents.sleep.app.executor.fetch_peer_artifacts", new=AsyncMock(return_value={}))

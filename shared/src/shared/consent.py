@@ -7,6 +7,7 @@ The baggage value is copied into a span attribute by BaggageSnapshotProcessor.on
 because baggage is context-local — it doesn't survive the BatchSpanProcessor queue
 between span-start and span-export.
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,6 +26,7 @@ class BaggageSnapshotProcessor(SpanProcessor):
     Must be installed BEFORE the BatchSpanProcessor so every span carries the
     snapshot value by the time it's queued for export.
     """
+
     def on_start(self, span: Span, parent_context=None) -> None:
         val = baggage.get_baggage("telemetry.bodies_ok", parent_context)
         if val is not None:
@@ -98,9 +100,7 @@ class ConsentSpanExporter(SpanExporter):
             k: ("[REDACTED]" if any(k.startswith(p) for p in self.SENSITIVE_PREFIXES) else v)
             for k, v in attrs.items()
         }
-        redacted_events = tuple(
-            self._redact_event(e) for e in (span.events or ())
-        )
+        redacted_events = tuple(self._redact_event(e) for e in (span.events or ()))
         return ReadableSpan(
             name=span.name,
             context=span.context,
@@ -128,6 +128,7 @@ class ConsentSpanExporter(SpanExporter):
         if not ev_attrs:
             return event
         from opentelemetry.sdk.trace import Event
+
         redacted = {k: "[REDACTED]" for k in ev_attrs}
         return Event(name=name, attributes=redacted, timestamp=getattr(event, "timestamp", None))
 
@@ -151,7 +152,10 @@ def install_consent_pipeline() -> None:
 
     provider = trace.get_tracer_provider()
     if not isinstance(provider, TracerProvider):
-        log.warning("install_consent_pipeline: TracerProvider is not SDK type (got %s); skipping", type(provider).__name__)
+        log.warning(
+            "install_consent_pipeline: TracerProvider is not SDK type (got %s); skipping",
+            type(provider).__name__,
+        )
         return
 
     provider.add_span_processor(BaggageSnapshotProcessor())
@@ -169,6 +173,7 @@ def install_consent_pipeline() -> None:
         return
 
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     for sp in span_processors:
         if not isinstance(sp, BatchSpanProcessor):
             continue

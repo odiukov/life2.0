@@ -30,7 +30,12 @@ def test_map_body_rows_single_measurement():
     payload = {
         "data": [
             {"date": "2026-04-14 09:37:16 +0000", "qty": 79.6, "name": "Body Mass", "units": "kg"},
-            {"date": "2026-04-14 09:37:16 +0000", "qty": 26.5, "name": "Body Fat Percentage", "units": "%"},
+            {
+                "date": "2026-04-14 09:37:16 +0000",
+                "qty": 26.5,
+                "name": "Body Fat Percentage",
+                "units": "%",
+            },
         ]
     }
     rows = _map_body_rows(payload)
@@ -54,10 +59,12 @@ def test_map_body_rows_groups_by_day():
 
 
 def test_vihealth_summary_single():
-    rows = [{
-        "recorded_at": datetime(2026, 4, 14, 9, 37, tzinfo=timezone.utc),
-        "data": {"weight_kg": 79.6, "body_fat_pct": 26.5, "bmi": 27.5},
-    }]
+    rows = [
+        {
+            "recorded_at": datetime(2026, 4, 14, 9, 37, tzinfo=timezone.utc),
+            "data": {"weight_kg": 79.6, "body_fat_pct": 26.5, "bmi": 27.5},
+        }
+    ]
     summary = _vihealth_summary(rows, written=1, unchanged=0)
     assert "1 измерение" in summary
     assert "79.6" in summary
@@ -89,6 +96,7 @@ def test_classify_payoneer_single_keyword_is_unknown():
 @pytest.mark.asyncio
 async def test_insert_body_rows_empty_list_returns_zero():
     from orchestrator.app.db import insert_body_rows
+
     written, unchanged = await insert_body_rows([], None)
     assert written == 0
     assert unchanged == 0

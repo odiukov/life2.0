@@ -12,6 +12,7 @@ parse failure returns an empty list, closes any half-open sessions, and leaves
 the cache empty — keeps the orchestrator bootable even when an MCP server is
 down.
 """
+
 from __future__ import annotations
 
 import logging
@@ -188,7 +189,9 @@ async def _build_tools_for_user(user_id: UUID) -> list[BaseTool]:
         except Exception as e:
             logger.warning(
                 "per-user MCP server '%s' discovery failed (user=%s): %s",
-                server_name, user_id, e,
+                server_name,
+                user_id,
+                e,
             )
             continue
     key = str(user_id)

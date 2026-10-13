@@ -1,4 +1,5 @@
 """Unit tests for orchestrator.app.auth.verify_jwt + current_user."""
+
 from __future__ import annotations
 
 import pytest
@@ -26,12 +27,14 @@ USER_UUID = "11111111-1111-1111-1111-111111111111"
 
 def test_valid_returns_uuid():
     from orchestrator.app.auth import verify_jwt
+
     token = build(USER_UUID)
     assert verify_jwt(f"Bearer {token}") == UUID(USER_UUID)
 
 
 def test_expired_raises_401():
     from orchestrator.app.auth import verify_jwt
+
     token = build(USER_UUID, ttl=-60)
     with pytest.raises(HTTPException) as exc:
         verify_jwt(f"Bearer {token}")
@@ -41,6 +44,7 @@ def test_expired_raises_401():
 
 def test_wrong_audience_raises_401():
     from orchestrator.app.auth import verify_jwt
+
     token = build(USER_UUID, aud="wrong")
     with pytest.raises(HTTPException) as exc:
         verify_jwt(f"Bearer {token}")
@@ -49,6 +53,7 @@ def test_wrong_audience_raises_401():
 
 def test_wrong_issuer_raises_401():
     from orchestrator.app.auth import verify_jwt
+
     token = build(USER_UUID, iss="https://evil.example.com/auth/v1")
     with pytest.raises(HTTPException) as exc:
         verify_jwt(f"Bearer {token}")
@@ -57,6 +62,7 @@ def test_wrong_issuer_raises_401():
 
 def test_missing_bearer_prefix_raises_401():
     from orchestrator.app.auth import verify_jwt
+
     token = build(USER_UUID)
     with pytest.raises(HTTPException) as exc:
         verify_jwt(token)  # no "Bearer " prefix
@@ -66,6 +72,7 @@ def test_missing_bearer_prefix_raises_401():
 @pytest.mark.asyncio
 async def test_current_user_dev_mode_reads_x_user_id(monkeypatch):
     from orchestrator.app import auth
+
     monkeypatch.setattr(auth, "AUTH_MODE", "dev")
     got = await auth.current_user(authorization=None, x_user_id=USER_UUID)
     assert got == UUID(USER_UUID)
@@ -74,6 +81,7 @@ async def test_current_user_dev_mode_reads_x_user_id(monkeypatch):
 @pytest.mark.asyncio
 async def test_current_user_dev_mode_rejects_missing_header(monkeypatch):
     from orchestrator.app import auth
+
     monkeypatch.setattr(auth, "AUTH_MODE", "dev")
     with pytest.raises(HTTPException) as exc:
         await auth.current_user(authorization=None, x_user_id=None)
@@ -83,6 +91,7 @@ async def test_current_user_dev_mode_rejects_missing_header(monkeypatch):
 @pytest.mark.asyncio
 async def test_current_user_dev_mode_rejects_non_uuid(monkeypatch):
     from orchestrator.app import auth
+
     monkeypatch.setattr(auth, "AUTH_MODE", "dev")
     with pytest.raises(HTTPException) as exc:
         await auth.current_user(authorization=None, x_user_id="not-a-uuid")

@@ -10,6 +10,7 @@ which returns None when the user has not connected (or the refresh token was
 revoked). That case raises `CalendarNotConnected` so callers can tell "reconnect
 Google Calendar" apart from "Google returned an error".
 """
+
 from __future__ import annotations
 
 import logging
@@ -125,9 +126,7 @@ async def create_event(
         body["description"] = description
     if attendees:
         body["attendees"] = [{"email": email} for email in attendees]
-    result = await _request(
-        user_id, "POST", _events_path(calendar_id), json_body=body
-    )
+    result = await _request(user_id, "POST", _events_path(calendar_id), json_body=body)
     return result if isinstance(result, dict) else {}
 
 

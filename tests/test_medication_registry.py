@@ -5,7 +5,11 @@ import asyncpg
 from tests.conftest import TEST_USER_ID, ensure_test_user
 
 from agents.medication.app.registry import (
-    create, list_active, find_by_name, archive, normalize_name,
+    create,
+    list_active,
+    find_by_name,
+    archive,
+    normalize_name,
 )
 
 
@@ -26,6 +30,7 @@ async def _cleanup():
         yield
         return
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None

@@ -5,18 +5,18 @@ import re
 
 def _get_system_prompt():
     """Extract _SYSTEM_PROMPT from source to avoid import issues."""
-    with open('orchestrator/app/health_agent.py', 'r') as f:
+    with open("orchestrator/app/health_agent.py", "r") as f:
         content = f.read()
     # Match the full _SYSTEM_PROMPT tuple definition
-    match = re.search(r'_SYSTEM_PROMPT = \(([\s\S]*?)\)\s*\n\s*\ndef ', content)
+    match = re.search(r"_SYSTEM_PROMPT = \(([\s\S]*?)\)\s*\n\s*\ndef ", content)
     if not match:
         raise ValueError("Could not find _SYSTEM_PROMPT definition")
     prompt_content = match.group(1)
     # Extract string literals and concatenate them
     string_literals = re.findall(r'"((?:\\.|[^"\\])*)"', prompt_content)
-    prompt = ''.join(string_literals)
+    prompt = "".join(string_literals)
     # Process escape sequences
-    prompt = prompt.replace('\\n', '\n')
+    prompt = prompt.replace("\\n", "\n")
     return prompt
 
 
@@ -25,7 +25,16 @@ def test_system_prompt_mentions_six_peer_agents():
     # body, mood, habits, recovery, medication) per persona/isolation refactor
     prompt = _get_system_prompt()
     assert "eight" in prompt.lower() or "8" in prompt
-    for agent in ("sleep", "workout", "nutrition", "body", "mood", "habits", "recovery", "medication"):
+    for agent in (
+        "sleep",
+        "workout",
+        "nutrition",
+        "body",
+        "mood",
+        "habits",
+        "recovery",
+        "medication",
+    ):
         assert agent in prompt, f"Agent '{agent}' not found in system prompt"
 
 
@@ -40,8 +49,9 @@ def test_system_prompt_mentions_calendar_tools():
     prompt = _get_system_prompt()
     lower = prompt.lower()
     assert "calendar" in lower, "Calendar not mentioned in system prompt"
-    assert any(kw in lower for kw in ("list events", "what's on", "find free", "when am i free")), \
+    assert any(kw in lower for kw in ("list events", "what's on", "find free", "when am i free")), (
         "Calendar routing intents not found"
+    )
 
 
 def test_system_prompt_has_destructive_ops_safety_clause():
@@ -50,5 +60,6 @@ def test_system_prompt_has_destructive_ops_safety_clause():
     lower = prompt.lower()
     destructive = sum(verb in lower for verb in ("create", "update", "delete"))
     assert destructive >= 2, f"Not enough destructive operations mentioned (found {destructive})"
-    assert any(kw in lower for kw in ("confirm", "paraphrase", "ask before")), \
+    assert any(kw in lower for kw in ("confirm", "paraphrase", "ask before")), (
         "Safety clause confirmation keywords not found"
+    )

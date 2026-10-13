@@ -7,6 +7,7 @@ Inserted only when the prompt contains non-empty peer_artifacts. Empty
 peer_artifacts → omit, so the LLM doesn't manufacture chips for sections
 that aren't there.
 """
+
 from __future__ import annotations
 
 

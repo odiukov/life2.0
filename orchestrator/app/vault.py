@@ -10,6 +10,7 @@ Dual-backend to support cloud-first prod and docker-postgres dev:
 The schema CHECK constraint enforces exactly-one-of (secret_id, payload_dev),
 so every insert must go through one backend cleanly.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,20 +29,21 @@ async def put(user_id: UUID, service: str, payload: dict) -> None:
     async with pool.acquire() as c:
         async with c.transaction():
             prior = await c.fetchrow(
-                "SELECT secret_id FROM integrations_credentials "
-                "WHERE user_id=$1 AND service=$2",
-                user_id, service,
+                "SELECT secret_id FROM integrations_credentials WHERE user_id=$1 AND service=$2",
+                user_id,
+                service,
             )
             if prior is not None:
                 if prior["secret_id"] is not None:
                     # Delete the encrypted secret in the vault too
                     await c.execute(
-                        "SELECT vault.delete_secret($1)", prior["secret_id"],
+                        "SELECT vault.delete_secret($1)",
+                        prior["secret_id"],
                     )
                 await c.execute(
-                    "DELETE FROM integrations_credentials "
-                    "WHERE user_id=$1 AND service=$2",
-                    user_id, service,
+                    "DELETE FROM integrations_credentials WHERE user_id=$1 AND service=$2",
+                    user_id,
+                    service,
                 )
             if VAULT_BACKEND == "supabase":
                 payload_str = json.dumps(payload)
@@ -54,13 +56,17 @@ async def put(user_id: UUID, service: str, payload: dict) -> None:
                 await c.execute(
                     "INSERT INTO integrations_credentials "
                     "(user_id, service, secret_id) VALUES ($1, $2, $3)",
-                    user_id, service, secret_id,
+                    user_id,
+                    service,
+                    secret_id,
                 )
             else:
                 await c.execute(
                     "INSERT INTO integrations_credentials "
                     "(user_id, service, payload_dev) VALUES ($1, $2, $3)",
-                    user_id, service, payload,
+                    user_id,
+                    service,
+                    payload,
                 )
 
 
@@ -71,7 +77,8 @@ async def get(user_id: UUID, service: str) -> dict | None:
         row = await c.fetchrow(
             "SELECT secret_id, payload_dev FROM integrations_credentials "
             "WHERE user_id=$1 AND service=$2",
-            user_id, service,
+            user_id,
+            service,
         )
         if row is None:
             return None
@@ -79,7 +86,8 @@ async def get(user_id: UUID, service: str) -> dict | None:
         await c.execute(
             "UPDATE integrations_credentials SET last_used_at=now() "
             "WHERE user_id=$1 AND service=$2",
-            user_id, service,
+            user_id,
+            service,
         )
         if row["payload_dev"] is not None:
             val: Any = row["payload_dev"]
@@ -100,16 +108,16 @@ async def delete(user_id: UUID, service: str) -> None:
     async with pool.acquire() as c:
         async with c.transaction():
             row = await c.fetchrow(
-                "SELECT secret_id FROM integrations_credentials "
-                "WHERE user_id=$1 AND service=$2",
-                user_id, service,
+                "SELECT secret_id FROM integrations_credentials WHERE user_id=$1 AND service=$2",
+                user_id,
+                service,
             )
             if row is None:
                 return
             if row["secret_id"] is not None:
                 await c.execute("SELECT vault.delete_secret($1)", row["secret_id"])
             await c.execute(
-                "DELETE FROM integrations_credentials "
-                "WHERE user_id=$1 AND service=$2",
-                user_id, service,
+                "DELETE FROM integrations_credentials WHERE user_id=$1 AND service=$2",
+                user_id,
+                service,
             )

@@ -3,6 +3,7 @@
 `ingest_rows` and `categorize_new` hit the DB (integration, skipped without
 POSTGRES_DSN). `build_upload_summary` is pure and runs unconditionally.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,15 +25,20 @@ def _has_db() -> bool:
 
 # ---------- build_upload_summary: pure ---------------------------------------
 
+
 def test_build_upload_summary_happy_path():
     from orchestrator.app.finance_ingest import build_upload_summary
+
     s = build_upload_summary(
-        inserted=12, skipped=3,
+        inserted=12,
+        skipped=3,
         income_by_currency={"USD": Decimal("2500.00"), "EUR": Decimal("300.00")},
         spending_by_currency={"USD": Decimal("1820.00")},
-        top_categories=[("software", Decimal("420.00"), "USD"),
-                        ("food", Decimal("340.00"), "USD"),
-                        ("subscriptions", Decimal("290.00"), "USD")],
+        top_categories=[
+            ("software", Decimal("420.00"), "USD"),
+            ("food", Decimal("340.00"), "USD"),
+            ("subscriptions", Decimal("290.00"), "USD"),
+        ],
     )
     assert "12 новых" in s and "3 пропущено" in s
     assert "+$2 500.00 USD" in s or "+$2500.00 USD" in s or "2500" in s
@@ -42,9 +48,13 @@ def test_build_upload_summary_happy_path():
 
 def test_build_upload_summary_zero_new():
     from orchestrator.app.finance_ingest import build_upload_summary
+
     s = build_upload_summary(
-        inserted=0, skipped=0,
-        income_by_currency={}, spending_by_currency={}, top_categories=[],
+        inserted=0,
+        skipped=0,
+        income_by_currency={},
+        spending_by_currency={},
+        top_categories=[],
     )
     assert "0 новых" in s
 
@@ -56,15 +66,21 @@ pytestmark = pytest.mark.asyncio  # async tests below
 
 async def _seed_row(txn_id: str, description: str):
     from shared.db import upsert_finance_rows
-    await upsert_finance_rows(_TEST_USER_ID, [{
-        "txn_id": txn_id,
-        "ts": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
-        "direction": "OUT",
-        "amount": Decimal("10.00"),
-        "currency": "USD",
-        "description": description,
-        "raw": {},
-    }])
+
+    await upsert_finance_rows(
+        _TEST_USER_ID,
+        [
+            {
+                "txn_id": txn_id,
+                "ts": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+                "direction": "OUT",
+                "amount": Decimal("10.00"),
+                "currency": "USD",
+                "description": description,
+                "raw": {},
+            }
+        ],
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -73,16 +89,19 @@ async def _cleanup():
         yield
         return
     import shared.db as _sdb
+
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         # Seed test user
         await conn.execute(
             "INSERT INTO public.users (id, name, timezone) VALUES ($1, $2, 'UTC') ON CONFLICT DO NOTHING",
-            _TEST_USER_ID, "test-finance-ingest",
+            _TEST_USER_ID,
+            "test-finance-ingest",
         )
         await conn.execute(
             "DELETE FROM finance_transactions WHERE user_id = $1 AND txn_id LIKE 'INGEST_%'",
@@ -135,11 +154,13 @@ async def test_categorize_new_uses_cache_hit():
     fake.ainvoke.assert_not_awaited()
 
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         row = await conn.fetchrow(
             "SELECT category FROM finance_transactions WHERE user_id = $1 AND txn_id = $2",
-            _TEST_USER_ID, "INGEST_1",
+            _TEST_USER_ID,
+            "INGEST_1",
         )
     finally:
         await conn.close()
@@ -161,15 +182,18 @@ async def test_categorize_new_invokes_llm_on_miss():
     fake.ainvoke.assert_awaited()
 
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         row = await conn.fetchrow(
             "SELECT category FROM finance_transactions WHERE user_id = $1 AND txn_id = $2",
-            _TEST_USER_ID, "INGEST_2",
+            _TEST_USER_ID,
+            "INGEST_2",
         )
         cache = await conn.fetchrow(
             "SELECT category FROM finance_category_cache WHERE user_id = $1 AND desc_key = $2",
-            _TEST_USER_ID, key,
+            _TEST_USER_ID,
+            key,
         )
     finally:
         await conn.close()
@@ -190,11 +214,13 @@ async def test_categorize_new_llm_failure_leaves_null():
         await categorize_new(_TEST_USER_ID, ["INGEST_3"])  # must not raise
 
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         row = await conn.fetchrow(
             "SELECT category FROM finance_transactions WHERE user_id = $1 AND txn_id = $2",
-            _TEST_USER_ID, "INGEST_3",
+            _TEST_USER_ID,
+            "INGEST_3",
         )
     finally:
         await conn.close()
@@ -214,11 +240,13 @@ async def test_categorize_new_invalid_json_leaves_null():
         await categorize_new(_TEST_USER_ID, ["INGEST_4"])  # must not raise
 
     import asyncpg
+
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
         row = await conn.fetchrow(
             "SELECT category FROM finance_transactions WHERE user_id = $1 AND txn_id = $2",
-            _TEST_USER_ID, "INGEST_4",
+            _TEST_USER_ID,
+            "INGEST_4",
         )
     finally:
         await conn.close()
@@ -227,14 +255,22 @@ async def test_categorize_new_invalid_json_leaves_null():
 
 # ---------- ingest_rows --------------------------------------------------------
 
+
 async def test_ingest_rows_returns_inserted_and_uncategorized():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     from orchestrator.app.finance_ingest import ingest_rows
+
     rows = [
-        {"txn_id": "INGEST_A", "ts": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
-         "direction": "IN", "amount": Decimal("10"), "currency": "USD",
-         "description": "x", "raw": {}},
+        {
+            "txn_id": "INGEST_A",
+            "ts": datetime(2026, 4, 1, 9, 0, tzinfo=timezone.utc),
+            "direction": "IN",
+            "amount": Decimal("10"),
+            "currency": "USD",
+            "description": "x",
+            "raw": {},
+        },
     ]
     result = await ingest_rows(_TEST_USER_ID, rows)
     assert result["inserted"] == 1

@@ -1,11 +1,14 @@
 """User-scoping isolation test for shared.db."""
+
 import pytest
 import shared.db as _sdb
 from uuid import UUID
 from datetime import datetime, timezone
 from shared.db import (
-    insert_health_log, fetch_health_logs,
-    init_db_pool, close_db_pool,
+    insert_health_log,
+    fetch_health_logs,
+    init_db_pool,
+    close_db_pool,
 )
 
 USER_A = UUID("11111111-1111-1111-1111-111111111111")
@@ -24,7 +27,8 @@ async def _pool_and_seed_users():
         for uid in (USER_A, USER_B):
             await c.execute(
                 "INSERT INTO public.users (id, name, timezone) VALUES ($1, $2, 'UTC') ON CONFLICT DO NOTHING",
-                uid, f"test-{str(uid)[:8]}",
+                uid,
+                f"test-{str(uid)[:8]}",
             )
     yield
     async with _sdb._pool.acquire() as c:

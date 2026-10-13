@@ -10,6 +10,7 @@ Paths live under `/integrations/{service}/...`. All require auth via
 Google Calendar lives in a separate router (Task 16) because its
 OAuth-start/callback flow differs.
 """
+
 from __future__ import annotations
 
 import hmac
@@ -56,12 +57,11 @@ async def _validate_via_sync_service(service: str, email: str, password: str) ->
     status = r.status_code if r.status_code in (401, 502) else 502
     raise HTTPException(status_code=status, detail=detail)
 
+
 # HMAC key for OAuth state CSRF protection. Reuses SUPABASE_JWT_SECRET when
 # available; falls back to a dev-only fallback string so local tests run
 # without a Supabase project.
-_STATE_SECRET = os.environ.get(
-    "SUPABASE_JWT_SECRET", "dev-state-secret-replace-in-prod"
-).encode()
+_STATE_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "dev-state-secret-replace-in-prod").encode()
 
 
 def _sign_state(user_id: UUID, nonce: UUID) -> str:
@@ -76,9 +76,9 @@ def _parse_state(user_id: UUID, state: str) -> UUID:
         nonce = UUID(nonce_s)
     except ValueError:
         raise HTTPException(status_code=400, detail="malformed state")
-    expected = hmac.new(
-        _STATE_SECRET, f"{user_id}:{nonce}".encode(), hashlib.sha256
-    ).hexdigest()[:16]
+    expected = hmac.new(_STATE_SECRET, f"{user_id}:{nonce}".encode(), hashlib.sha256).hexdigest()[
+        :16
+    ]
     if not hmac.compare_digest(sig, expected):
         raise HTTPException(status_code=400, detail="bad state signature")
     return nonce
@@ -100,6 +100,7 @@ class GarminPayload(BaseModel):
 
 
 # -------- Home Assistant --------
+
 
 @router.post("/ha/connect")
 async def ha_connect(p: HAPayload, user_id: UUID = Depends(current_user)):
@@ -135,6 +136,7 @@ async def ha_disconnect(user_id: UUID = Depends(current_user)):
 
 # -------- Yazio (opt-in BYOC) --------
 
+
 @router.post("/yazio/connect")
 async def yazio_connect(p: YazioPayload, user_id: UUID = Depends(current_user)):
     await _validate_via_sync_service("yazio", p.email, p.password)
@@ -150,6 +152,7 @@ async def yazio_disconnect(user_id: UUID = Depends(current_user)):
 
 # -------- Garmin Connect (BYOC) --------
 
+
 @router.post("/garmin/connect")
 async def garmin_connect(p: GarminPayload, user_id: UUID = Depends(current_user)):
     await _validate_via_sync_service("garmin", p.email, p.password)
@@ -164,6 +167,7 @@ async def garmin_disconnect(user_id: UUID = Depends(current_user)):
 
 
 # -------- Google Calendar (OAuth) --------
+
 
 class GCalCallback(BaseModel):
     code: str
@@ -185,7 +189,9 @@ async def gcal_start(user_id: UUID = Depends(current_user)):
         await c.execute(
             "INSERT INTO oauth_state (nonce, user_id, service, code_verifier) "
             "VALUES ($1, $2, 'google_calendar', $3)",
-            nonce, user_id, code_verifier,
+            nonce,
+            user_id,
+            code_verifier,
         )
     return {"auth_url": google_calendar.build_auth_url(state, code_challenge), "state": state}
 
@@ -199,7 +205,8 @@ async def gcal_callback(p: GCalCallback, user_id: UUID = Depends(current_user)):
             "UPDATE oauth_state SET used_at=now() "
             "WHERE nonce=$1 AND user_id=$2 AND used_at IS NULL "
             "RETURNING code_verifier",
-            nonce, user_id,
+            nonce,
+            user_id,
         )
         if row is None:
             raise HTTPException(status_code=400, detail="state already used or unknown")

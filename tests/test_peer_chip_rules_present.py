@@ -1,6 +1,7 @@
 """PEER_CHIP_RULES must appear in any prompt that received non-empty peer
 artifacts, and must NOT appear when peer_artifacts is empty/None — otherwise
 the LLM gets instructions to drop chips for sections that don't exist."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -8,7 +9,8 @@ from unittest.mock import patch
 import pytest
 
 from tests.test_persona_present import (  # type: ignore[import-not-found]
-    ANALYTICAL_TASKS, _common_patches,
+    ANALYTICAL_TASKS,
+    _common_patches,
 )
 
 
@@ -53,8 +55,10 @@ async def test_peer_chip_rules_present_when_artifacts_present(agent, task):
         p.start()
     try:
         if agent == "recovery":
+
             async def _metrics(*_a, **_k):
                 return {"2026-05-01": {"hrv": 50, "rhr": 60}}
+
             with patch.object(prompt_mod, "fetch_recovery_metrics", _metrics):
                 text = await builder(
                     task,
@@ -73,8 +77,10 @@ async def test_peer_chip_rules_present_when_artifacts_present(agent, task):
                 # `(skill_id, params)` signature) — pass artifacts via params.
                 text = await builder(
                     task,
-                    {"user_id": "00000000-0000-0000-0000-000000000001",
-                     "peer_artifacts": _stub_peer(agent)},
+                    {
+                        "user_id": "00000000-0000-0000-0000-000000000001",
+                        "peer_artifacts": _stub_peer(agent),
+                    },
                 )
     finally:
         for p in patches:
@@ -95,8 +101,10 @@ async def test_peer_chip_rules_absent_when_no_artifacts(agent, task):
         p.start()
     try:
         if agent == "recovery":
+
             async def _metrics(*_a, **_k):
                 return {"2026-05-01": {"hrv": 50, "rhr": 60}}
+
             with patch.object(prompt_mod, "fetch_recovery_metrics", _metrics):
                 text = await builder(
                     task,

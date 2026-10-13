@@ -1,4 +1,5 @@
 """Tests for shared.peer — A2A ClientFactory-based peer consultation."""
+
 from __future__ import annotations
 
 import pytest
@@ -32,6 +33,7 @@ def _task_with_text(text: str) -> Task:
 
 def _make_client_yielding(items):
     """Build a mock client whose send_message returns an async generator."""
+
     async def _send_message(message):
         for it in items:
             yield it

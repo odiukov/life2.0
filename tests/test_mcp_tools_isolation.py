@@ -4,6 +4,7 @@ The loader used to wrap the whole multi-server loop in one try/except — any
 single server failing poisoned the entire discovery pass (all-or-nothing).
 Now a failure in server A must not prevent server B's tools from loading.
 """
+
 from contextlib import asynccontextmanager
 
 import pytest
@@ -37,6 +38,7 @@ def _two_servers() -> dict[str, dict]:
 async def test_one_server_failure_does_not_block_others(monkeypatch):
     """If server A raises while opening a session, server B's tools still load."""
     from orchestrator.app import mcp_tools
+
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)
 
@@ -70,11 +72,13 @@ async def test_one_server_failure_does_not_block_others(monkeypatch):
 async def test_all_servers_fail_returns_empty_list(monkeypatch):
     """If every server fails, the loader still returns [] — no exception leaks."""
     from orchestrator.app import mcp_tools
+
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)
 
     class FakeClient:
-        def __init__(self, servers): pass
+        def __init__(self, servers):
+            pass
 
         def session(self, _name):
             return _raising_session()
@@ -92,11 +96,13 @@ async def test_all_servers_fail_returns_empty_list(monkeypatch):
 async def test_load_tools_failure_isolated_per_server(monkeypatch):
     """If _adapter_load_tools raises for one server, others still load."""
     from orchestrator.app import mcp_tools
+
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)
 
     class FakeClient:
-        def __init__(self, servers): pass
+        def __init__(self, servers):
+            pass
 
         def session(self, _name):
             return _ok_session()

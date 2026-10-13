@@ -27,5 +27,7 @@ async def test_analyze_sleep_prompt_uses_message_and_params(monkeypatch):
         return f"STUB::{task}::{params.get('message', '')}"
 
     monkeypatch.setattr(skills, "build_sleep_prompt", _mock_build)
-    prompt = await skills.SKILL_PROMPTS["analyze_sleep"]("как спалось", {"peer_artifacts": {"workout": "ok"}})
+    prompt = await skills.SKILL_PROMPTS["analyze_sleep"](
+        "как спалось", {"peer_artifacts": {"workout": "ok"}}
+    )
     assert prompt == "STUB::analyze_sleep::как спалось"

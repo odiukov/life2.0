@@ -3,6 +3,7 @@
 The keypair is generated once per test session in memory — nothing is written
 to disk and no private key material lives in the repository.
 """
+
 from __future__ import annotations
 
 import json

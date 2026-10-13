@@ -5,6 +5,7 @@ with a single source of truth.
 Imported by every prompt builder. Tests assert that any LLM-driven prompt
 contains GROUNDING_RULES verbatim — see tests/test_grounding_rules_present.py.
 """
+
 from __future__ import annotations
 
 

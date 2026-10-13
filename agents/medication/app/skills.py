@@ -1,4 +1,5 @@
 """Medication agent skill declarations + per-skill prompt builders."""
+
 from __future__ import annotations
 
 import os
@@ -44,9 +45,7 @@ SKILLS: list[AgentSkill] = [
     AgentSkill(
         id=Medication.LIST,
         name="List Active Medications",
-        description=(
-            "Deterministic list of active medications with last-taken recency."
-        ),
+        description=("Deterministic list of active medications with last-taken recency."),
         tags=["medication", "list"],
         examples=["/med list", "what am I currently taking"],
     ),

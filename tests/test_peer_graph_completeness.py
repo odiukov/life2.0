@@ -1,13 +1,20 @@
 """Verify each agent's PEER_SKILLS map declares the cross-domain graph
 defined in 2026-05-01-agent-personas-and-isolation-design.md §1, and that
 every peer + skill name is real."""
+
 from __future__ import annotations
 
 import pytest
 
 VALID_AGENTS = {
-    "sleep", "workout", "nutrition", "body",
-    "mood", "habits", "recovery", "medication",
+    "sleep",
+    "workout",
+    "nutrition",
+    "body",
+    "mood",
+    "habits",
+    "recovery",
+    "medication",
 }
 
 # Source of truth: spec §1.
@@ -27,8 +34,9 @@ EXPECTED_PEERS: dict[str, set[str]] = {
 def test_peer_skills_matches_design(agent):
     mod = __import__(f"agents.{agent}.app.skills", fromlist=["PEER_SKILLS"])
     peer_skills = getattr(mod, "PEER_SKILLS")
-    assert set(peer_skills.keys()) == EXPECTED_PEERS[agent], \
+    assert set(peer_skills.keys()) == EXPECTED_PEERS[agent], (
         f"{agent}: PEER_SKILLS keys differ from spec"
+    )
 
 
 @pytest.mark.parametrize("agent", sorted(EXPECTED_PEERS.keys()))
@@ -47,5 +55,6 @@ def test_peer_skills_target_real_skill_ids(agent):
     for peer, skill_id in peer_skills.items():
         peer_mod = __import__(f"agents.{peer}.app.skills", fromlist=["SKILLS"])
         peer_skill_ids = {s.id for s in getattr(peer_mod, "SKILLS")}
-        assert skill_id in peer_skill_ids, \
+        assert skill_id in peer_skill_ids, (
             f"{agent} → {peer}.{skill_id} but peer doesn't declare it"
+        )

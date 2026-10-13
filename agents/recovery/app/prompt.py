@@ -1,4 +1,5 @@
 """Prompt builders for the 3 recovery agent skills."""
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -24,7 +25,7 @@ def _format_day(date_key: str, metrics: dict) -> str:
     if metrics.get("stress") is not None:
         bits.append(f"stress={metrics['stress']}")
     if metrics.get("bb_max") is not None:
-        bb_min_str = str(metrics['bb_min']) if metrics.get('bb_min') is not None else "?"
+        bb_min_str = str(metrics["bb_min"]) if metrics.get("bb_min") is not None else "?"
         bits.append(f"body_battery={bb_min_str}/{metrics['bb_max']}")
     if metrics.get("sleep_score") is not None:
         bits.append(f"sleep_score={metrics['sleep_score']}")
@@ -59,9 +60,7 @@ async def build_recovery_prompt(
     bucket = compute_bucket(current, baseline)
 
     # Format recent days for the prompt context.
-    history_lines = "\n".join(
-        _format_day(k, metrics[k]) for k in sorted_keys[:7]
-    )
+    history_lines = "\n".join(_format_day(k, metrics[k]) for k in sorted_keys[:7])
 
     snapshot = (
         f"Bucket: {bucket}\n"
@@ -100,8 +99,7 @@ async def build_recovery_prompt(
         return base + (
             "\nState the bucket directly, then give one sentence per moved "
             "metric (HRV, RHR, stress, body battery) with its direction and "
-            "magnitude grounded in the data. 3–5 lines plain text.\n\n"
-            + GROUNDING_RULES
+            "magnitude grounded in the data. 3–5 lines plain text.\n\n" + GROUNDING_RULES
         )
 
     if task == "analyze_recovery_trend":
@@ -116,8 +114,7 @@ async def build_recovery_prompt(
         return base + (
             "\n4–6 lines plain text with 2–3 concrete recovery-domain actions "
             "+ the 'why' grounded in the bucket and recent metrics. Redirect "
-            "training prescriptions to /workout. No markdown.\n\n"
-            + GROUNDING_RULES
+            "training prescriptions to /workout. No markdown.\n\n" + GROUNDING_RULES
         )
 
     return base + "\n\n" + GROUNDING_RULES

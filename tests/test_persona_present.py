@@ -2,6 +2,7 @@
 IDENTITY block (or contain it verbatim early on). Empty-state and
 JSON-only prompts (log_*, define_*) are exempt — they have
 their own structured tails."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -38,9 +39,15 @@ def _common_patches(prompt_mod):
     """Patch every DB/vector accessor the prompt module touches with no-data stubs."""
     targets = []
     for name in [
-        "fetch_recent_logs", "fetch_body_logs", "fetch_mood_logs",
-        "fetch_active_habits", "fetch_habit_logs", "fetch_recovery_metrics",
-        "fetch_medication_logs", "search_memories", "get_body_profile",
+        "fetch_recent_logs",
+        "fetch_body_logs",
+        "fetch_mood_logs",
+        "fetch_active_habits",
+        "fetch_habit_logs",
+        "fetch_recovery_metrics",
+        "fetch_medication_logs",
+        "search_memories",
+        "get_body_profile",
     ]:
         if hasattr(prompt_mod, name):
             stub = _none if name == "get_body_profile" else _zero
@@ -55,6 +62,7 @@ def _common_patches(prompt_mod):
 )
 async def test_persona_identity_in_analytical_prompt(agent, task):
     from shared.personas import IDENTITY
+
     prompt_mod = __import__(f"agents.{agent}.app.prompt", fromlist=["*"])
     builder = getattr(prompt_mod, f"build_{agent}_prompt")
     patches = _common_patches(prompt_mod)
@@ -65,8 +73,10 @@ async def test_persona_identity_in_analytical_prompt(agent, task):
         # an empty dict triggers the no-data short-circuit but for that path
         # the persona is irrelevant. Force a tiny synthetic snapshot.
         if agent == "recovery":
+
             async def _metrics(*_a, **_k):
                 return {"2026-05-01": {"hrv": 50, "rhr": 60}}
+
             with patch.object(prompt_mod, "fetch_recovery_metrics", _metrics):
                 text = await builder(task, {"user_id": "00000000-0000-0000-0000-000000000001"})
         else:
@@ -74,12 +84,13 @@ async def test_persona_identity_in_analytical_prompt(agent, task):
                 text = await builder(task, {"user_id": "00000000-0000-0000-0000-000000000001"})
             except TypeError:
                 # Builders that take peer_artifacts kwarg.
-                text = await builder(task, {"user_id": "00000000-0000-0000-0000-000000000001"}, peer_artifacts=None)
+                text = await builder(
+                    task, {"user_id": "00000000-0000-0000-0000-000000000001"}, peer_artifacts=None
+                )
     finally:
         for p in patches:
             p.stop()
 
     # First non-empty line of the identity must be present in the prompt.
     first_identity_line = IDENTITY[agent].splitlines()[0].strip()
-    assert first_identity_line in text, \
-        f"{agent}.{task}: identity block missing"
+    assert first_identity_line in text, f"{agent}.{task}: identity block missing"

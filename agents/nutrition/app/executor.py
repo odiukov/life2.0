@@ -1,4 +1,5 @@
 """NutritionAgentExecutor — maps incoming A2A messages to nutrition-domain skills."""
+
 from __future__ import annotations
 
 import json
@@ -45,6 +46,7 @@ def _get_llm():
     if _LLM is None:
         _LLM = build_llm()
     return _LLM
+
 
 from .skills import PEER_SKILLS, SKILL_PROMPTS
 
@@ -223,8 +225,12 @@ class NutritionAgentExecutor(AgentExecutor):
 
         if skill_id is None or skill_id not in SKILL_PROMPTS:
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error="cannot determine skill", final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error="cannot determine skill",
+                final=True,
             )
             return
 
@@ -241,14 +247,19 @@ class NutritionAgentExecutor(AgentExecutor):
             if skill_id in _DIRECT_SKILLS:
                 output = await _execute_set_body_profile(uid, params)
                 await insert_task_record(
-                    agent="nutrition", task_id=task_id, context_id=context_id,
-                    skill_id=skill_id, input_=params, output=output, state="completed",
+                    agent="nutrition",
+                    task_id=task_id,
+                    context_id=context_id,
+                    skill_id=skill_id,
+                    input_=params,
+                    output=output,
+                    state="completed",
                 )
-                await emit_consulted_peers_artifact(
-                    event_queue, task_id, context_id, []
-                )
+                await emit_consulted_peers_artifact(event_queue, task_id, context_id, [])
                 await _emit_artifact(event_queue, task_id, context_id, "analysis", output)
-                await _emit_status(event_queue, task_id, context_id, TaskState.completed, final=True)
+                await _emit_status(
+                    event_queue, task_id, context_id, TaskState.completed, final=True
+                )
                 return
 
             if skill_id in _SYNC_SKILLS:
@@ -272,10 +283,16 @@ class NutritionAgentExecutor(AgentExecutor):
             output = result.content if isinstance(result.content, str) else str(result.content)
 
             await insert_task_record(
-                agent="nutrition", task_id=task_id, context_id=context_id,
-                skill_id=skill_id, input_=params, output=output, state="completed",
+                agent="nutrition",
+                task_id=task_id,
+                context_id=context_id,
+                skill_id=skill_id,
+                input_=params,
+                output=output,
+                state="completed",
             )
-            await upsert_memory(user_id=uid,
+            await upsert_memory(
+                user_id=uid,
                 agent_id="nutrition",
                 id_=str(uuid.uuid4()),
                 text=output,
@@ -300,8 +317,12 @@ class NutritionAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception("nutrition executor failed")
             await _emit_status(
-                event_queue, task_id, context_id, TaskState.failed,
-                error=str(e), final=True,
+                event_queue,
+                task_id,
+                context_id,
+                TaskState.failed,
+                error=str(e),
+                final=True,
             )
 
     async def cancel(self, ctx: RequestContext, event_queue: EventQueue) -> None:
@@ -309,7 +330,6 @@ class NutritionAgentExecutor(AgentExecutor):
         # LLM request. Proper cancellation would require threading a cancel
         # token through shared.llm.
         await _emit_status(event_queue, ctx.task_id, ctx.context_id, TaskState.canceled, final=True)
-
 
 
 def _params_from_metadata(ctx: RequestContext) -> dict:

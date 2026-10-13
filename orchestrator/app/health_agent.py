@@ -1,4 +1,5 @@
 """LangGraph ReAct agent — one generic tool per A2A peer with CoAgent state streaming."""
+
 from __future__ import annotations
 
 import logging
@@ -11,7 +12,10 @@ from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from shared.skill_ids import (
-    BodySkillId, HabitsSkillId, RecoverySkillId, MedicationSkillId,
+    BodySkillId,
+    HabitsSkillId,
+    RecoverySkillId,
+    MedicationSkillId,
 )
 
 # Conversational-tool subsets: the full XxxSkillId aliases may include skills
@@ -21,9 +25,7 @@ _WorkoutToolSkillId = Literal["log_workout", "analyze_workout", "get_workout_rec
 _NutritionToolSkillId = Literal[
     "log_meal", "analyze_nutrition", "get_nutrition_recommendations", "set_body_profile"
 ]
-_MoodToolSkillId = Literal[
-    "log_mood", "analyze_mood", "get_mood_recommendations", "coach_session"
-]
+_MoodToolSkillId = Literal["log_mood", "analyze_mood", "get_mood_recommendations", "coach_session"]
 
 import httpx
 from a2a.types import Message, Part, Role, Task, TextPart
@@ -54,6 +56,7 @@ def _zoneinfo_or_fallback(timezone_name: str | None):
 
 def _resolve_url(agent: str) -> str | None:
     from .registry import get_agent_url
+
     return get_agent_url(agent)
 
 
@@ -104,7 +107,10 @@ def _extract_consulted_peers_from_task(task: Task) -> list[str] | None:
 
 
 async def _call_agent_with_artifact(
-    agent: str, message: str, skill: str, user_id: str | None = None,
+    agent: str,
+    message: str,
+    skill: str,
+    user_id: str | None = None,
     focus_sources: list[str] | None = None,
 ) -> tuple[str, dict | None, list[str] | None]:
     """Send one A2A message to a peer agent.
@@ -167,25 +173,79 @@ _FOCUS_CUE_RE = re.compile(
 _DOMAIN_KEYWORDS: dict[str, tuple[str, ...]] = {
     "sleep": ("сон", "сна", "сну", "спал", "сплю", "спан", "sleep", "слипа"),
     "workout": (
-        "спорт", "тренир", "трениров", "workout", "training", "exercise",
-        "упражн", "кардио", "cardio", "пробеж", "run ", "running", "лифт",
+        "спорт",
+        "тренир",
+        "трениров",
+        "workout",
+        "training",
+        "exercise",
+        "упражн",
+        "кардио",
+        "cardio",
+        "пробеж",
+        "run ",
+        "running",
+        "лифт",
     ),
     "nutrition": (
-        "питан", "еда", "ел ", "ела ", "ем ", "пищ", "калор", "kcal",
-        "macros", "макро", "белок", "protein", "carb", "углевод",
-        "nutrition", "meal", "ужин", "обед", "завтрак", "перекус",
-        "food", "intake", "diet ", "diet,", "diet.",
+        "питан",
+        "еда",
+        "ел ",
+        "ела ",
+        "ем ",
+        "пищ",
+        "калор",
+        "kcal",
+        "macros",
+        "макро",
+        "белок",
+        "protein",
+        "carb",
+        "углевод",
+        "nutrition",
+        "meal",
+        "ужин",
+        "обед",
+        "завтрак",
+        "перекус",
+        "food",
+        "intake",
+        "diet ",
+        "diet,",
+        "diet.",
     ),
     "recovery": (
-        "восстан", "recovery", "hrv", "стресс", "stress", "усталост",
-        "readiness", "готовност", "перетрен",
+        "восстан",
+        "recovery",
+        "hrv",
+        "стресс",
+        "stress",
+        "усталост",
+        "readiness",
+        "готовност",
+        "перетрен",
     ),
 }
 
 _CALENDAR_TITLE_STOPWORDS = {
-    "delete", "remove", "event", "calendar", "please", "the", "a", "an",
-    "удали", "удалить", "убери", "событие", "ивент", "встречу", "встреча",
-    "календарь", "календаре", "пожалуйста",
+    "delete",
+    "remove",
+    "event",
+    "calendar",
+    "please",
+    "the",
+    "a",
+    "an",
+    "удали",
+    "удалить",
+    "убери",
+    "событие",
+    "ивент",
+    "встречу",
+    "встреча",
+    "календарь",
+    "календаре",
+    "пожалуйста",
 }
 
 
@@ -247,9 +307,7 @@ def _autodetect_focus_sources(
     if not matched:
         return []
     cue_present = bool(_FOCUS_CUE_RE.search(text))
-    primary_referenced = any(
-        kw in text for kw in _DOMAIN_KEYWORDS.get(primary, ())
-    )
+    primary_referenced = any(kw in text for kw in _DOMAIN_KEYWORDS.get(primary, ()))
     # cue word OR (multiple domains AND user mentioned the primary domain too)
     # — the latter handles "как мой сон и питание" style enumeration.
     if cue_present or (len(matched) >= 1 and primary_referenced):
@@ -334,8 +392,7 @@ def _calendar_result_summary(action: str, data: dict | None) -> str:
 
 
 _CALENDAR_NOT_CONNECTED = (
-    "Calendar changes are not available in this chat. "
-    "Reconnect Google Calendar and try again."
+    "Calendar changes are not available in this chat. Reconnect Google Calendar and try again."
 )
 
 
@@ -369,7 +426,9 @@ async def _run_calendar_call(state: HealthAgentState, action: str, call):
 
 async def _run_peer_tool(
     *,
-    agent: Literal["sleep", "workout", "nutrition", "body", "mood", "habits", "recovery", "medication"],
+    agent: Literal[
+        "sleep", "workout", "nutrition", "body", "mood", "habits", "recovery", "medication"
+    ],
     message: str,
     skill: str,
     tool_name: str,
@@ -382,7 +441,11 @@ async def _run_peer_tool(
     user_id = state.get("userId")
     try:
         text, log_entry, consulted_peers = await _call_agent_with_artifact(
-            agent, message, skill, user_id=user_id, focus_sources=focus_sources,
+            agent,
+            message,
+            skill,
+            user_id=user_id,
+            focus_sources=focus_sources,
         )
         done_call: ToolCall = {**running, "status": "done", "endedAt": _now_iso()}
         if consulted_peers is not None:
@@ -403,15 +466,15 @@ async def _run_peer_tool(
             update["lastLoggedEntry"] = entry
         return Command(update=update)
     except Exception as e:
-        err_call: ToolCall = {
-            **running, "status": "error", "endedAt": _now_iso(), "error": str(e)
-        }
-        return Command(update={
-            "currentStep": "composing",
-            "activeAgent": None,
-            "toolCalls": _trim([*prev_calls, err_call]),
-            "messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)],
-        })
+        err_call: ToolCall = {**running, "status": "error", "endedAt": _now_iso(), "error": str(e)}
+        return Command(
+            update={
+                "currentStep": "composing",
+                "activeAgent": None,
+                "toolCalls": _trim([*prev_calls, err_call]),
+                "messages": [ToolMessage(content=f"Error: {e}", tool_call_id=tool_call_id)],
+            }
+        )
 
 
 @tool
@@ -429,8 +492,13 @@ async def ask_sleep_agent(
     auto = _autodetect_focus_sources(state, "sleep", ("workout", "nutrition"))
     merged = _merge_focus_sources(focus_sources, auto)
     return await _run_peer_tool(
-        agent="sleep", message=message, skill=skill, tool_name="ask_sleep_agent",
-        tool_call_id=tool_call_id, state=state, focus_sources=merged,
+        agent="sleep",
+        message=message,
+        skill=skill,
+        tool_name="ask_sleep_agent",
+        tool_call_id=tool_call_id,
+        state=state,
+        focus_sources=merged,
     )
 
 
@@ -448,8 +516,13 @@ async def ask_workout_agent(
     auto = _autodetect_focus_sources(state, "workout", ("sleep", "nutrition"))
     merged = _merge_focus_sources(focus_sources, auto)
     return await _run_peer_tool(
-        agent="workout", message=message, skill=skill, tool_name="ask_workout_agent",
-        tool_call_id=tool_call_id, state=state, focus_sources=merged,
+        agent="workout",
+        message=message,
+        skill=skill,
+        tool_name="ask_workout_agent",
+        tool_call_id=tool_call_id,
+        state=state,
+        focus_sources=merged,
     )
 
 
@@ -469,8 +542,13 @@ async def ask_nutrition_agent(
     auto = _autodetect_focus_sources(state, "nutrition", ("sleep", "workout"))
     merged = _merge_focus_sources(focus_sources, auto)
     return await _run_peer_tool(
-        agent="nutrition", message=message, skill=skill, tool_name="ask_nutrition_agent",
-        tool_call_id=tool_call_id, state=state, focus_sources=merged,
+        agent="nutrition",
+        message=message,
+        skill=skill,
+        tool_name="ask_nutrition_agent",
+        tool_call_id=tool_call_id,
+        state=state,
+        focus_sources=merged,
     )
 
 
@@ -484,8 +562,12 @@ async def ask_body_agent(
     """Call body-agent. Skills: get_latest_body (current weight/fat/muscle snapshot) or
     analyze_body_trend (dynamics with nutrition/workout correlation)."""
     return await _run_peer_tool(
-        agent="body", message=message, skill=skill, tool_name="ask_body_agent",
-        tool_call_id=tool_call_id, state=state,
+        agent="body",
+        message=message,
+        skill=skill,
+        tool_name="ask_body_agent",
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -503,8 +585,12 @@ async def ask_mood_agent(
     coach_session (record a completed coach session aggregate — usually driven by
     the chat coach loop, not by the orchestrator)."""
     return await _run_peer_tool(
-        agent="mood", message=message, skill=skill, tool_name="ask_mood_agent",
-        tool_call_id=tool_call_id, state=state,
+        agent="mood",
+        message=message,
+        skill=skill,
+        tool_name="ask_mood_agent",
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -523,9 +609,12 @@ async def ask_habits_agent(
     get_streak_summary (deterministic one-liner of current streaks per habit),
     archive_habit (soft-delete a habit)."""
     return await _run_peer_tool(
-        agent="habits", message=message, skill=skill,
+        agent="habits",
+        message=message,
+        skill=skill,
         tool_name="ask_habits_agent",
-        tool_call_id=tool_call_id, state=state,
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -541,9 +630,12 @@ async def ask_recovery_agent(
     analyze_recovery_trend (per-metric 7-day trend + correlations),
     get_recommendations (2–3 actionable recovery recommendations)."""
     return await _run_peer_tool(
-        agent="recovery", message=message, skill=skill,
+        agent="recovery",
+        message=message,
+        skill=skill,
         tool_name="ask_recovery_agent",
-        tool_call_id=tool_call_id, state=state,
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -561,9 +653,12 @@ async def ask_medication_agent(
     analyze_adherence (LLM summary of adherence over a window, default 14 days),
     archive_medication (soft-delete a medication by name)."""
     return await _run_peer_tool(
-        agent="medication", message=message, skill=skill,
+        agent="medication",
+        message=message,
+        skill=skill,
         tool_name="ask_medication_agent",
-        tool_call_id=tool_call_id, state=state,
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -681,9 +776,7 @@ async def delete_calendar_event(
 
     Use this only after the user confirms the exact event to delete.
     """
-    return await _run_calendar_call(
-        state, "Deleted", _delete_call(event_id, calendar_id)
-    )
+    return await _run_calendar_call(state, "Deleted", _delete_call(event_id, calendar_id))
 
 
 def _delete_call(event_id: str, calendar_id: str | None):
@@ -727,8 +820,11 @@ async def delete_calendar_event_by_title(
     )
     needle = title_query.strip().lower()
     matches = [
-        ev for ev in events
-        if needle and _calendar_title_matches(title_query, str(ev.get("summary") or "")) and ev.get("id")
+        ev
+        for ev in events
+        if needle
+        and _calendar_title_matches(title_query, str(ev.get("summary") or ""))
+        and ev.get("id")
     ]
     if not matches:
         lines = [f"No matching calendar event found for '{title_query}' on {target_date}."]
@@ -743,9 +839,7 @@ async def delete_calendar_event_by_title(
         return "\n".join(lines)
 
     event_id = str(matches[0]["id"])
-    return await _run_calendar_call(
-        state, "Deleted", _delete_call(event_id, calendar_id)
-    )
+    return await _run_calendar_call(state, "Deleted", _delete_call(event_id, calendar_id))
 
 
 @tool
@@ -778,9 +872,9 @@ async def query_finance_summary(
         lines.append("• Ушло: " + ", ".join(bits))
     if spending:
         top = spending[:3]
-        lines.append("• Топ категорий: " + " · ".join(
-            f"{name} {amt} {cur}" for name, cur, amt in top
-        ))
+        lines.append(
+            "• Топ категорий: " + " · ".join(f"{name} {amt} {cur}" for name, cur, amt in top)
+        )
     return "\n".join(lines)
 
 
@@ -793,6 +887,7 @@ async def query_finance_categories(
     Use for 'куда ушли деньги в апреле', 'where did money go'.
     """
     from . import finance_queries
+
     user_id = _user_uuid_from_state(state)
     rows = await finance_queries.spending_by_category(user_id, month)
     if not rows:
@@ -811,6 +906,7 @@ async def query_finance_runway(
     Use for 'хватит ли до конца месяца', 'how many days I have left', etc.
     """
     from . import finance_queries
+
     user_id = _user_uuid_from_state(state)
     data = await finance_queries.runway(user_id, avg_window_days=30)
     if not data:
@@ -848,7 +944,7 @@ _SYSTEM_PROMPT = (
     "workouts directly. "
     "\n\n"
     "Use query_calendar_events for read-only Google Calendar intents like "
-    "\"what's on my calendar\", \"what meetings do I have\", and \"when am I free\". "
+    '"what\'s on my calendar", "what meetings do I have", and "when am I free". '
     "\n\n"
     "For destructive calendar operations (create, update, delete), always paraphrase the "
     "intended action back to the user and wait for explicit confirmation before executing "
@@ -858,13 +954,13 @@ _SYSTEM_PROMPT = (
     "For read-only calendar queries, answer directly without confirmation. "
     "\n\n"
     "You also have live Home Assistant tools exposed via MCP. GetLiveContext is read-only "
-    "— use it for questions like \"what's the temperature in the bedroom\" or \"is the "
-    "hallway light on\" and answer directly without confirmation. "
+    '— use it for questions like "what\'s the temperature in the bedroom" or "is the '
+    'hallway light on" and answer directly without confirmation. '
     "\n\n"
     "For state-changing Home Assistant tools (HassTurnOn, HassTurnOff, HassLightSet, "
     "HassClimateSetTemperature, HassListAddItem, and any other mutation Hass* tool), always "
-    "paraphrase the intended action back to the user in their language (e.g. \"включу свет "
-    "в гостиной, ок?\") and wait for explicit confirmation (\"да\", \"ок\", \"ага\") before "
+    'paraphrase the intended action back to the user in their language (e.g. "включу свет '
+    'в гостиной, ок?") and wait for explicit confirmation ("да", "ок", "ага") before '
     "invoking the tool. Only entities the user has exposed via HA Settings → Voice assistants "
     "will be visible; if a requested entity isn't available, say so. "
     "\n\n"
@@ -897,9 +993,11 @@ def _build_system_prompt(now: datetime | None = None, timezone_name: str | None 
 def _prompt_with_current_date(state: HealthAgentState):
     timezone_name = state.get("userTimezone")
     return [
-        SystemMessage(content=_build_system_prompt(
-            timezone_name=timezone_name if isinstance(timezone_name, str) else None
-        )),
+        SystemMessage(
+            content=_build_system_prompt(
+                timezone_name=timezone_name if isinstance(timezone_name, str) else None
+            )
+        ),
         *(state.get("messages") or []),
     ]
 
@@ -942,6 +1040,7 @@ async def create_health_agent(checkpointer=None):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         from langgraph.prebuilt import create_react_agent
+
         return create_react_agent(
             llm,
             tools,
