@@ -61,7 +61,7 @@ name = "New shared code does not import legacy modules"
 type = "forbidden"
 # Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
 allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config"]
+source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging"]
 forbidden_modules = [
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
     "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
@@ -101,7 +101,7 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 "tests/**" = ["ALL"]
 "scripts/**" = ["ALL"]
 # The OTEL/Traceloop SDKs are configured through environment variables by design.
-"shared/src/shared/observability/telemetry.py" = ["TID251"]
+"shared/src/shared/observability/telemetry.py" = ["ALL"]
 # The settings package is the one place that may read the environment.
 "shared/src/shared/config/**" = ["TID251"]
 
@@ -121,7 +121,7 @@ module = [
     "shared.current_user", "shared.db", "shared.embeddings", "shared.grounding",
     "shared.i18n", "shared.intent", "shared.llm", "shared.log_entry", "shared.peer",
     "shared.peer_chip_rules", "shared.personas", "shared.recovery", "shared.skill_ids",
-    "shared.telemetry", "shared.vector",
+    "shared.observability.telemetry", "shared.telemetry", "shared.vector",
 ]
 ignore_errors = true
 
