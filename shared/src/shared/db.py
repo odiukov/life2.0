@@ -11,8 +11,8 @@ _pool: asyncpg.Pool | None = None
 # ---------------------------------------------------------------------------
 
 # Locate supabase/migrations/ relative to this file:
-#   shared/shared/db.py → shared/ → repo-root → supabase/migrations/
-_REPO_ROOT = pathlib.Path(__file__).parent.parent.parent
+#   shared/src/shared/db.py → shared/src/ → shared/ → repo-root
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 _MIGRATIONS_DIR = _REPO_ROOT / "supabase" / "migrations"
 
 _CREATE_SCHEMA_MIGRATIONS = """

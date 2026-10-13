@@ -11,13 +11,24 @@ than one param key is present.
 from __future__ import annotations
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-# Repo-root anchored: shared/shared/i18n.py → ../../packages/i18n/locales/
-_ROOT = Path(__file__).resolve().parents[2] / "packages" / "i18n" / "locales"
-assert _ROOT.is_dir(), f"i18n locales not found at {_ROOT}"
+def _find_locales() -> Path:
+    override = os.environ.get("LIFE_I18N_LOCALES_DIR")
+    if override:
+        return Path(override)
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "packages" / "i18n" / "locales"
+        if candidate.is_dir():
+            return candidate
+    raise FileNotFoundError(f"packages/i18n/locales not found above {here}")
+
+
+_ROOT = _find_locales()
 
 
 @lru_cache(maxsize=4)
