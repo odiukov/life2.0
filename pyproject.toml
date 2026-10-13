@@ -37,11 +37,36 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-pythonpath = ["."]
-testpaths = ["tests"]
+pythonpath = [".", "shared/src"]
+testpaths = ["tests", "shared/tests"]
+addopts = "--import-mode=importlib -ra"
+consider_namespace_packages = true
 markers = [
     "integration: needs Docker (testcontainers PostgreSQL)",
     "evals: calls a real LLM; run manually with `make evals`",
+]
+
+[tool.importlinter]
+root_packages = ["shared"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Ports do not depend on adapters"
+type = "forbidden"
+source_modules = ["shared.ports"]
+forbidden_modules = ["shared.adapters", "shared.schema", "sqlalchemy", "asyncpg", "qdrant_client"]
+
+[[tool.importlinter.contracts]]
+name = "New shared code does not import legacy modules"
+type = "forbidden"
+# Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
+allow_indirect_imports = true
+source_modules = ["shared.ports", "shared.testing"]
+forbidden_modules = [
+    "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
+    "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
+    "shared.current_user", "shared.consent", "shared.consulted", "shared.log_entry",
+    "shared.recovery", "shared.telemetry",
 ]
 
 [tool.ruff]
