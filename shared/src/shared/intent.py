@@ -11,6 +11,8 @@ from typing import Iterable
 
 from langchain_core.messages import HumanMessage
 
+from shared.a2a.routing import MANDATORY_CONSULTS
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,14 +22,6 @@ logger = logging.getLogger(__name__)
 # without recovery context is irresponsible). User-supplied focus_sources
 # still wins; this only fills in when the LLM would otherwise leave the
 # consult list empty.
-MANDATORY_CONSULTS: dict[str, list[str]] = {
-    "get_workout_recommendations": ["recovery", "sleep"],
-    "get_nutrition_recommendations": ["workout"],
-    "analyze_mood": ["sleep"],
-    "analyze_body_trend": ["nutrition", "workout"],
-    "get_recommendations": ["sleep"],  # recovery agent's recommendations skill
-    "get_sleep_recommendations": ["recovery"],
-}
 
 
 def _mandatory_consults_prompt_block() -> str:

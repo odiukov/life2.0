@@ -61,7 +61,7 @@ name = "New shared code does not import legacy modules"
 type = "forbidden"
 # Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
 allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema"]
+source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a"]
 forbidden_modules = [
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
     "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
