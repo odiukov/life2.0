@@ -76,6 +76,16 @@
     }
   },
   "kitchen": {
+    "screen": {
+      "title": "Кухня", "fridge": "Холодильник", "freezer": "Морозилка", "pantry": "Шкаф",
+      "empty": "Здесь пусто. Скажи в чат: «купил молоко».", "open_chat": "Открыть чат",
+      "unavailable": "Кухня временно недоступна.", "retry": "Повторить", "estimated": "≈",
+      "days": { "expired": "просрочено", "today": "сегодня", "tomorrow": "завтра", "in": { "one": "через {count} день", "few": "через {count} дня", "many": "через {count} дней", "other": "через {count} дня" } },
+      "actions": { "title": "{name}", "consumed": "Съели", "discarded": "Выбросили", "opened": "Открыли", "move": "Переложить", "set_expiry": "Изменить срок", "set_quantity": "Изменить количество", "cancel": "Отмена", "save": "Сохранить" },
+      "done": { "consumed": "Съели: {name}", "discarded": "Выбросили: {name}", "opened": "Открыли: {name}", "move": "Переложили: {name}", "set_expiry": "Новый срок: {name}", "set_quantity": "Количество: {name}" },
+      "undo": "Отменить", "undone": "Отменено", "gone": "Этот продукт уже изменили — обновил список.",
+      "quantity_prompt": "Сколько осталось ({unit})?", "actions_hint": "Смахните или удерживайте для действий"
+    },
     "added_header": "Записал:",
     "updated_header": "Обновил:",
     "consumed_header": "Списал:",

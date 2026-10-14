@@ -77,6 +77,16 @@
     }
   },
   "kitchen": {
+    "screen": {
+      "title": "Kitchen", "fridge": "Fridge", "freezer": "Freezer", "pantry": "Pantry",
+      "empty": "Nothing here. Say in chat: “bought milk”.", "open_chat": "Open chat",
+      "unavailable": "The kitchen is temporarily unavailable.", "retry": "Retry", "estimated": "≈",
+      "days": { "expired": "expired", "today": "today", "tomorrow": "tomorrow", "in": { "one": "in {count} day", "other": "in {count} days" } },
+      "actions": { "title": "{name}", "consumed": "Eaten", "discarded": "Thrown away", "opened": "Opened", "move": "Move", "set_expiry": "Change expiry", "set_quantity": "Change quantity", "cancel": "Cancel", "save": "Save" },
+      "done": { "consumed": "Eaten: {name}", "discarded": "Thrown away: {name}", "opened": "Opened: {name}", "move": "Moved: {name}", "set_expiry": "New expiry: {name}", "set_quantity": "Quantity: {name}" },
+      "undo": "Undo", "undone": "Undone", "gone": "This item was already changed — the list is refreshed.",
+      "quantity_prompt": "How much is left ({unit})?", "actions_hint": "Swipe or hold for actions"
+    },
     "added_header": "Added:",
     "updated_header": "Updated:",
     "consumed_header": "Used up:",
