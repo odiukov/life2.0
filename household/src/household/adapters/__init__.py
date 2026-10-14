@@ -1,1 +1,1 @@
-"""Households: members, invites and settings."""
+"""Adapters for the household package."""

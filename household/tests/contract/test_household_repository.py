@@ -6,6 +6,7 @@ from datetime import UTC, datetime, time, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from household.adapters.db import household_uow
 from household.application.ports import HouseholdRepository
 from household.domain.errors import (
     CannotRemoveSelf,
@@ -18,10 +19,13 @@ from household.domain.errors import (
 from household.domain.invite import InviteCode
 from household.domain.model import Role
 from household.testing import InMemoryHouseholds, in_memory_uow
+from shared.adapters.db.engine import create_engine
+from shared.config import DatabaseSettings
 from shared.ports.uow import UnitOfWorkFactory
 from shared.testing.fakes import FixedClock
+from shared.testing.pytest_plugin import PostgresUrls
 
-NOW = datetime(2026, 10, 14, 12, 0, tzinfo=UTC)
+NOW = datetime.now(UTC)
 
 
 @dataclass
@@ -33,12 +37,22 @@ async def memory_backend(request: pytest.FixtureRequest) -> AsyncIterator[Backen
     yield Backend(in_memory_uow(InMemoryHouseholds(FixedClock(NOW))))
 
 
+async def sql_backend(request: pytest.FixtureRequest) -> AsyncIterator[Backend]:
+    urls: PostgresUrls = request.getfixturevalue("clean_db")
+    engine = create_engine(DatabaseSettings.model_validate({"dsn": urls.rw}))
+    try:
+        yield Backend(household_uow(engine))
+    finally:
+        await engine.dispose()
+
+
 BACKENDS: dict[str, Callable[[pytest.FixtureRequest], AsyncIterator[Backend]]] = {
     "memory": memory_backend,
+    "sql": sql_backend,
 }
 
 
-@pytest.fixture(params=["memory"])
+@pytest.fixture(params=["memory", pytest.param("sql", marks=pytest.mark.integration)])
 async def backend(request: pytest.FixtureRequest) -> AsyncIterator[Backend]:
     generator = BACKENDS[request.param](request)
     try:
@@ -97,3 +111,30 @@ async def test_invite_preview_join_leave_remove(backend: Backend) -> None:
     assert fresh != home
     with pytest.raises(SoleMember):
         await call(backend, a, lambda r: r.leave(a))
+
+
+async def test_owner_update_and_remove_member_preserve_display_names(backend: Backend) -> None:
+    owner, member = uuid4(), uuid4()
+    home = await household_of(backend, owner, "Owner")
+    await household_of(backend, member, "Member")
+    assert await household_of(backend, owner, "Ignored") == home
+    await call(
+        backend,
+        owner,
+        lambda r: r.update(owner, name="Shared", timezone="Asia/Tokyo", digest_time=time(19, 30)),
+    )
+    await call(
+        backend,
+        owner,
+        lambda r: r.create_invite(owner, code_hash=code(2), expires_at=NOW + timedelta(days=2)),
+    )
+    await call(backend, member, lambda r: r.join(member, code(2)))
+    await call(backend, owner, lambda r: r.remove_member(owner, member))
+    own = await call(backend, owner, lambda r: r.get(owner))
+    fresh = await call(backend, member, lambda r: r.get(member))
+    assert own.name == "Shared"  # type: ignore[attr-defined]
+    assert own.digest_time == time(19, 30)  # type: ignore[attr-defined]
+    assert [m.user_id for m in own.members] == [owner]  # type: ignore[attr-defined]
+    assert fresh.id != home  # type: ignore[attr-defined]
+    assert fresh.timezone == "Asia/Tokyo"  # type: ignore[attr-defined]
+    assert [(m.display_name, m.role) for m in fresh.members] == [("Member", Role.OWNER)]  # type: ignore[attr-defined]
