@@ -36,6 +36,7 @@ const config: Config = {
     '^react-native-keyboard-controller$': 'react-native-keyboard-controller/jest',
     '^expo-document-picker$': '<rootDir>/src/__mocks__/expo-document-picker.ts',
     '^expo-audio$': '<rootDir>/src/__mocks__/expo-audio.ts',
+    '^expo-notifications$': '<rootDir>/src/__mocks__/expo-notifications.ts',
     '^expo-linking$': '<rootDir>/src/__mocks__/expo-linking.ts',
     '^@react-navigation/bottom-tabs$': '<rootDir>/src/__mocks__/react-navigation-bottom-tabs.ts',
     '^react-native-reanimated$': '<rootDir>/src/__mocks__/react-native-reanimated.tsx',

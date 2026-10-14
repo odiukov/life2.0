@@ -146,6 +146,13 @@
       "no_household": "I couldn't find your household. Please reopen the app."
     }
   },
+  "inbox": {
+    "title": "Notifications",
+    "empty": "Nothing yet.",
+    "read_all": "Mark all read",
+    "update_error": "Could not update notifications.",
+    "load_error": "Could not load notifications."
+  },
   "household": {
     "title": "Household",
     "members": "Members",

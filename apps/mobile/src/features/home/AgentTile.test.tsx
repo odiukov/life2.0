@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '@life-agents/ui';
 import { HomeScreen } from './HomeScreen';
@@ -57,17 +57,27 @@ jest.mock('@/features/auth/useSession', () => ({
   useSession: () => ({ session: null }),
 }));
 
+jest.mock('@/features/inbox/useInbox', () => ({
+  useInbox: () => ({ data: { unread_count: 100 } }),
+}));
+
 jest.mock('@/features/agents/agentTileDispatch', () => ({
   dispatchTilePress: jest.fn(),
 }));
 
-jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn() }),
-}));
+const routerPush = jest.fn();
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: routerPush }) }));
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return <ThemeProvider>{children}</ThemeProvider>;
 }
+
+it('shows the capped inbox badge and opens the inbox', () => {
+  render(<HomeScreen />, { wrapper: Wrapper });
+  expect(screen.getByText('99+')).toBeTruthy();
+  fireEvent.press(screen.getByTestId('inbox-bell'));
+  expect(routerPush).toHaveBeenCalledWith('/inbox');
+});
 
 type TestNode = {
   parent: TestNode | null;

@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 
+export const router = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), setParams: jest.fn() };
+
 export function useRouter() {
-  return { push: jest.fn(), replace: jest.fn(), back: jest.fn(), setParams: jest.fn() };
+  return router;
 }
 
 export function useSegments(): string[] {

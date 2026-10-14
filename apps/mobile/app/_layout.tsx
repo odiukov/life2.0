@@ -11,6 +11,8 @@ import { QueryProvider } from '@/api/QueryProvider';
 import { useSession } from '@/features/auth/useSession';
 import { storePendingShareUrl } from '@/features/chat/pendingShare';
 import { useHydrateIntegrations } from '@/features/integrations/store';
+import { NOTIFICATION_ROUTES } from '@/features/inbox/InboxScreen';
+import { usePushRegistration } from '@/features/inbox/registerPush';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -58,6 +60,7 @@ function AuthGuard() {
 
 export default function RootLayout() {
   const { ready } = useSession();
+  usePushRegistration();
 
   // Share Extension deep link
   useEffect(() => {
@@ -78,12 +81,12 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((r) => {
       const route = r.notification.request.content.data?.route;
-      if (typeof route === 'string') router.push(route as never);
+      if (typeof route === 'string') router.push((NOTIFICATION_ROUTES[route] ?? route) as never);
     });
     // Cold-start: app launched from a notification tap
     Notifications.getLastNotificationResponseAsync().then((r) => {
       const route = r?.notification.request.content.data?.route;
-      if (typeof route === 'string') router.push(route as never);
+      if (typeof route === 'string') router.push((NOTIFICATION_ROUTES[route] ?? route) as never);
     });
     return () => sub.remove();
   }, []);
@@ -104,6 +107,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="quick-log" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="inbox" />
               </Stack>
             </GestureHandlerRootView>
           </ThemeProvider>

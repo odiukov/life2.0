@@ -18,9 +18,13 @@ import { dispatchTilePress } from '@/features/agents/agentTileDispatch';
 import { IntegrationSheet } from '@/features/integrations/IntegrationSheet';
 import type { IntegrationId } from '@/features/integrations/store';
 import { useRouter } from 'expo-router';
+import { useT } from '@life-agents/i18n';
+import { appLocale } from '@/lib/locale';
 import { SettingsSheet } from '../more/SettingsSheet';
 import { AgentDetailSheet } from './AgentDetailSheet';
 import { useHomeSummary } from './useHomeSummary';
+import { badgeText } from '@/features/inbox/badge';
+import { useInbox } from '@/features/inbox/useInbox';
 import type { HomeAgent, HomeAlert } from './useHomeSummary';
 
 const AGENT_ORDER: AgentId[] = [
@@ -355,6 +359,7 @@ function NeedsAttention({
 
 export function HomeScreen() {
   const { colors, typography } = useTheme();
+  const t = useT(appLocale());
   const { data, isLoading, isError, refetch, isRefreshing, onRefresh } = useHomeSummary();
   const { session } = useSession();
   const [now, setNow] = useState(() => new Date());
@@ -367,6 +372,8 @@ export function HomeScreen() {
   const [openAgent, setOpenAgent] = useState<AgentId | null>(null);
 
   const router = useRouter();
+  const inbox = useInbox();
+  const unreadBadge = badgeText(inbox.data?.unread_count ?? 0);
   const { rows: agentRows } = useAgentStatusRows();
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId | null>(null);
 
@@ -498,6 +505,20 @@ export function HomeScreen() {
               {greeting}, {firstName}
             </Text>
           </View>
+          <Pressable
+            testID="inbox-bell"
+            accessibilityRole="button"
+            accessibilityLabel={t('inbox.title')}
+            onPress={() => router.push('/inbox')}
+            style={[styles.settingsBtn, { backgroundColor: colors.bg2, borderColor: colors.border, marginRight: 8 }]}
+          >
+            <Icon name="Bell" size={17} color={colors.fg2} />
+            {unreadBadge && (
+              <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                <Text style={{ color: colors.accentInk, fontSize: 10, fontWeight: '700' }}>{unreadBadge}</Text>
+              </View>
+            )}
+          </Pressable>
           <Pressable
             onPress={() => setSettingsOpen(true)}
             style={[
