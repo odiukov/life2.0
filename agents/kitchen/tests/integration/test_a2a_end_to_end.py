@@ -7,7 +7,7 @@ import pytest
 from kitchen.composition import build_runtime
 from kitchen.main import create_app
 from kitchen.settings import KitchenSettings
-from shared.testing.fakes import FakeLLM, FixedClock
+from shared.testing.fakes import FakeLLM, FakeNotificationSender, FakeScheduler, FixedClock
 from shared.testing.pytest_plugin import PostgresUrls
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -46,6 +46,8 @@ async def client(clean_db: PostgresUrls):  # type: ignore[no-untyped-def]
         KitchenSettings.model_validate({"database": {"dsn": clean_db.rw}}),
         llm=llm,
         clock=FixedClock(NOW),
+        scheduler=FakeScheduler(),
+        sender=FakeNotificationSender(),
     )
     transport = httpx.ASGITransport(app=create_app(runtime))
     async with httpx.AsyncClient(transport=transport, base_url="http://kitchen") as http:

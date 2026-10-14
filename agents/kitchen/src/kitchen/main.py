@@ -18,9 +18,12 @@ def create_app(runtime: KitchenRuntime | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        await built.scheduler.start()
         try:
             yield
         finally:
+            await built.scheduler.shutdown()
+            await built.http.aclose()
             await built.engine.dispose()
 
     app = FastAPI(

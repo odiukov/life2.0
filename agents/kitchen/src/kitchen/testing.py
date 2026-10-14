@@ -16,6 +16,7 @@ from shared.testing.fakes import InMemoryUnitOfWorkFactory
 from kitchen.application.ports import (
     BatchRepository,
     ClarificationRepository,
+    DueDigest,
     HouseholdContext,
     HouseholdView,
     OperationGroup,
@@ -162,6 +163,33 @@ class InMemoryUserLocales:
     async def locale(self, user_id: UUID) -> str | None:
         locale = self.locales.get(user_id)
         return locale if locale in {"ru", "en"} else None
+
+
+class FakeDueDigests:
+    def __init__(self, items: list[DueDigest]) -> None:
+        self.items = list(items)
+
+    async def due(self, now: datetime) -> list[DueDigest]:
+        return list(self.items)
+
+
+class InMemoryDigestRuns:
+    def __init__(self, *, fail_for: set[UUID] | None = None) -> None:
+        self.claimed: set[tuple[UUID, date]] = set()
+        self.fail_for = fail_for or set()
+        self.current: UUID | None = None
+
+    def bind(self, household_id: UUID) -> None:
+        self.current = household_id
+
+    async def claim(self, local_date: date) -> bool:
+        if self.current in self.fail_for:
+            raise RuntimeError("claim failed")
+        key = (self.current or UUID(int=0), local_date)
+        if key in self.claimed:
+            return False
+        self.claimed.add(key)
+        return True
 
 
 class StaticHouseholdView:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -17,6 +17,8 @@ class HouseholdContext:
     household_id: UUID
     timezone: str
     members: Mapping[UUID, str]
+    digest_time: time = time(18, 0)
+    owner_id: UUID | None = None
 
     def zone(self) -> ZoneInfo:
         try:
@@ -130,4 +132,25 @@ class TextMatcher(Protocol):
 class UserLocales(Protocol):
     async def locale(self, user_id: UUID) -> str | None:
         """Return a supported users.preferences.locale, otherwise None."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class DueDigest:
+    household_id: UUID
+    owner_id: UUID
+    member_ids: tuple[UUID, ...]
+    timezone: str
+    local_date: date
+
+
+class DueDigests(Protocol):
+    async def due(self, now: datetime) -> list[DueDigest]:
+        """Discover households past digest time without a run for their local date."""
+        ...
+
+
+class DigestRuns(Protocol):
+    async def claim(self, local_date: date) -> bool:
+        """Record the run for this tenant household, returning False if already claimed."""
         ...

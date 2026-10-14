@@ -161,6 +161,7 @@ services:
     environment:
       DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
       KITCHEN_AGENT_URL: http://agent-kitchen:8009/
+      NOTIFICATIONS__PUSH: ${NOTIFICATIONS__PUSH:-off}
     expose:
       - "8009"
     depends_on:

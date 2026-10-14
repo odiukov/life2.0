@@ -101,6 +101,12 @@
     "undo_conflict": "Can't undo: these items have changed since.",
     "undo_not_found": "Nothing to undo.",
     "inventory_empty": "Nothing in stock.",
+    "digest": {
+      "title": "Time to check the food",
+      "item": "{name} ({when})",
+      "more": { "one": "and {count} more item", "other": "and {count} more items" },
+      "when": { "expired": "expired", "today": "today", "tomorrow": "tomorrow", "check": "check it" }
+    },
     "units": {
       "pcs": "pcs",
       "g": "g",

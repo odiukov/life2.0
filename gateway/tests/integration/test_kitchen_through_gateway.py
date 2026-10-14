@@ -14,7 +14,7 @@ from kitchen.domain.units import InputUnit
 from kitchen.main import create_app
 from kitchen.settings import KitchenSettings
 from shared.adapters.a2a.skill_client import A2ASkillClient
-from shared.testing.fakes import FakeLLM, FixedClock
+from shared.testing.fakes import FakeLLM, FakeNotificationSender, FakeScheduler, FixedClock
 from shared.testing.pytest_plugin import PostgresUrls
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -38,6 +38,8 @@ async def test_screen_flow(clean_db: PostgresUrls) -> None:
         KitchenSettings.model_validate({"database": {"dsn": clean_db.rw}}),
         llm=llm,
         clock=FixedClock(datetime(2026, 10, 13, 12, tzinfo=UTC)),
+        scheduler=FakeScheduler(),
+        sender=FakeNotificationSender(),
     )
     kitchen_http = httpx.AsyncClient(transport=httpx.ASGITransport(app=create_app(runtime)))
     app = FastAPI()

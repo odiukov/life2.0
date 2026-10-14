@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, cast
 from uuid import UUID
 
@@ -14,6 +14,7 @@ from shared.schema.tables import (
     households,
     kitchen_batches,
     kitchen_clarifications,
+    kitchen_digest_runs,
     kitchen_operation_groups,
     users,
 )
@@ -26,6 +27,9 @@ from kitchen.application.errors import NoHousehold
 from kitchen.application.ports import (
     BatchRepository,
     ClarificationRepository,
+    DigestRuns,
+    DueDigest,
+    DueDigests,
     HouseholdContext,
     HouseholdView,
     LoggedChange,
@@ -114,7 +118,7 @@ class SqlHouseholdView:
             return None
         row = (
             await self._conn.execute(
-                select(households.c.id, households.c.timezone).where(
+                select(households.c.id, households.c.timezone, households.c.digest_time).where(
                     households.c.id == household_id
                 )
             )
@@ -122,11 +126,21 @@ class SqlHouseholdView:
         if row is None:
             return None
         members = await self._conn.execute(
-            select(household_members.c.user_id, household_members.c.display_name).where(
-                household_members.c.household_id == household_id
-            )
+            select(
+                household_members.c.user_id,
+                household_members.c.display_name,
+                household_members.c.role,
+            ).where(household_members.c.household_id == household_id)
         )
-        return HouseholdContext(row.id, row.timezone, {m.user_id: m.display_name for m in members})
+        member_rows = list(members)
+        owner = next((m.user_id for m in member_rows if m.role == "owner"), None)
+        return HouseholdContext(
+            row.id,
+            row.timezone,
+            {m.user_id: m.display_name for m in member_rows},
+            row.digest_time,
+            owner,
+        )
 
 
 class SqlBatchRepository:
@@ -329,6 +343,39 @@ class SqlUserLocales:
         ).scalar_one_or_none()
         value = prefs.get("locale") if isinstance(prefs, Mapping) else None
         return value if isinstance(value, str) and value in _LOCALES else None
+
+
+class SqlDueDigests:
+    def __init__(self, conn: AsyncConnection) -> None:
+        self._conn = conn
+
+    async def due(self, now: datetime) -> list[DueDigest]:
+        rows = await self._conn.execute(
+            text("SELECT * FROM public.kitchen_digests_due(CAST(:now AS timestamptz))"),
+            {"now": now},
+        )
+        return [
+            DueDigest(r.household_id, r.owner_id, tuple(r.member_ids), r.timezone, r.local_date)
+            for r in rows
+        ]
+
+
+class SqlDigestRuns:
+    def __init__(self, conn: AsyncConnection) -> None:
+        self._conn = conn
+
+    async def claim(self, local_date: date) -> bool:
+        statement = (
+            insert(kitchen_digest_runs)
+            .values(local_date=local_date)
+            .on_conflict_do_nothing()
+            .returning(kitchen_digest_runs.c.local_date)
+        )
+        return (await self._conn.execute(statement)).first() is not None
+
+
+def digest_repositories() -> dict[type[Any], Callable[[AsyncConnection], Any]]:
+    return {DueDigests: SqlDueDigests, DigestRuns: SqlDigestRuns}
 
 
 def kitchen_uow(
