@@ -1,6 +1,6 @@
-"""POST /finance/upload — FastAPI TestClient end-to-end (PDF variant).
+"""POST /finance/upload — HTTPX ASGI end-to-end (PDF variant).
 
-Uses a temporary TestClient over orchestrator.app.main without starting
+Uses an async client over orchestrator.app.main without starting
 the full lifespan (no graph, no checkpointer) — the endpoint itself only
 touches DB helpers + PDF parser + ingest.
 """
@@ -13,7 +13,7 @@ from uuid import UUID
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 pytestmark = pytest.mark.asyncio
 
@@ -68,10 +68,6 @@ EUR
 """
 
 
-def _has_db() -> bool:
-    return bool(os.environ.get("POSTGRES_DSN"))
-
-
 def _fake_pdf_bytes() -> bytes:
     """Build a minimal single-page PDF with the Payoneer-shaped text."""
     import pymupdf
@@ -85,8 +81,8 @@ def _fake_pdf_bytes() -> bytes:
 
 
 @pytest.fixture(autouse=True)
-async def _cleanup():
-    if not _has_db():
+async def _cleanup(request):
+    if request.node.get_closest_marker("integration") is None:
         yield
         return
     import shared.db as _sdb
@@ -98,6 +94,10 @@ async def _cleanup():
 
     conn = await asyncpg.connect(os.environ["POSTGRES_DSN"])
     try:
+        await conn.execute(
+            "INSERT INTO users (id, name) VALUES ($1, 'finance-endpoint-test') ON CONFLICT (id) DO NOTHING",
+            USER,
+        )
         await conn.execute("DELETE FROM finance_transactions WHERE txn_id LIKE 'pyn-pdf-%'")
         await conn.execute("DELETE FROM finance_category_cache WHERE 1=1")
     finally:
@@ -114,9 +114,8 @@ async def _cleanup():
         _sdb._pool = None
 
 
+@pytest.mark.integration
 async def test_upload_happy_path():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
     from orchestrator.app import main
 
     pdf = _fake_pdf_bytes()
@@ -127,9 +126,11 @@ async def test_upload_happy_path():
         ),
         _override_current_user(main.app),
     ):
-        client = TestClient(main.app)
-        files = {"csv": ("payoneer.pdf", pdf, "application/pdf")}
-        resp = client.post("/finance/upload", files=files)
+        async with AsyncClient(
+            transport=ASGITransport(app=main.app), base_url="http://test"
+        ) as client:
+            files = {"csv": ("payoneer.pdf", pdf, "application/pdf")}
+            resp = await client.post("/finance/upload", files=files)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -140,8 +141,6 @@ async def test_upload_happy_path():
 
 
 async def test_upload_rejects_non_payoneer_pdf():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
     from orchestrator.app import main
 
     # A valid PDF byte stream, but without Payoneer markers.
@@ -160,24 +159,26 @@ async def test_upload_rejects_non_payoneer_pdf():
         ),
         _override_current_user(main.app),
     ):
-        client = TestClient(main.app)
-        resp = client.post(
-            "/finance/upload",
-            files={"csv": ("junk.pdf", bad, "application/pdf")},
-        )
+        async with AsyncClient(
+            transport=ASGITransport(app=main.app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/finance/upload",
+                files={"csv": ("junk.pdf", bad, "application/pdf")},
+            )
     assert resp.status_code == 422
     assert "payoneer" in resp.text.lower() or "account statement" in resp.text.lower()
 
 
 async def test_upload_rejects_non_pdf_content_type():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
     from orchestrator.app import main
 
     with _override_current_user(main.app):
-        client = TestClient(main.app)
-        resp = client.post(
-            "/finance/upload",
-            files={"csv": ("statement.csv", b"Date,Amount\n2026-01-01,1.00\n", "text/csv")},
-        )
+        async with AsyncClient(
+            transport=ASGITransport(app=main.app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/finance/upload",
+                files={"csv": ("statement.csv", b"Date,Amount\n2026-01-01,1.00\n", "text/csv")},
+            )
     assert resp.status_code == 415

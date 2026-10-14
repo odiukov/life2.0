@@ -11,6 +11,8 @@ os.environ.setdefault("VAULT_BACKEND", "dev")
 import shared.db as _sdb
 from orchestrator.app import vault
 
+pytestmark = pytest.mark.integration
+
 USER = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
 

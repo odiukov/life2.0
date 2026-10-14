@@ -1,66 +1,14 @@
 import asyncpg
 import json
 import os
-import pathlib
 from uuid import UUID
 
 _pool: asyncpg.Pool | None = None
 
-# ---------------------------------------------------------------------------
-# Schema-migration bootstrap
-# ---------------------------------------------------------------------------
-
-# Locate supabase/migrations/ relative to this file:
-#   shared/src/shared/db.py → shared/src/ → shared/ → repo-root
-_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
-_MIGRATIONS_DIR = _REPO_ROOT / "supabase" / "migrations"
-
-_CREATE_SCHEMA_MIGRATIONS = """
-CREATE TABLE IF NOT EXISTS public.schema_migrations (
-    version     text PRIMARY KEY,
-    applied_at  timestamptz NOT NULL DEFAULT now()
-);
-"""
-
 
 async def init_db_pool() -> asyncpg.Pool:
-    """Return (and create if needed) the connection pool, then apply any
-    pending migrations from supabase/migrations/*.sql in lexicographic order.
-
-    This makes local docker-postgres startup idempotent: already-applied
-    migrations are skipped via the schema_migrations tracking table.
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            # Ensure the migrations tracking table exists
-            await conn.execute(_CREATE_SCHEMA_MIGRATIONS)
-
-        if not _MIGRATIONS_DIR.exists():
-            return pool
-
-        # Collect applied versions
-        applied = {
-            row["version"]
-            for row in await conn.fetch(
-                "SELECT version FROM public.schema_migrations ORDER BY version"
-            )
-        }
-
-        # Apply each migration file in lexicographic order
-        for migration_file in sorted(_MIGRATIONS_DIR.glob("*.sql")):
-            version = migration_file.stem  # filename without .sql extension
-            if version in applied:
-                continue
-            sql = migration_file.read_text(encoding="utf-8")
-            async with conn.transaction():
-                await conn.execute(sql)
-                await conn.execute(
-                    "INSERT INTO public.schema_migrations (version) VALUES ($1)",
-                    version,
-                )
-
-    return pool
+    """Return the pool; the migrate service applies schema changes before startup."""
+    return await get_pool()
 
 
 async def close_db_pool() -> None:

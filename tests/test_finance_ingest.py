@@ -84,8 +84,8 @@ async def _seed_row(txn_id: str, description: str):
 
 
 @pytest.fixture(autouse=True)
-async def _cleanup():
-    if not _has_db():
+async def _cleanup(request):
+    if request.node.get_closest_marker("integration") is None:
         yield
         return
     import shared.db as _sdb
@@ -137,6 +137,7 @@ def _fake_llm(payload: dict):
     return mock
 
 
+@pytest.mark.integration
 async def test_categorize_new_uses_cache_hit():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -167,6 +168,7 @@ async def test_categorize_new_uses_cache_hit():
     assert row["category"] == "transport"
 
 
+@pytest.mark.integration
 async def test_categorize_new_invokes_llm_on_miss():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -201,6 +203,7 @@ async def test_categorize_new_invokes_llm_on_miss():
     assert cache["category"] == "subscriptions"
 
 
+@pytest.mark.integration
 async def test_categorize_new_llm_failure_leaves_null():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -227,6 +230,7 @@ async def test_categorize_new_llm_failure_leaves_null():
     assert row["category"] is None
 
 
+@pytest.mark.integration
 async def test_categorize_new_invalid_json_leaves_null():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
@@ -256,6 +260,7 @@ async def test_categorize_new_invalid_json_leaves_null():
 # ---------- ingest_rows --------------------------------------------------------
 
 
+@pytest.mark.integration
 async def test_ingest_rows_returns_inserted_and_uncategorized():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")

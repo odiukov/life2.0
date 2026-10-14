@@ -25,8 +25,8 @@ def test_normalize_name_kebabs():
 
 
 @pytest.fixture(autouse=True)
-async def _cleanup():
-    if not _has_db():
+async def _cleanup(request):
+    if request.node.get_closest_marker("integration") is None:
         yield
         return
     import shared.db as _sdb
@@ -59,6 +59,7 @@ async def _cleanup():
         _sdb._pool = None
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_create_then_find_then_archive():
     if not _has_db():

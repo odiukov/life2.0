@@ -22,7 +22,19 @@ AUTH_HEADER = {"X-User-Id": str(USER)}
 
 
 @pytest.fixture(autouse=True)
-async def _pool_and_user():
+def _dev_auth(monkeypatch):
+    from orchestrator.app import auth
+
+    # Auth is imported during collection, before module-level env defaults apply.
+    monkeypatch.setattr(auth, "AUTH_MODE", "dev")
+    monkeypatch.setenv("VAULT_BACKEND", "dev")
+
+
+@pytest.fixture(autouse=True)
+async def _pool_and_user(request):
+    if request.node.get_closest_marker("integration") is None:
+        yield
+        return
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
@@ -46,6 +58,7 @@ async def _client():
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_ha_connect_then_disconnect():
     async with await _client() as c:
@@ -67,6 +80,7 @@ async def test_ha_connect_then_disconnect():
         assert r.status_code == 200
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_ha_test_without_connect_is_404():
     async with await _client() as c:
@@ -85,6 +99,7 @@ async def test_routes_require_auth():
         assert r.status_code == 401
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_yazio_connect_validates_via_sync_service(monkeypatch):
     from orchestrator.app import integrations_routes
@@ -167,6 +182,7 @@ async def test_garmin_connect_rejects_invalid_credentials(monkeypatch):
 # -------- Preflight tests --------
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_preflight_garmin_detected_when_recent_samples_exist():
     async with await _client() as c:
@@ -189,6 +205,7 @@ async def test_preflight_garmin_detected_when_recent_samples_exist():
         assert body["last_seen"] is not None
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_preflight_garmin_not_detected_when_samples_are_stale():
     async with await _client() as c:
@@ -210,6 +227,7 @@ async def test_preflight_garmin_not_detected_when_samples_are_stale():
         assert body["last_seen"] is None
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_preflight_yazio_detects_yazio_source():
     async with await _client() as c:

@@ -9,6 +9,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 os.environ.setdefault("AUTH_MODE", "dev")
+pytestmark = pytest.mark.integration
+
 os.environ["DEV_FALLBACK_OWNER"] = "false"
 os.environ.setdefault("VAULT_BACKEND", "dev")
 
@@ -16,6 +18,15 @@ import shared.db as _sdb
 
 USER = UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
 AUTH_HEADER = {"X-User-Id": str(USER)}
+
+
+@pytest.fixture(autouse=True)
+def _dev_auth(monkeypatch):
+    from orchestrator.app import auth
+
+    # Auth is imported during collection, before module-level env defaults apply.
+    monkeypatch.setattr(auth, "AUTH_MODE", "dev")
+    monkeypatch.setenv("VAULT_BACKEND", "dev")
 
 
 @pytest.fixture(autouse=True)

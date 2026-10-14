@@ -14,7 +14,7 @@ def _has_db():
     return bool(os.environ.get("POSTGRES_DSN"))
 
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 # Fixed test user UUID to scope all recovery test rows
 _TEST_USER_ID = UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")

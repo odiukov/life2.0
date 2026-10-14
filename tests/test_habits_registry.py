@@ -5,6 +5,9 @@ import asyncpg
 from tests.conftest import TEST_USER_ID, ensure_test_user
 
 
+pytestmark = pytest.mark.integration
+
+
 def _has_db():
     return bool(os.environ.get("POSTGRES_DSN"))
 

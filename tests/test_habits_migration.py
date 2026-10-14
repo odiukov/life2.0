@@ -5,6 +5,9 @@ import asyncpg
 from tests.conftest import TEST_USER_ID, ensure_test_user
 
 
+pytestmark = pytest.mark.integration
+
+
 @pytest.mark.asyncio
 async def test_habits_table_exists_with_expected_columns():
     dsn = os.environ.get("POSTGRES_DSN")

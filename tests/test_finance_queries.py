@@ -9,7 +9,7 @@ from uuid import UUID
 
 import pytest
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 # Fixed test user UUID to scope all finance query test rows
 _TEST_USER_ID = UUID("11111111-1111-2222-aaaa-aaaaaaaaaaaa")

@@ -17,9 +17,6 @@ os.environ.setdefault("OPENROUTER_API_KEY", "test-placeholder")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-placeholder")
 os.environ.setdefault("GEMINI_API_KEY", "test-placeholder")
 os.environ.setdefault("GROQ_API_KEY", "test-placeholder")
-os.environ.setdefault(
-    "POSTGRES_DSN", "postgresql://lifeagents:lifeagents@localhost:5432/lifeagents"
-)
 
 
 # Fixed UUID for integration tests. Seeded into public.users by ensure_test_user.

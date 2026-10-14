@@ -35,7 +35,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./supabase/migrations/20260421120000_init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -45,23 +44,13 @@ services:
       retries: 5
 
   migrate:
-    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: shared/Dockerfile.migrate
+    env_file:
+      - .env
     environment:
-      PGHOST: postgres
-      PGUSER: ${POSTGRES_USER}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
-      PGDATABASE: ${POSTGRES_DB}
-    volumes:
-      - ./supabase/migrations:/migrations:ro
-    command:
-      - sh
-      - -c
-      - |
-        set -e
-        for f in $(ls /migrations/*.sql | sort); do
-          echo "applying $$f"
-          psql -v ON_ERROR_STOP=1 -f "$$f"
-        done
+      POSTGRES_HOST: postgres
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,7 +75,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -113,7 +102,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -140,7 +129,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -170,7 +159,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -200,7 +189,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -227,7 +216,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -254,7 +243,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -281,7 +270,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       LLM_PROVIDER: ${LLM_PROVIDER}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
@@ -294,6 +283,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       qdrant:
         condition: service_healthy
     healthcheck:
@@ -310,13 +301,15 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007,http://agent-medication:8008"
       HA_BASE_URL: ${HA_BASE_URL}
       HA_TOKEN: ${HA_TOKEN}
     ports:
       - "8000:8000"
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       agent-sleep:
         condition: service_healthy
       agent-workout:
@@ -341,7 +334,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       DAILY_SYNC_HOUR: "9"
       DAILY_SYNC_TZ: "Europe/Lisbon"
       ORCHESTRATOR_URL: http://orchestrator:8000

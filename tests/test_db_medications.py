@@ -5,7 +5,7 @@ import os
 import pytest
 from uuid import UUID
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 from shared.db import (
     insert_medication,

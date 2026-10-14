@@ -19,7 +19,7 @@ jobs:
       - run: uv sync --all-packages --all-extras --frozen
       - run: make lint
       - run: make test
-      # Enable make test-integration in Task 7 when integration fixtures and markers exist.
+      - run: make test-integration
       - run: cp .env.example .env
       - run: docker compose config --quiet
 
