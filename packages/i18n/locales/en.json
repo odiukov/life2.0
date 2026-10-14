@@ -124,5 +124,35 @@
       "llm_unavailable": "I can't process messages right now — try again in a minute.",
       "no_household": "I couldn't find your household. Please reopen the app."
     }
+  },
+  "household": {
+    "title": "Household",
+    "members": "Members",
+    "owner": "owner",
+    "invite": "Invite",
+    "invite_hint": "The code works for 48 hours and for one person.",
+    "share": "Share",
+    "share_message": "Join our household in Life Agents: code {code}",
+    "enter_code": "Enter code",
+    "join": "Join",
+    "join_preview": "Join “{name}”? Members: {members}.",
+    "join_moves": {
+      "one": "Your {count} item will move there.",
+      "other": "Your {count} items will move there."
+    },
+    "leave": "Leave household",
+    "leave_confirm": "Leave? You will get a new empty household.",
+    "remove": "Remove",
+    "remove_confirm": "Remove {name} from the household?",
+    "cancel": "Cancel",
+    "settings_hint": "Members and invites",
+    "errors": {
+      "invite_invalid": "The code is wrong or already used.",
+      "invite_own": "That is your own household's code.",
+      "invite_rate_limited": "Too many attempts. Try again in an hour.",
+      "not_owner": "Only the household owner can do that.",
+      "household_sole_member": "You are the only member — there is nowhere to leave to.",
+      "generic": "Something went wrong. Try again."
+    }
   }
 }

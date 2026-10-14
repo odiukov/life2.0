@@ -22,6 +22,9 @@ import Animated, {
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Icon, useTheme, agentSolid } from '@life-agents/ui';
+import { useT } from '@life-agents/i18n';
+import { HouseholdPanel } from '@/features/household/HouseholdPanel';
+import { appLocale } from '@/lib/locale';
 import { useSession } from '@/features/auth/useSession';
 import { SUPABASE_CONFIGURED } from '@/features/auth/SupabaseClient';
 import {
@@ -45,11 +48,13 @@ import {
 import { SubscriptionContent } from '@/features/subscription/SubscriptionScreen';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const householdPanelStyle = StyleSheet.create({ bounded: { height: SCREEN_HEIGHT * 0.8 } });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type IntegrationId = 'apple-health' | 'garmin' | 'yazio' | 'google-calendar' | 'ha';
 type SubPanel =
+  | 'household'
   | 'integrations'
   | `integration-${IntegrationId}`
   | 'privacy'
@@ -212,6 +217,12 @@ function PlaceholderContent({ title }: { title: string }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const NAV_ROWS = [
+  {
+    key: 'household',
+    labelKey: 'household.title',
+    hintKey: 'household.settings_hint',
+    icon: 'HouseLine',
+  },
   { key: 'integrations', label: 'Integrations', hint: 'Connected sources', icon: 'Plugs' },
   { key: 'privacy', label: 'Privacy & data', hint: 'On-device by default', icon: 'ShieldCheck' },
   {
@@ -232,6 +243,7 @@ type Props = {
 
 export function SettingsSheet({ visible, onClose, initialPanel }: Props) {
   const { colors, spacing, typography } = useTheme();
+  const t = useT(appLocale());
   const { session, signOut } = useSession();
   const insets = useSafeAreaInsets();
 
@@ -409,6 +421,12 @@ export function SettingsSheet({ visible, onClose, initialPanel }: Props) {
     // the Integrations list updates without waiting for a re-mount.
     const setStoreStatus = useIntegrationsStore.getState().set;
     switch (panel) {
+      case 'household':
+        return (
+          <View style={householdPanelStyle.bounded}>
+            <HouseholdPanel />
+          </View>
+        );
       case 'integrations':
         return <IntegrationsContent onSelect={(id) => pushSub(`integration-${id}`)} />;
       case 'integration-apple-health':
@@ -550,10 +568,10 @@ export function SettingsSheet({ visible, onClose, initialPanel }: Props) {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[typography.body, { color: colors.fg1, fontWeight: '600' }]}>
-                          {row.label}
+                          {'labelKey' in row ? t(row.labelKey) : row.label}
                         </Text>
                         <Text style={[typography.caption, { color: colors.fg3, marginTop: 1 }]}>
-                          {row.hint}
+                          {'hintKey' in row ? t(row.hintKey) : row.hint}
                         </Text>
                       </View>
                       <Text style={{ color: colors.fg4, fontSize: 16 }}>›</Text>
