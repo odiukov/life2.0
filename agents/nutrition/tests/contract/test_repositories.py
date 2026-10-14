@@ -1,5 +1,6 @@
 """One behavior contract for every MealRepository/ProfileRepository/BodyMetricsRepository backend."""
 
+import json
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -8,12 +9,18 @@ from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
+from nutrition.adapters.db import nutrition_uow
 from nutrition.application.models import BodyComposition
 from nutrition.application.ports import BodyMetricsRepository, MealRepository, ProfileRepository
 from nutrition.domain.meal import CHAT_SOURCE, YAZIO_SOURCE, Macros, Meal, MealItem, MealType
 from nutrition.testing import InMemoryBodyMetrics, InMemoryMeals, InMemoryProfiles, in_memory_uow
+from shared.adapters.db.engine import create_engine
+from shared.config import DatabaseSettings
 from shared.domain.energy import ActivityLevel, BodyProfile, Sex
 from shared.ports.uow import UnitOfWorkFactory
+from shared.testing.pytest_plugin import PostgresUrls
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 T0 = datetime(2026, 10, 13, 12, 0, tzinfo=UTC)
 
@@ -39,12 +46,53 @@ async def memory_backend(request: pytest.FixtureRequest) -> AsyncIterator[Backen
     yield Backend(in_memory_uow(meals, profiles, metrics), seed_user, seed_body)
 
 
+async def sql_backend(request: pytest.FixtureRequest) -> AsyncIterator[Backend]:
+    urls: PostgresUrls = request.getfixturevalue("clean_db")
+    engine = create_engine(DatabaseSettings.model_validate({"dsn": urls.rw}))
+    admin = create_async_engine(urls.admin)
+
+    async def seed_user(
+        user_id: UUID, timezone: str | None = "UTC", preferences: dict[str, Any] | None = None
+    ) -> None:
+        # The real schema is NOT NULL: None seeds the empty-string fallback case.
+        async with admin.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO users (id, name, timezone, preferences) "
+                    "VALUES (:id, 'u', :tz, CAST(:prefs AS jsonb))"
+                ),
+                {"id": user_id, "tz": timezone or "", "prefs": json.dumps(preferences or {})},
+            )
+
+    async def seed_body(user_id: UUID, composition: BodyComposition) -> None:
+        data = {
+            "weight_kg": composition.weight_kg,
+            "body_fat_pct": composition.body_fat_pct,
+            "bmr_kcal": composition.bmr_kcal,
+        }
+        async with admin.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO health_logs (user_id, agent, type, source, recorded_at, data) "
+                    "VALUES (:uid, 'body', 'body_composition', 'apple_health', :at, CAST(:data AS jsonb))"
+                ),
+                {"uid": user_id, "at": composition.recorded_at, "data": json.dumps(data)},
+            )
+
+    try:
+        yield Backend(nutrition_uow(engine), seed_user, seed_body)
+    finally:
+        await engine.dispose()
+        await admin.dispose()
+
+
 BACKENDS: dict[str, Callable[[pytest.FixtureRequest], AsyncIterator[Backend]]] = {
     "memory": memory_backend,
+    "sql": sql_backend,
 }
 
 
-@pytest.fixture(params=sorted(BACKENDS))
+@pytest.fixture(params=["memory", pytest.param("sql", marks=pytest.mark.integration)])
 async def backend(request: pytest.FixtureRequest) -> AsyncIterator[Backend]:
     generator = BACKENDS[request.param](request)
     try:
