@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -311,21 +311,37 @@ class InventoryService:
         now = self._clock.now()
         async with self._uow.for_user(user_id) as uow:
             await _locked_context(uow, user_id)
-            repo = uow.repo(BatchRepository)
-            log = uow.repo(OperationLog)
-            group = await log.get(group_id)
+            group = await uow.repo(OperationLog).get(group_id)
             if group is None:
                 return UndoOutcome.NOT_FOUND
             if group.undone_at is not None:
                 return UndoOutcome.ALREADY_UNDONE
-            ids = list(dict.fromkeys(c.batch_id for c in group.changes))
-            last = await repo.last_groups(ids)
-            if any(last.get(i) != group_id for i in ids):
-                return UndoOutcome.CONFLICT
-            for change in reversed(group.changes):
-                if change.before is None:
-                    await repo.delete(change.batch_id)
-                else:
-                    await repo.restore(from_snapshot(change.before))
-            await log.mark_undone(group_id, at=now, by=user_id)
+            return await self._undo_group(uow, user_id, group, now=now)
+
+    async def undo_last(self, user_id: UUID) -> UndoOutcome:
+        """Select and undo the actor's latest live group under one household lock."""
+        now = self._clock.now()
+        async with self._uow.for_user(user_id) as uow:
+            await _locked_context(uow, user_id)
+            group = await uow.repo(OperationLog).latest_for_user(user_id)
+            if group is None:
+                return UndoOutcome.NOT_FOUND
+            return await self._undo_group(uow, user_id, group, now=now)
+
+    async def _undo_group(
+        self, uow: UnitOfWork, user_id: UUID, group: OperationGroup, *, now: datetime
+    ) -> UndoOutcome:
+        repo = uow.repo(BatchRepository)
+        log = uow.repo(OperationLog)
+        group_id = group.id
+        ids = list(dict.fromkeys(c.batch_id for c in group.changes))
+        last = await repo.last_groups(ids)
+        if any(last.get(i) != group_id for i in ids):
+            return UndoOutcome.CONFLICT
+        for change in reversed(group.changes):
+            if change.before is None:
+                await repo.delete(change.batch_id)
+            else:
+                await repo.restore(from_snapshot(change.before))
+        await log.mark_undone(group_id, at=now, by=user_id)
         return UndoOutcome.DONE

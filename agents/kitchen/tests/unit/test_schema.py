@@ -67,6 +67,17 @@ def test_json_schema_uses_flat_lists_and_float_quantities() -> None:
     serialized = json.dumps(schema)
     assert "oneOf" not in serialized
     assert "discriminator" not in serialized
-    assert set(schema["properties"]) == {"adds", "consumes", "discards", "updates", "queries"}
-    assert all(field["type"] == "array" for field in schema["properties"].values())
+    assert set(schema["properties"]) == {
+        "adds",
+        "consumes",
+        "discards",
+        "updates",
+        "queries",
+        "undo_last",
+    }
+    assert all(
+        schema["properties"][name]["type"] == "array"
+        for name in ("adds", "consumes", "discards", "updates", "queries")
+    )
+    assert schema["properties"]["undo_last"]["type"] == "boolean"
     assert schema["$defs"]["AddItem"]["properties"]["quantity"]["type"] == "number"

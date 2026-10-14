@@ -89,6 +89,10 @@ class OperationLog(Protocol):
 
     async def get(self, group_id: UUID) -> OperationGroup | None: ...
 
+    async def latest_for_user(self, user_id: UUID) -> OperationGroup | None:
+        """The newest group of this user that has not been undone."""
+        ...
+
     async def mark_undone(self, group_id: UUID, *, at: datetime, by: UUID) -> None: ...
 
 
@@ -121,3 +125,9 @@ class MatchCandidate:
 
 class TextMatcher(Protocol):
     def rank(self, query: str, choices: Sequence[str], *, limit: int) -> list[MatchCandidate]: ...
+
+
+class UserLocales(Protocol):
+    async def locale(self, user_id: UUID) -> str | None:
+        """Return a supported users.preferences.locale, otherwise None."""
+        ...

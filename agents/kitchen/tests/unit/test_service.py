@@ -457,3 +457,41 @@ async def test_all_missing_references_create_no_group_and_deduplicate_in_order()
     assert result.changes == []
     assert memory.batches.rows == {}
     assert memory.log.groups == {}
+
+
+async def test_undo_last_selects_only_actor_latest_non_undone_group() -> None:
+    svc, memory, clock = env()
+    first = await svc.apply(A, ops=OperationList(adds=[milk()]), refs={}, source=Source.TEXT)
+    clock.advance(seconds=1)
+    await svc.apply(B, ops=OperationList(adds=[milk(name="bread")]), refs={}, source=Source.TEXT)
+    clock.advance(seconds=1)
+    last = await svc.apply(
+        A, ops=OperationList(adds=[milk(name="cheese")]), refs={}, source=Source.TEXT
+    )
+    assert await svc.undo_last(A) == UndoOutcome.DONE
+    assert memory.log.groups[last.group_id].undone_at is not None
+    assert memory.log.groups[first.group_id].undone_at is None
+    assert await svc.undo_last(A) == UndoOutcome.DONE
+    assert await svc.undo_last(A) == UndoOutcome.NOT_FOUND
+    assert len(memory.batches.rows) == 1
+
+
+async def test_undo_last_without_household_never_reads_log() -> None:
+    svc, memory, _ = env()
+    memory.context = None
+    with pytest.raises(NoHousehold):
+        await svc.undo_last(A)
+
+
+async def test_concurrent_undo_last_reverts_two_distinct_actor_groups() -> None:
+    import asyncio
+
+    svc, memory, clock = env()
+    await svc.apply(A, ops=OperationList(adds=[milk()]), refs={}, source=Source.TEXT)
+    clock.advance(seconds=1)
+    await svc.apply(A, ops=OperationList(adds=[milk(name="bread")]), refs={}, source=Source.TEXT)
+    assert await asyncio.gather(svc.undo_last(A), svc.undo_last(A)) == [
+        UndoOutcome.DONE,
+        UndoOutcome.DONE,
+    ]
+    assert not memory.batches.rows

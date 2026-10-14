@@ -75,5 +75,48 @@
     "errors": {
       "llm_unavailable": "I can't reach the model right now. Please try again in a moment."
     }
+  },
+  "kitchen": {
+    "added_header": "Added:",
+    "updated_header": "Updated:",
+    "consumed_header": "Used up:",
+    "discarded_header": "Thrown away:",
+    "item_line": "• {name} — {quantity} {unit} ({expiry})",
+    "updated_line": "• {name} — {location} ({expiry})",
+    "consumed_left": "• {name} — {quantity} {unit} left",
+    "consumed_all": "• {name} — finished",
+    "discarded_line": "• {name}",
+    "expiry_explicit": "until {date}",
+    "expiry_estimated": "until {date}, estimated",
+    "opened_suffix": ", opened",
+    "not_found": "Not in stock: {items}",
+    "not_understood": "I didn't get what to do with the food. Could you say it differently?",
+    "clarify": "Which one — “{ref}”? There is: {options}.",
+    "clarify_units": "“{ref}” is stored in other units ({options}). Tell me the amount in those — nothing saved yet.",
+    "clarify_quantity": "I didn't get the amount for “{ref}”. Say it again — nothing saved yet.",
+    "clarify_not_found": "I couldn't find “{ref}” in stock. What did you mean? Nothing saved yet.",
+    "undo_hint": "Say “undo” if something is wrong.",
+    "undone": "Undone.",
+    "undo_already": "Already undone.",
+    "undo_conflict": "Can't undo: these items have changed since.",
+    "undo_not_found": "Nothing to undo.",
+    "inventory_empty": "Nothing in stock.",
+    "units": {
+      "pcs": "pcs",
+      "g": "g",
+      "kg": "kg",
+      "ml": "ml",
+      "l": "l",
+      "pack": "pack"
+    },
+    "location": {
+      "fridge": "fridge",
+      "freezer": "freezer",
+      "pantry": "pantry"
+    },
+    "errors": {
+      "llm_unavailable": "I can't process messages right now — try again in a minute.",
+      "no_household": "I couldn't find your household. Please reopen the app."
+    }
   }
 }

@@ -115,3 +115,16 @@ MedicationSkillId = Literal[
     "analyze_adherence",
     "archive_medication",
 ]
+
+
+class Kitchen:
+    UPDATE_INVENTORY: Final = "kitchen.update_inventory"
+    QUERY: Final = "kitchen.query"
+    INVENTORY: Final = "kitchen.inventory"
+    DIGEST: Final = "kitchen.digest"
+    ITEM_ACTION: Final = "kitchen.item_action"
+    UNDO: Final = "kitchen.undo"
+
+
+# Conversational skills only; the gateway calls structured skills directly.
+KitchenSkillId = Literal["kitchen.update_inventory", "kitchen.query"]

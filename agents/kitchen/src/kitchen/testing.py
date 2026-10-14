@@ -21,6 +21,7 @@ from kitchen.application.ports import (
     OperationGroup,
     OperationLog,
     PendingClarification,
+    UserLocales,
 )
 from kitchen.domain.model import Batch, Category, ExpirySource, Location, Source, Status, Unit
 from kitchen.domain.rules import fifo
@@ -121,6 +122,14 @@ class InMemoryOperationLog:
     async def get(self, group_id: UUID) -> OperationGroup | None:
         return self.groups.get(group_id)
 
+    async def latest_for_user(self, user_id: UUID) -> OperationGroup | None:
+        mine = [
+            group
+            for group in reversed(list(self.groups.values()))
+            if group.user_id == user_id and group.undone_at is None
+        ]
+        return max(mine, key=lambda group: group.created_at, default=None)
+
     async def mark_undone(self, group_id: UUID, *, at: datetime, by: UUID) -> None:
         self.groups[group_id] = replace(self.groups[group_id], undone_at=at)
 
@@ -146,6 +155,15 @@ class InMemoryClarifications:
         self.rows.pop(user_id, None)
 
 
+class InMemoryUserLocales:
+    def __init__(self, locales: dict[UUID, str] | None = None) -> None:
+        self.locales = dict(locales or {})
+
+    async def locale(self, user_id: UUID) -> str | None:
+        locale = self.locales.get(user_id)
+        return locale if locale in {"ru", "en"} else None
+
+
 class StaticHouseholdView:
     def __init__(self, context: HouseholdContext | None) -> None:
         self.context = context
@@ -162,6 +180,7 @@ class KitchenMemory:
     batches: InMemoryBatches = field(default_factory=InMemoryBatches)
     log: InMemoryOperationLog = field(default_factory=InMemoryOperationLog)
     clarifications: InMemoryClarifications = field(default_factory=InMemoryClarifications)
+    locales: InMemoryUserLocales = field(default_factory=InMemoryUserLocales)
     extra: dict[type[object], object] = field(default_factory=dict)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
 
@@ -225,6 +244,7 @@ class KitchenUowFactory:
                 BatchRepository: memory.batches,
                 OperationLog: memory.log,
                 ClarificationRepository: memory.clarifications,
+                UserLocales: memory.locales,
                 **memory.extra,
             }
         )

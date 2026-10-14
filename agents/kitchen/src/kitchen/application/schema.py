@@ -61,8 +61,19 @@ class OperationList(BaseModel):
     updates: list[UpdateItem] = Field(default_factory=list)
     queries: list[QueryInventory] = Field(default_factory=list)
 
+    undo_last: bool = Field(
+        default=False, description="The person asks to revert their previous kitchen change."
+    )
+
     def is_empty(self) -> bool:
-        return not (self.adds or self.consumes or self.discards or self.updates or self.queries)
+        return not (
+            self.adds
+            or self.consumes
+            or self.discards
+            or self.updates
+            or self.queries
+            or self.undo_last
+        )
 
     def item_refs(self) -> list[str]:
         refs = [u.item_ref for u in self.updates]

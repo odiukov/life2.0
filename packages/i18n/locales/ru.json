@@ -74,5 +74,48 @@
     "errors": {
       "llm_unavailable": "Сейчас не получается связаться с моделью. Попробуй чуть позже."
     }
+  },
+  "kitchen": {
+    "added_header": "Записал:",
+    "updated_header": "Обновил:",
+    "consumed_header": "Списал:",
+    "discarded_header": "Выбросили:",
+    "item_line": "• {name} — {quantity} {unit} ({expiry})",
+    "updated_line": "• {name} — {location} ({expiry})",
+    "consumed_left": "• {name} — осталось {quantity} {unit}",
+    "consumed_all": "• {name} — закончилось",
+    "discarded_line": "• {name}",
+    "expiry_explicit": "до {date}",
+    "expiry_estimated": "до {date}, примерно",
+    "opened_suffix": ", открыт",
+    "not_found": "Не нашёл в запасах: {items}",
+    "not_understood": "Не понял, что сделать с продуктами. Скажи по-другому?",
+    "clarify": "Что именно — «{ref}»? Есть: {options}.",
+    "clarify_units": "Для «{ref}» другие единицы ({options}). Скажи количество в них — пока ничего не записал.",
+    "clarify_quantity": "Не понял количество для «{ref}». Скажи ещё раз — пока ничего не записал.",
+    "clarify_not_found": "Не нашёл «{ref}» в запасах. Что ты имел в виду? Пока ничего не записал.",
+    "undo_hint": "Скажи «отмени», если что-то не так.",
+    "undone": "Отменил.",
+    "undo_already": "Уже отменено.",
+    "undo_conflict": "Не могу отменить: эти продукты уже менялись после.",
+    "undo_not_found": "Нечего отменять.",
+    "inventory_empty": "Запасов нет.",
+    "units": {
+      "pcs": "шт",
+      "g": "г",
+      "kg": "кг",
+      "ml": "мл",
+      "l": "л",
+      "pack": "уп."
+    },
+    "location": {
+      "fridge": "холодильник",
+      "freezer": "морозилка",
+      "pantry": "шкаф"
+    },
+    "errors": {
+      "llm_unavailable": "Сейчас не могу разобрать сообщение — попробуй через минуту.",
+      "no_household": "Не нашёл твой дом. Открой приложение ещё раз."
+    }
   }
 }
