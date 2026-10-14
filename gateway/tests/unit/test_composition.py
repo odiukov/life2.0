@@ -34,6 +34,7 @@ async def test_mount_adds_household_routes() -> None:
         "/notifications/{notification_id}/read",
         "/me/push-tokens",
         "/me/push-tokens/{token}",
+        "/voice/transcribe",
     } <= paths
     await gateway.aclose()
 
@@ -89,6 +90,48 @@ async def test_composition_uses_configured_a2a_url_and_timeout_and_closes_http()
                 "/kitchen/digest", headers={"X-User-Id": "00000000-0000-0000-0000-000000000001"}
             )
         assert (response.status_code, response.json()) == (503, {"detail": "kitchen_unavailable"})
+    finally:
+        await gateway.aclose()
+    assert http.is_closed
+
+
+async def test_voice_route_uses_configured_stt_http_client_and_limit() -> None:
+    import httpx
+
+    def transcribe(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "http://configured-stt/transcribe"
+        assert request.extensions["timeout"]["read"] == 7.0
+        return httpx.Response(200, json={"text": "hello", "language": "en", "duration_s": 1.0})
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(transcribe))
+    settings = GatewaySettings.model_validate(
+        {
+            "database": {"dsn": "postgresql://u:p@localhost:1/db"},
+            "stt_url": "http://configured-stt",
+            "stt_timeout_s": 7.0,
+            "voice_max_bytes": 5,
+        }
+    )
+    gateway = build_gateway(settings, authenticate=dev_user, http=http)
+    app = FastAPI()
+    mount(app, gateway)
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://gw"
+        ) as gw:
+            accepted = await gw.post(
+                "/voice/transcribe",
+                files={"audio": ("rec.m4a", b"12345", "audio/m4a")},
+                data={"language": "en"},
+                headers={"X-User-Id": "00000000-0000-0000-0000-000000000001"},
+            )
+            rejected = await gw.post(
+                "/voice/transcribe",
+                files={"audio": ("rec.m4a", b"123456", "audio/m4a")},
+                headers={"X-User-Id": "00000000-0000-0000-0000-000000000001"},
+            )
+        assert (accepted.status_code, accepted.json()) == (200, {"text": "hello"})
+        assert (rejected.status_code, rejected.json()) == (413, {"detail": "audio_too_long"})
     finally:
         await gateway.aclose()
     assert http.is_closed

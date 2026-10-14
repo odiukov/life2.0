@@ -17,6 +17,7 @@ from shared.adapters.clock import SystemClock
 from shared.adapters.db.engine import create_engine
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.adapters.notifications import notification_repositories
+from shared.adapters.stt import HttpSpeechToText
 from shared.ports.clock import Clock
 from shared.ports.skills import SkillClient
 from shared.ports.stt import SpeechToText
@@ -26,6 +27,7 @@ from gateway.kitchen import KitchenGateway
 from gateway.kitchen import build_router as build_kitchen_router
 from gateway.notifications import build_router as build_notifications_router
 from gateway.settings import GatewaySettings
+from gateway.voice import build_router as build_voice_router
 
 
 class GatewayNotConfigured(Exception):
@@ -59,12 +61,14 @@ def build_gateway(
     skill_client = skill_client or A2ASkillClient(
         settings.kitchen_agent_url, http, timeout_s=settings.skill_timeout_s
     )
+    stt = stt or HttpSpeechToText(settings.stt_url, http, timeout_s=settings.stt_timeout_s)
     routers = [
         build_router(households, authenticate),
         build_kitchen_router(KitchenGateway(skill_client), authenticate),
         build_notifications_router(
             SqlUnitOfWorkFactory(engine, notification_repositories()), clock, authenticate
         ),
+        build_voice_router(stt, authenticate, max_bytes=settings.voice_max_bytes),
     ]
     return Gateway(
         routers=routers,
