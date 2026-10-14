@@ -53,6 +53,20 @@ _METRIC_FIELDS = frozenset(
 )
 
 
+class _PrivateStreamHandler(logging.StreamHandler[Any]):
+    def handleError(self, record: logging.LogRecord) -> None:  # noqa: N802
+        # ProcessorFormatter sanitizes a copy; the original record is still private.
+        # Never send it or the exception text to logging's default stderr diagnostic.
+        if record.levelno < logging.INFO:
+            super().handleError(record)
+            return
+        if logging.raiseExceptions:
+            try:
+                sys.stderr.write("logging_sink_failed\n")
+            except (OSError, ValueError):
+                pass
+
+
 def _add_trace_ids(
     logger: Any, method_name: str, event: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
@@ -111,7 +125,7 @@ def configure_logging(settings: TelemetrySettings) -> None:
         if settings.log_format == "json"
         else structlog.dev.ConsoleRenderer()
     )
-    handler = logging.StreamHandler()
+    handler = _PrivateStreamHandler()
     handler.set_name(_HANDLER_NAME)
     handler.setLevel(level)
     handler.setFormatter(

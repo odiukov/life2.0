@@ -36,12 +36,16 @@ class MealExtraction(BaseModel):
         return time.fromisoformat(self.eaten_at) if self.eaten_at else None
 
 
+BodyProfileField = Literal["height_cm", "age", "sex", "activity_level", "calorie_goal_override"]
+
+
 class BodyProfileExtraction(BaseModel):
     height_cm: float | None = Field(default=None, gt=50, lt=260)
     age: int | None = Field(default=None, gt=0, lt=120)
     sex: Sex | None = None
     activity_level: ActivityLevel | None = None
     calorie_goal_override: int | None = Field(default=None, ge=800, le=10000)
+    cleared_fields: list[BodyProfileField] = Field(default_factory=list)
 
     @field_validator("activity_level", mode="before")
     @classmethod

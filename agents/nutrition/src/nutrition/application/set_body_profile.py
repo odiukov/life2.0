@@ -14,10 +14,11 @@ from nutrition.application.schemas import BodyProfileExtraction
 
 BODY_PROFILE_SYSTEM = """Extract the body profile details the user states about themselves:
 height in cm, age in years, sex (male or female), activity level (sedentary, light, moderate,
-active, very_active) and a daily calorie goal in kcal. Omit every detail that is not stated.
-Return null only when the user explicitly asks to clear that detail."""
+active, very_active) and a daily calorie goal in kcal. Return null for details not stated.
+List a field in cleared_fields only when the user explicitly asks to clear that detail.
+Null alone means no update; cleared_fields must be empty when no clear is requested."""
 
-_FIELDS = tuple(BodyProfileExtraction.model_fields)
+_FIELDS = tuple(name for name in BodyProfileExtraction.model_fields if name != "cleared_fields")
 
 
 class SetBodyProfile:
@@ -48,7 +49,12 @@ class SetBodyProfile:
                     user=request.text,
                     schema=BodyProfileExtraction,
                 )
-                extracted = found.model_dump(exclude_unset=True)
+                extracted = {
+                    key: value
+                    for key, value in found.model_dump().items()
+                    if key in _FIELDS and value is not None
+                }
+                extracted.update(dict.fromkeys(found.cleared_fields))
             except LLMError:
                 extracted = {}
         explicit = {k: v for k, v in request.params.items() if k in _FIELDS}

@@ -19,6 +19,16 @@ jobs:
       - run: uv sync --all-packages --all-extras --frozen
       - run: make lint
       - run: make test
+
+  integration:
+    # Independent of the unit baseline: its failure must not skip RLS validation.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-packages --all-extras --frozen
       - run: make test-integration
       - run: cp .env.example .env
       - run: docker compose config --quiet

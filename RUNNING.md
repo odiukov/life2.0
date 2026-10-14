@@ -9,9 +9,18 @@
 
 1. Clone or navigate to the project directory
 2. Copy environment file:
+
    ```bash
    cp .env.example .env
    ```
+
+3. Set `APP_OWNER_PASSWORD`, `APP_RW_PASSWORD` and `APP_LEGACY_PASSWORD` in `.env`
+   (letters, digits, `-` and `_`). The migrate service bootstraps roles as the configured
+   administrator, then runs Alembic strictly as `app_owner`; services wait for success.
+4. Nutrition reads `LLM__DEFAULT` (`<provider>:<model>`) and optional `LLM__TASKS__*`
+   routes instead of `LLM_PROVIDER` / `LLM_MODEL`. Keep both routes aligned for the same
+   provider, and supply its API key. Nutrition connects using `app_rw`; unmigrated
+   services use `app_legacy`. See [database role details](deploy/postgres/README.md).
 
 ## LLM provider
 
@@ -23,7 +32,7 @@ matching API key.
 - **Groq:** just set `GROQ_API_KEY`. Free tier is ~30 req/min, ~14 400 req/day across Llama 3.x models — the most generous free option for tool-calling workloads. Get a key at https://console.groq.com/keys.
 - **Ollama:** run Ollama on the host; set `OLLAMA_HOST=http://host.docker.internal:11434`.
 
-Switch providers with a single env change + `docker compose restart`.
+Switch providers with an env change and `docker compose up -d --force-recreate <service>`.
 
 > **Note:** changing `LLM_PROVIDER` or `LLM_MODEL` in `.env` requires
 > `docker compose up -d --force-recreate <service>` — a plain
@@ -68,7 +77,7 @@ Expected response from /chat:
 
 ```bash
 docker compose exec postgres psql -U lifeagents -d lifeagents \
-  -c "SELECT agent, task_type, output, created_at FROM tasks ORDER BY created_at DESC LIMIT 3;"
+  -c "SELECT agent, skill_id, output, created_at FROM tasks ORDER BY created_at DESC LIMIT 3;"
 ```
 
 ### LangGraph checkpoints
@@ -369,3 +378,14 @@ The mobile app supports three API modes (configured via `apps/mobile/.env.local`
 - `cloud`: hits `EXPO_PUBLIC_API_BASE_URL_CLOUD` — populated by P0 deploy.
 
 See `apps/mobile/.env.local.example` and `scripts/mac-ip.sh` for setup. For off-network device testing, Tailscale is the recommended bridge.
+
+## Foundation development checks
+
+Use Python 3.12 through `uv`; host Python is not the test environment.
+`make sync`, `make lint`, `make test`, and `make test-integration` are the standard gates.
+Integration tests require Docker and fail clearly when it is unavailable. `make evals`
+selects real-provider golden cases; missing, blank or test-placeholder keys skip them.
+A zero exit with skipped cases does not establish real-model quality.
+
+Only reset volumes belonging to the development stack you intend to erase. A clean-volume
+acceptance run uses its own Compose project so other projects and data remain intact.

@@ -26,8 +26,8 @@ Health apps each own a slice of your data and none of them talk to each other.
 Garmin knows your HRV, Yazio knows your macros, Apple Health knows your steps,
 and no one connects "you slept 5h20m and then ate 2 800 kcal of mostly carbs."
 
-Life Agents puts one conversational layer over all of it. Ask *"why was my
-recovery bad this week?"* and the orchestrator consults the recovery, sleep and
+Life Agents puts one conversational layer over all of it. Ask _"why was my
+recovery bad this week?"_ and the orchestrator consults the recovery, sleep and
 workout agents, each of which reads its own domain data and reports back.
 
 ## Architecture
@@ -59,18 +59,18 @@ exposes three to four domain skills, and streams artifacts back.
 
 ### The agents
 
-| Agent | Port | What it owns |
-| --- | --- | --- |
-| `sleep` | 8001 | Sleep stages, duration, debt, bedtime consistency |
-| `workout` | 8002 | Training sessions, load, weekly volume |
-| `nutrition` | 8003 | Meals, macros, calorie balance |
-| `body` | 8004 | Weight, body composition, measurements |
-| `mood` | 8005 | Check-ins and a coaching loop (Groq-only, zero cost) |
-| `habits` | 8006 | Habit definitions, streaks, adherence |
-| `recovery` | 8007 | HRV, resting HR, readiness across domains |
-| `medication` | 8008 | Medication registry, doses, adherence |
+| Agent        | Port | What it owns                                         |
+| ------------ | ---- | ---------------------------------------------------- |
+| `sleep`      | 8001 | Sleep stages, duration, debt, bedtime consistency    |
+| `workout`    | 8002 | Training sessions, load, weekly volume               |
+| `nutrition`  | 8003 | Meals, macros, calorie balance                       |
+| `body`       | 8004 | Weight, body composition, measurements               |
+| `mood`       | 8005 | Check-ins and a coaching loop (Groq-only, zero cost) |
+| `habits`     | 8006 | Habit definitions, streaks, adherence                |
+| `recovery`   | 8007 | HRV, resting HR, readiness across domains            |
+| `medication` | 8008 | Medication registry, doses, adherence                |
 
-Every agent follows the same layout:
+Legacy peers use this layout; nutrition uses the foundation layout below:
 
 ```
 agents/<name>/app/
@@ -81,17 +81,66 @@ agents/<name>/app/
 ```
 
 `health_logs` is the universal sink for all ingested data, deduplicated on
-`(source, type, recorded_at)`.
+`(user_id, source, type, recorded_at)`.
+
+## Code structure (foundation)
+
+New and migrated code follows a ports-and-adapters layout:
+
+- `shared/src/shared/ports/` — typing Protocols: `LLMProvider`, `ChatModelFactory`, `Clock`,
+  `Translator`, `VectorMemory`, `PeerClient`, `UnitOfWork`, `TaskRecords`, `Scheduler`,
+  `SpeechToText`.
+- `shared/src/shared/adapters/` — their implementations (LangChain providers with one schema
+  repair, Claude Agent SDK, SQLAlchemy Unit of Work, Qdrant, A2A peers, APScheduler, JSON i18n).
+- `shared/src/shared/config/` — typed settings; the only place that reads the environment.
+- `shared/src/shared/schema/` — SQLAlchemy metadata and Alembic migrations.
+- `shared/src/shared/a2a/` — `SkillExecutor`, the base for every migrated agent.
+- `agents/nutrition/src/nutrition/` — the first migrated agent: `domain/` (pure), `application/`
+  (use cases on ports), `adapters/` (SQL, HTTP, A2A card), `composition.py` (wiring).
+
+import-linter enforces the direction of these dependencies (`make lint`). The other agents,
+the orchestrator and the sync service still use the legacy modules at the top of `shared/src/shared/`
+and move over one at a time.
+
+## Database roles and row-level security
+
+`docker compose up` runs the `migrate` service, which creates three roles and applies Alembic
+migrations (see `deploy/postgres/README.md`). Migrated services connect as `app_rw`: every
+transaction sets `app.user_id` and PostgreSQL row-level security limits it to that user's rows.
+Legacy services connect as `app_legacy`, which bypasses RLS until they migrate.
+
+## LLM providers for migrated services
+
+Migrated services read `LLM__DEFAULT` and optional per-task routes `LLM__TASKS__FAST`,
+`LLM__TASKS__SMART`, `LLM__TASKS__MOOD_COACH`, each `"<provider>:<model>"`. The provider
+`claude_sdk` uses the Claude Agent SDK with a local Claude Code login and is meant for
+personal self-hosting only. Sending a Claude subscription OAuth token to the API
+(`LLM__ANTHROPIC_AUTH=oauth_token`) is an explicit compatibility option and is off by default.
+Follow [Anthropic's authentication and credential-use guidance](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use):
+applications and services should use API keys or supported cloud credentials; do not collect or
+intermediate other users' subscription credentials.
+
+Vector memory currently wraps the legacy implementation: `QDRANT_HOST` / `QDRANT_PORT`
+and `GEMINI_API_KEY` remain effective. The typed `QDRANT_URL` field is reserved and is not
+consumed by that wrapper. OTEL/Traceloop also retain their SDK environment configuration.
+New vector writes namespace keys by user and agent; older unscoped points can coexist until
+an explicit data reset or migration. Peer context is best effort with a 20-second whole-batch
+deadline; a timeout discards the incomplete batch, including partial answers.
+
+The A2A `tasks` table retains global task IDs and legacy serialization. If the SDK creates a
+working task first, its initial `skill_id` and `input` remain empty under the immutable
+upsert policy, although completed output/state/artifacts persist. Provider failures finish
+as `failed` with a localized explanation and no success artifacts.
 
 ## Integrations
 
-| Source | Direction | Notes |
-| --- | --- | --- |
-| Apple Health | Push, on device | HealthKit via the mobile app; primary source for steps, HR, sleep |
-| Garmin | Pull, scheduled | Per-user credentials stored in an encrypted vault |
-| Yazio | Pull, scheduled | Requires your own OAuth client credentials (see below) |
-| Google Calendar | Pull, on demand | Local MCP server, per-user OAuth tokens |
-| Home Assistant | Pull, on demand | Optional; long-lived access token |
+| Source          | Direction       | Notes                                                             |
+| --------------- | --------------- | ----------------------------------------------------------------- |
+| Apple Health    | Push, on device | HealthKit via the mobile app; primary source for steps, HR, sleep |
+| Garmin          | Pull, scheduled | Per-user credentials stored in an encrypted vault                 |
+| Yazio           | Pull, scheduled | Requires your own OAuth client credentials (see below)            |
+| Google Calendar | Pull, on demand | Direct REST API, per-user OAuth tokens                            |
+| Home Assistant  | Pull, on demand | Optional; long-lived access token                                 |
 
 ## Quick start
 
@@ -146,14 +195,14 @@ local-development convenience — never run it on anything reachable.
 All configuration is environment-driven; see [`.env.example`](.env.example) for
 the annotated list. The essentials:
 
-| Variable | Purpose |
-| --- | --- |
-| `LLM_PROVIDER` | `anthropic` \| `openrouter` \| `gemini` \| `groq` \| `ollama` |
-| `ANTHROPIC_API_KEY` etc. | The key matching your provider |
-| `MOOD_COACH_PROVIDER` | Hard-locked to `groq`; the coach never falls back to a paid provider |
+| Variable                                  | Purpose                                                                |
+| ----------------------------------------- | ---------------------------------------------------------------------- |
+| `LLM_PROVIDER`                            | `anthropic` \| `openrouter` \| `gemini` \| `groq` \| `ollama`          |
+| `ANTHROPIC_API_KEY` etc.                  | The key matching your provider                                         |
+| `MOOD_COACH_PROVIDER`                     | Hard-locked to `groq`; the coach never falls back to a paid provider   |
 | `YAZIO_CLIENT_ID` / `YAZIO_CLIENT_SECRET` | Yazio has no public API programme — supply your own client credentials |
-| `GOOGLE_CALENDAR_OAUTH_*` | A dedicated OAuth client for the mobile app |
-| `TELEMETRY_ENABLED` | Turns on OTEL tracing to the bundled Langfuse stack |
+| `GOOGLE_CALENDAR_OAUTH_*`                 | A dedicated OAuth client for the mobile app                            |
+| `TELEMETRY_ENABLED`                       | Turns on OTEL tracing to the bundled Langfuse stack                    |
 
 > Changing `LLM_PROVIDER` or `LLM_MODEL` requires
 > `docker compose up -d --force-recreate <service>` — a plain `restart` does not
@@ -165,8 +214,12 @@ is read from the environment or from the per-user encrypted vault.
 ## Development
 
 ```bash
-# Python — always use the venv; host Python 3.14 breaks langchain imports
-.venv/bin/python -m pytest tests/
+# Python 3.12, uv workspace
+make sync
+make lint
+make test
+make test-integration   # disposable PostgreSQL 16; Docker required
+make evals              # real provider required; no key means skipped
 
 # TypeScript monorepo
 pnpm install
@@ -176,8 +229,10 @@ turbo typecheck
 turbo lint
 ```
 
-Roughly 700 Python tests cover the agents, orchestrator routing, ingestion and
-auth. A handful require a running Postgres; the rest are hermetic.
+Python suites cover the agents, orchestrator routing, ingestion and auth. Unit tests
+require no Docker; integration tests start disposable PostgreSQL 16 containers. Existing
+legacy baseline failures are tracked separately and must never hide a new regression.
+Real-provider evals are excluded from ordinary tests and CI; skipped evals are not quality passes.
 
 Shell smoke tests against a live stack live in `scripts/`.
 
@@ -213,7 +268,7 @@ packages/
   api-client/     OpenAPI-generated TypeScript client
   i18n/           Russian + English strings
   ui/             Shared React components
-supabase/migrations/  PostgreSQL schema
+shared/src/shared/schema/  SQLAlchemy metadata and Alembic migrations
 tests/            Python test suite
 scripts/          Smoke tests against a running stack
 ```

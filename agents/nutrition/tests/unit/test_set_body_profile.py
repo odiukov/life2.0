@@ -1,14 +1,88 @@
+import json
 from uuid import uuid4
 
+import httpx
+import pytest
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import ChatOpenAI
 from nutrition.application.set_body_profile import SetBodyProfile
 from nutrition.testing import InMemoryBodyMetrics, InMemoryMeals, InMemoryProfiles, in_memory_uow
 from shared.a2a.request import SkillRequest
 from shared.adapters.i18n import JsonTranslator
+from shared.adapters.llm.langchain_provider import LangChainLLMProvider
 from shared.config import find_locales_dir
-from shared.ports.llm import LLMUnavailable
+from shared.ports.llm import LLMTask, LLMUnavailable
 from shared.testing.fakes import FakeLLM
 
 TR = JsonTranslator.from_dir(find_locales_dir())
+
+
+@pytest.mark.parametrize("clear_age", [False, True])
+async def test_strict_provider_partial_update_preserves_unmentioned_fields(clear_age: bool) -> None:
+    world = World()
+    initial = {
+        "height_cm": 180,
+        "age": 30,
+        "sex": "male",
+        "activity_level": "moderate",
+        "calorie_goal_override": 2500,
+    }
+    world.profiles.seed(world.user, preferences={"body_profile": initial})
+    captured: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        captured.append(json.loads(request.content))
+        answer = {
+            "height_cm": None,
+            "age": None if clear_age else 31,
+            "sex": None,
+            "activity_level": None,
+            "calorie_goal_override": None,
+            "cleared_fields": ["age"] if clear_age else [],
+        }
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-synthetic",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "synthetic",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": "assistant", "content": json.dumps(answer)},
+                    }
+                ],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+
+        class Factory:
+            def chat_model(self, task: LLMTask) -> BaseChatModel:
+                return ChatOpenAI(
+                    model="synthetic",
+                    api_key="synthetic-no-network",
+                    http_async_client=client,
+                    max_retries=0,
+                )
+
+        handler = SetBodyProfile(
+            llm=LangChainLLMProvider(Factory(), timeout_s=5),
+            uow=in_memory_uow(InMemoryMeals(), world.profiles, InMemoryBodyMetrics()),
+            translator=TR,
+            default_locale="en",
+        )
+        await handler(world.request("clear my age" if clear_age else "I am now 31 years old"), ())
+    expected = {k: v for k, v in initial.items() if k != "age"}
+    if not clear_age:
+        expected["age"] = 31
+    assert world.body() == expected
+    schema = captured[0]["response_format"]["json_schema"]
+    assert schema["strict"] is True
+    assert set(schema["schema"]["required"]) == {*initial, "cleared_fields"}
 
 
 class World:
@@ -91,7 +165,7 @@ async def test_llm_failure_still_honors_explicit_params() -> None:
 async def test_extracted_null_clears_only_the_stated_field() -> None:
     world = World()
     world.profiles.seed(world.user, preferences={"body_profile": {"age": 30, "height_cm": 180}})
-    world.llm.queue_structured({"age": None})
+    world.llm.queue_structured({"age": None, "cleared_fields": ["age"]})
     result = await world.handler(world.request("clear my age"), ())
     assert world.body() == {"height_cm": 180}
     assert result.output.startswith("Профиль обновлён: возраст: значение сброшено.")
@@ -111,7 +185,7 @@ async def test_mixed_updates_and_clears_are_localized_and_omissions_preserved() 
     world.profiles.seed(
         world.user, preferences={"locale": "en", "body_profile": {"age": 30, "sex": "male"}}
     )
-    world.llm.queue_structured({"height_cm": 175, "age": None})
+    world.llm.queue_structured({"height_cm": 175, "age": None, "cleared_fields": ["age"]})
     result = await world.handler(world.request("height 175 and clear my age"), ())
     assert world.body() == {"sex": "male", "height_cm": 175.0}
     assert result.output.startswith("Profile updated: height 175 cm, age cleared.")

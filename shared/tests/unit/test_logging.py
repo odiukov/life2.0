@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 from collections.abc import Iterator
@@ -7,6 +8,43 @@ import pytest
 import structlog
 from shared.config import TelemetrySettings
 from shared.observability.logging import configure_logging, get_logger, logging_context
+
+
+@pytest.mark.parametrize("log_format", ["json", "console"])
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize("failure", ["closed", "flush", "format"])
+def test_sink_failure_diagnostics_keep_info_private(
+    monkeypatch: pytest.MonkeyPatch,
+    log_format: Literal["json", "console"],
+    structured: bool,
+    failure: str,
+) -> None:
+    import sys
+
+    class BrokenFlush(io.StringIO):
+        def flush(self) -> None:
+            raise ValueError("private_flush_marker")
+
+    sink = BrokenFlush() if failure == "flush" else io.StringIO()
+    monkeypatch.setattr(sys, "stderr", sink)
+    monkeypatch.setattr(logging, "raiseExceptions", True)
+    configure_logging(TelemetrySettings(log_format=log_format))
+    if failure == "closed":
+        sink.close()
+    elif failure == "format":
+
+        def broken_format(record: logging.LogRecord) -> str:
+            raise ValueError("private_format_marker")
+
+        monkeypatch.setattr(logging.getLogger().handlers[0], "format", broken_format)
+    fallback = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", fallback)
+    if structured:
+        get_logger("privacy.failure").info("llm_response", output="private_content_marker")
+    else:
+        logging.getLogger("privacy.failure").info("provider: %s", "private_content_marker")
+    assert "private_" not in fallback.getvalue()
+    assert "logging_sink_failed" in fallback.getvalue()
 
 
 def lines(err: str) -> list[dict[str, object]]:
