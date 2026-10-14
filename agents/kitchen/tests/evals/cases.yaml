@@ -1,0 +1,180 @@
+- id: buy_milk_eggs
+  text: "купил два литра молока и десяток яиц"
+  expect:
+    adds:
+      - {name: молоко, quantity: 2, unit: l}
+      - {name: яйца, quantity: 10, unit: pcs}
+- id: buy_until_friday
+  text: "взял курицу, годна до пятницы"
+  expect:
+    adds:
+      - {name: курица, expires_on: "2026-10-16"}
+- id: buy_frozen_dumplings
+  text: "закинул в морозилку пачку пельменей"
+  expect:
+    adds:
+      - {name: пельмени, quantity: 1, unit: pack, location: freezer}
+- id: buy_pantry
+  text: "купил килограмм гречки и две пачки макарон"
+  expect:
+    adds:
+      - {name: гречка, quantity: 1, unit: kg, location: pantry}
+      - {name: макароны, quantity: 2, unit: pack, location: pantry}
+- id: buy_cheese_grams
+  text: "сыр российский граммов триста"
+  expect:
+    adds:
+      - {name: сыр, quantity: 300, unit: g, location: fridge}
+- id: buy_vegetables
+  text: "купила помидоры, огурцы и пучок укропа"
+  expect:
+    adds:
+      - {name: помидоры}
+      - {name: огурцы}
+      - {name: укроп}
+- id: consume_all
+  inventory: [сыр]
+  text: "доели сыр"
+  expect:
+    consumes:
+      - {item_ref: сыр}
+- id: consume_partial
+  inventory: [молоко]
+  text: "выпили пол-литра молока"
+  expect:
+    consumes:
+      - {item_ref: молоко, quantity: 0.5, unit: l}
+- id: discard_spoiled
+  inventory: [кефир]
+  text: "кефир испортился, выкинула"
+  expect:
+    discards:
+      - {item_ref: кефир}
+- id: open_sour_cream
+  inventory: [сметана]
+  text: "открыли сметану"
+  expect:
+    updates:
+      - {item_ref: сметана, opened: true}
+- id: move_to_freezer
+  inventory: [куриное филе]
+  text: "переложил курицу в морозилку"
+  expect:
+    updates:
+      - {item_ref: куриное филе, location: freezer}
+- id: explicit_expiry_update
+  inventory: [йогурт]
+  text: "йогурт годен до двадцатого"
+  expect:
+    updates:
+      - {item_ref: йогурт, expires_on: "2026-10-20"}
+- id: query_vegetables
+  inventory: [морковь, молоко]
+  text: "что у нас есть из овощей?"
+  expect:
+    queries: 1
+- id: query_expiring
+  inventory: [молоко, творог]
+  text: "что скоро испортится?"
+  expect:
+    queries: 1
+- id: chatter_where_are_you
+  text: "мам, ты где?"
+  expect: {}
+- id: chatter_cinema
+  text: "вечером в кино пойдём?"
+  expect: {}
+- id: buy_and_consume
+  inventory: [хлеб]
+  text: "купил новый хлеб, старый доели"
+  expect:
+    adds:
+      - {name: хлеб}
+    consumes:
+      - {item_ref: хлеб}
+- id: discard_and_buy
+  inventory: [бананы]
+  text: "бананы почернели, выкинул, купил яблоки"
+  expect:
+    adds:
+      - {name: яблоки}
+    discards:
+      - {item_ref: бананы}
+- id: speech_recognition_errors
+  text: "купил малако и смитану"
+  expect:
+    adds:
+      - {name: молоко}
+      - {name: сметана}
+- id: number_words
+  text: "три банки тушёнки"
+  expect:
+    adds:
+      - {name: тушенка, quantity: 3, location: pantry}
+- id: half_kilo
+  text: "полкило фарша"
+  expect:
+    adds:
+      - {name: фарш, quantity: 0.5, unit: kg, location: fridge}
+- id: one_and_half_litres
+  text: "полтора литра кефира"
+  expect:
+    adds:
+      - {name: кефир, quantity: 1.5, unit: l}
+- id: bought_and_opened
+  text: "купил сок, сразу открыли"
+  expect:
+    adds:
+      - {name: сок, opened: true}
+- id: relative_days
+  text: "торт, надо съесть за три дня"
+  expect:
+    adds:
+      - {name: торт, expires_on: "2026-10-16"}
+- id: consume_count
+  inventory: [яйца]
+  text: "пожарил три яйца"
+  expect:
+    consumes:
+      - {item_ref: яйца, quantity: 3, unit: pcs}
+- id: discard_sour
+  inventory: [творог]
+  text: "творог прокис"
+  expect:
+    discards:
+      - {item_ref: творог}
+- id: diminutive_reference
+  inventory: [молоко]
+  text: "допили молочко"
+  expect:
+    consumes:
+      - {item_ref: молоко}
+- id: english_input
+  text: "bought a dozen eggs"
+  expect:
+    adds:
+      - {name: eggs, quantity: 12, unit: pcs}
+- id: two_consumes
+  inventory: [сыр, колбаса]
+  text: "сделали бутерброды, доели сыр и колбасу"
+  expect:
+    consumes:
+      - {item_ref: сыр}
+      - {item_ref: колбаса}
+- id: ice_cream_freezer
+  text: "мороженое в морозилку, два стаканчика"
+  expect:
+    adds:
+      - {name: мороженое, quantity: 2, unit: pcs, location: freezer}
+- id: undo_last
+  inventory: [молоко]
+  text: "отмени последнее"
+  expect:
+    undo_last: true
+- id: clarification_answer
+  inventory: [сыр российский, сыр моцарелла]
+  clarification: 'You asked about "сыр" (reason: ambiguous; options: сыр моцарелла, сыр российский). Their original message was: "доели сыр"'
+  text: "моцареллу"
+  expect:
+    consumes:
+      - {item_ref: сыр моцарелла}

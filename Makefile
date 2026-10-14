@@ -23,7 +23,11 @@ test-integration:
 	uv run pytest -m integration -q
 
 evals:
-	uv run pytest -m evals -q
+	@if [ -f .env ]; then \
+		uv run --env-file .env pytest -m evals -q; \
+	else \
+		uv run pytest -m evals -q; \
+	fi
 
 migrate:
 	uv run python -m shared.schema

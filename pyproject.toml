@@ -42,7 +42,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-pythonpath = [".", "shared/src"]
+pythonpath = [".", "shared/src", "agents/kitchen/tests"]
 testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin"
 consider_namespace_packages = true
