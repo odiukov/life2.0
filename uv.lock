@@ -3712,11 +3712,9 @@ requires-dist = [
 
 [[package]]
 name = "sync-service"
-version = "0.1.0"
-source = { virtual = "sync_service" }
+version = "0.2.0"
+source = { editable = "sync_service" }
 dependencies = [
-    { name = "apscheduler" },
-    { name = "asyncpg" },
     { name = "fastapi" },
     { name = "garminconnect" },
     { name = "httpx" },
@@ -3727,7 +3725,6 @@ dependencies = [
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-sdk" },
-    { name = "pdfplumber" },
     { name = "shared" },
     { name = "traceloop-sdk" },
     { name = "uvicorn", extra = ["standard"] },
@@ -3736,10 +3733,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apscheduler", specifier = ">=3.10" },
-    { name = "asyncpg", specifier = ">=0.29" },
     { name = "fastapi", specifier = ">=0.111" },
-    { name = "garminconnect", specifier = ">=0.2.19" },
+    { name = "garminconnect", specifier = ">=0.3.17,<0.4" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "opentelemetry-api", specifier = ">=1.27" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.27" },
@@ -3748,7 +3743,6 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.48b0" },
     { name = "opentelemetry-instrumentation-logging", specifier = ">=0.48b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.27" },
-    { name = "pdfplumber", specifier = ">=0.11" },
     { name = "shared", editable = "shared" },
     { name = "traceloop-sdk", specifier = ">=0.30" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
