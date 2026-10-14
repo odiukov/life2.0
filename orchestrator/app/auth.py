@@ -14,6 +14,8 @@ Two modes, selected by `AUTH_MODE` env var:
 from __future__ import annotations
 
 import json
+import logging
+from collections.abc import Awaitable, Callable
 import os
 import time
 from typing import Any
@@ -23,6 +25,18 @@ import httpx
 import jwt
 from fastapi import Header, HTTPException
 from jwt.algorithms import ECAlgorithm, RSAAlgorithm
+
+# Awaited after every successful authentication, before route execution.
+POST_AUTH_HOOKS: list[Callable[[UUID], Awaitable[None]]] = []
+
+
+async def _run_post_auth_hooks(user_id: UUID) -> None:
+    for hook in list(POST_AUTH_HOOKS):
+        try:
+            await hook(user_id)
+        except Exception:
+            logging.getLogger(__name__).warning("post_auth_hook_failed")
+
 
 AUTH_MODE = os.environ.get("AUTH_MODE", "supabase").lower()
 EXPECTED_AUDIENCE = os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
@@ -113,9 +127,11 @@ async def current_user(
         if not x_user_id:
             raise HTTPException(status_code=401, detail="AUTH_MODE=dev requires X-User-Id header")
         try:
-            return UUID(x_user_id)
+            user_id = UUID(x_user_id)
         except ValueError:
             raise HTTPException(status_code=401, detail="X-User-Id is not a valid UUID")
+        await _run_post_auth_hooks(user_id)
+        return user_id
     if not authorization:
         raise HTTPException(status_code=401, detail="missing Authorization header")
     user_id = verify_jwt(authorization)
@@ -124,6 +140,7 @@ async def current_user(
     # lives only in Supabase's postgres). Seed public.users on first
     # authenticated hit so FK inserts succeed. Idempotent via ON CONFLICT.
     await _ensure_user_row(user_id)
+    await _run_post_auth_hooks(user_id)
     return user_id
 
 

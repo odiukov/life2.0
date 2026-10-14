@@ -51,6 +51,8 @@ async def lifespan(app: FastAPI):
     finally:
         from .mcp_tools import close_mcp_sessions
 
+        if _gateway is not None:
+            await _gateway.aclose()
         await close_mcp_sessions()
         if _pool is not None:
             await close_checkpointer(_pool)
@@ -82,6 +84,20 @@ app.include_router(integrations_router)
 from .agent_passthrough import router as agent_passthrough_router
 
 app.include_router(agent_passthrough_router)
+
+from gateway.composition import GatewayNotConfigured, build_gateway_from_env
+from gateway.composition import mount as mount_gateway
+
+from .auth import POST_AUTH_HOOKS
+
+try:
+    _gateway = build_gateway_from_env(authenticate=current_user)
+except GatewayNotConfigured:
+    _gateway = None
+    logging.getLogger(__name__).warning("gateway_disabled_without_database_settings")
+if _gateway is not None:
+    mount_gateway(app, _gateway)
+    POST_AUTH_HOOKS.append(_gateway.post_auth_hook)
 
 
 # Temporary verbose logger for pydantic validation errors — helps track down
