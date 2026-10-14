@@ -71,8 +71,9 @@ Frontend:   React Native (apps/mobile)
 Orchestrator (:8000) — LangGraph ReAct agent, manages conversation state in PostgreSQL,
                        serves /chat/stream SSE to the mobile app, calls peer agents via A2A SDK
                 │
-8 Peer Agents (:8001–:8008) — sleep, workout, nutrition, body, mood, habits, recovery, medication
+9 Peer Agents (:8001–:8009) — sleep, workout, nutrition, body, mood, habits, recovery, medication, kitchen
                                Each is a FastAPI + A2A SDK server with 3–4 domain skills
+STT (:8010, internal) — local faster-whisper speech-to-text over HTTP
                 │
 Sync Service (:8080) — polls Garmin & Yazio on schedule, triggers briefing;
                 │
@@ -84,6 +85,12 @@ Observability: self-hosted Langfuse v3 stack (:3100), OTEL via Traceloop SDK
 
 **Agent structure** — legacy peers use this layout; nutrition uses `agents/nutrition/src/nutrition/` with domain, application, adapters and composition modules:
 
+The new `household` library and `agents/kitchen` follow the same layered layout: pure
+`domain`, port-dependent `application`, infrastructure `adapters`, and `composition.py`
+for wiring. `gateway` mounts typed household, kitchen, voice and notification routes in the
+orchestrator. `stt_service` is an internal HTTP service with its own settings and adapter.
+Agents speak only A2A; the app reaches them through the gateway, never directly.
+
 ```
 agents/<name>/app/
   main.py       # FastAPI + A2A request handler
@@ -93,6 +100,14 @@ agents/<name>/app/
 ```
 
 **health_logs table** is the universal sink. Dedup key is `(user_id, source, type, recorded_at)` — not an upsert, so duplicates are blocked on insert. Every agent uses `agent='sleep'|'workout'|...` when reading; the aggregator agent column must always be set when writing (see healthkit_aggregator_agent_column memory).
+
+**Household tenancy**: `app.user_id` remains the only tenant context passed by services.
+PostgreSQL's `current_household_id()` derives membership; `app_rw` sees household rows
+through RLS. `HOUSEHOLD_TABLES` in `shared.schema.tables` mirrors the SQL
+`household_tables` registry, which drives join transfers and item counts. Household-scoped
+tables use `ENABLE ROW LEVEL SECURITY` without `FORCE`, because the table-owner membership
+functions must move rows between households. Every new household-scoped table must be added
+to `HOUSEHOLD_TABLES` and to the registry in its migration.
 
 **A2A flow**: orchestrator calls peer agents over HTTP using `google-a2a` SDK. Each peer skill receives an A2A Message, runs its LLM prompt, persists results, and streams artifacts back. Peer artifact fetching (for cross-domain context) lives in `shared/peer.py`.
 
@@ -107,7 +122,10 @@ agents/<name>/app/
 ### Directory layout
 
 ```
-agents/           8 peer agents
+agents/           9 peer agents, including layered kitchen
+household/        Household domain, application and SQL adapter
+gateway/          Typed gateway routes mounted in orchestrator
+stt_service/      Internal speech-to-text HTTP service
 orchestrator/     LangGraph orchestrator + all specialized modules
 sync_service/     Garmin/Yazio poller
 apps/

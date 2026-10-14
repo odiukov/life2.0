@@ -1,7 +1,7 @@
 # Life Agents
 
-A self-hosted, multi-agent health assistant. Eight specialised LLM agents — sleep,
-workout, nutrition, body, mood, habits, recovery, medication — sit behind a
+A self-hosted, multi-agent health and household assistant. Nine specialised LLM agents — sleep,
+workout, nutrition, body, mood, habits, recovery, medication, kitchen — sit behind a
 LangGraph orchestrator and answer questions about your own data, pulled from
 Apple Health, Garmin, Yazio and Google Calendar.
 
@@ -37,13 +37,15 @@ flowchart TD
     M["React Native app<br/>(Expo, HealthKit, offline SQLite)"]
     O["Orchestrator :8000<br/>LangGraph ReAct agent"]
     S["Sync service :8080<br/>Garmin + Yazio pollers"]
-    A["8 peer agents :8001–8008<br/>FastAPI + A2A SDK"]
+    A["9 peer agents :8001–8009<br/>FastAPI + A2A SDK"]
+    STT["stt :8010<br/>local speech-to-text"]
     PG[("PostgreSQL<br/>health_logs, tasks,<br/>LangGraph checkpoints")]
     Q[("Qdrant<br/>vector memory")]
     L["Langfuse v3<br/>traces via OTEL"]
 
     M -- "SSE /chat/stream" --> O
     O -- "A2A over HTTP" --> A
+    O -- "HTTP" --> STT
     O --> PG
     O --> Q
     A --> PG
@@ -69,6 +71,16 @@ exposes three to four domain skills, and streams artifacts back.
 | `habits`     | 8006 | Habit definitions, streaks, adherence                |
 | `recovery`   | 8007 | HRV, resting HR, readiness across domains            |
 | `medication` | 8008 | Medication registry, doses, adherence                |
+| `kitchen`    | 8009 (internal) | Household food inventory and expiry digest |
+| `stt`        | 8010 (internal) | Local speech-to-text service |
+
+### Households
+
+Every authenticated user gets a personal household on first use.
+An invite code lets another user preview and join that household once.
+Kitchen inventory is shared with its members; health logs and other personal data stay private.
+Joining from a one-person household moves its active kitchen items into the destination household.
+Household members receive the same daily expiry digest in their own notification inboxes.
 
 Legacy peers use this layout; nutrition uses the foundation layout below:
 

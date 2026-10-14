@@ -389,3 +389,57 @@ A zero exit with skipped cases does not establish real-model quality.
 
 Only reset volumes belonging to the development stack you intend to erase. A clean-volume
 acceptance run uses its own Compose project so other projects and data remain intact.
+
+## Household, kitchen, voice and notifications
+
+The app reaches household, kitchen, voice and notification routes through the orchestrator
+gateway. The kitchen agent and STT service are internal to Compose. On the first start, `stt`
+downloads the Whisper model (about 1.6 GB for the default model) into the `whisper_models`
+volume. `/voice/transcribe` returns 503 until the model finishes loading and `stt` is healthy.
+Use `STT__MODEL=tiny` for a lighter local acceptance run; `make test-slow` uses
+`STT_TEST_MODEL=tiny`.
+
+The kitchen agent schedules a daily expiry digest. To run it once for the current time:
+
+```bash
+docker compose exec -T agent-kitchen python -m kitchen.run_digest
+```
+
+The optional `--now 2099-01-01T23:00:00+00:00` argument is for deterministic
+acceptance testing. The command prints the number of households whose digest was sent.
+
+Push delivery requires an Apple Developer account and an EAS `projectId` in the mobile
+app's `app.json`. After setting those up, set `NOTIFICATIONS__PUSH=expo` and optionally
+`NOTIFICATIONS__EXPO_ACCESS_TOKEN` in `.env`, then recreate `agent-kitchen`. The in-app
+inbox remains available when push is off.
+
+For a clean-database acceptance run, use a unique disposable Compose project and a local
+ignored `.env` with `AUTH_MODE=dev`. Set `STT__MODEL=tiny` in that config if needed. Never
+use `docker compose down -v` on a project that contains data you want to keep. The script
+checks that household, kitchen and notification tables are empty before proceeding:
+
+```bash
+export ACCEPTANCE_COMPOSE_PROJECT=life20accept_$(date +%s)
+export ACCEPTANCE_ENV_FILE=.env
+docker compose --env-file "$ACCEPTANCE_ENV_FILE" -p "$ACCEPTANCE_COMPOSE_PROJECT" up -d --build
+docker compose --env-file "$ACCEPTANCE_ENV_FILE" -p "$ACCEPTANCE_COMPOSE_PROJECT" ps
+bash scripts/acceptance_household_kitchen.sh
+# Only after checking the project name, remove that disposable project's volumes:
+docker compose --env-file "$ACCEPTANCE_ENV_FILE" -p "$ACCEPTANCE_COMPOSE_PROJECT" down -v
+```
+
+If an unrelated optional service image cannot be pulled, start only the acceptance
+dependencies in the same isolated project: `postgres qdrant`, then `migrate`, then
+`agent-kitchen stt orchestrator`, using `up -d --no-deps --build` for each stage.
+Check that PostgreSQL, Qdrant, kitchen and STT are healthy and `/health` on the
+orchestrator returns 200. This checks the requested flows, but it is not evidence
+that the entire production Compose stack is healthy.
+
+The script uses a future UTC digest date and explicit expiring food fixture so the live
+scheduler cannot claim the test digest first. It verifies the raw `app_rw` RLS view as user C
+and compares the orchestrator's final chat text with its persisted kitchen tool response.
+If no genuine LLM key is configured, set `ACCEPTANCE_LLM_AVAILABLE=0`; direct kitchen chat,
+orchestrator chat and verbatim relay are then reported as `SKIP`, while SQL-seeded inventory
+still exercises joining, actions, digest and isolation. Skipped acceptance exits nonzero and
+must not be reported as a complete pass. Also run `make lint`, `make test`,
+`make test-integration`, `pnpm -r typecheck`, and the mobile and UI tests.
