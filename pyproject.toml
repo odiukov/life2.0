@@ -121,8 +121,6 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 [tool.ruff.lint.per-file-ignores]
 # Legacy code: formatted, not linted, until it migrates onto the foundation.
 "orchestrator/**" = ["ALL"]
-"sync_service/app/**" = ["ALL"]
-"sync_service/__init__.py" = ["ALL"]
 "shared/src/shared/*.py" = ["ALL"]
 "tests/**" = ["ALL"]
 "scripts/**" = ["ALL"]

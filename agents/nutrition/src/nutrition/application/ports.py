@@ -43,6 +43,6 @@ class BodyMetricsRepository(Protocol):
 
 
 class NutritionSync(Protocol):
-    async def refresh(self) -> None:
-        """Best-effort: ask the sync service to pull fresh Yazio data. Never raises."""
+    async def refresh(self, user_id: UUID) -> None:
+        """Best-effort: ask the sync service to pull fresh Yazio data for this user. Never raises."""
         ...

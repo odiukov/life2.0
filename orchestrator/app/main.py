@@ -21,7 +21,8 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
+from pydantic_settings import SettingsError
 from typing import Literal
 
 from . import vault
@@ -41,7 +42,11 @@ from .registry import check_agent_health, discover_agents, get_registry
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    vault.ensure_ready()
+    try:
+        vault.ensure_ready()
+    except (ValidationError, SettingsError):
+        # ASGI logs startup exceptions; suppress validation inputs and their chain.
+        raise RuntimeError("orchestrator_configuration_invalid") from None
     global _graph, _pool, _saver
     from .checkpointer import close_checkpointer, open_checkpointer
 
@@ -150,18 +155,26 @@ _SYNC_SERVICE_BASE = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:808
 
 @app.post("/sync/trigger")
 async def sync_trigger(user_id: UUID = Depends(current_user)):
-    """Fire-and-forget: kick off full sync (Garmin + Yazio + alerts) on the sync-service.
+    """Fire-and-forget: sync the authenticated user's Garmin and Yazio data.
 
     Returns immediately with {"ok": true}. Failures are logged server-side.
     Authenticated so random clients can't spam the sync service.
     """
 
     async def _fire():
-        async with httpx.AsyncClient(timeout=30.0) as c:
+        async with httpx.AsyncClient(timeout=120.0) as c:
             try:
-                await c.post(f"{_SYNC_SERVICE_BASE}/sync/all")
+                response = await c.post(
+                    f"{_SYNC_SERVICE_BASE}/sync/user", json={"user_id": str(user_id)}
+                )
+                response.raise_for_status()
             except Exception as exc:
-                _logging.getLogger(__name__).warning("sync/all failed: %s", exc)
+                _logging.getLogger(__name__).warning(
+                    "sync_user_failed code=unavailable user_id=%s", user_id
+                )
+                _logging.getLogger(__name__).debug(
+                    "sync_user_error error_type=%s", type(exc).__name__
+                )
 
     asyncio.create_task(_fire())
     return {"ok": True}

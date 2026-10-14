@@ -182,7 +182,7 @@ async def test_mode_selects_the_answer_shape(mode: AnalysisMode, tail: str) -> N
 async def test_refreshes_sync_and_remembers_the_answer() -> None:
     world = World()
     await world.handler(world.request(), ())
-    assert world.sync.calls == 1
+    assert world.sync.users == [world.user]
     assert world.memory.items[0][3].text == "analysis text"
 
 

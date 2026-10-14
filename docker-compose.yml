@@ -380,13 +380,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      DAILY_SYNC_HOUR: "9"
-      DAILY_SYNC_TZ: "Europe/Lisbon"
-      ORCHESTRATOR_URL: http://orchestrator:8000
-      MOOD_EVENING_CHECKIN: ${MOOD_EVENING_CHECKIN}
-      MOOD_EVENING_CHECKIN_TIME: ${MOOD_EVENING_CHECKIN_TIME}
-      MOOD_EVENING_CHECKIN_TZ: ${MOOD_EVENING_CHECKIN_TZ}
+      DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy
@@ -398,7 +392,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    restart: unless-stopped
+    restart: "no"
 
   langfuse-postgres:
     image: postgres:16-alpine

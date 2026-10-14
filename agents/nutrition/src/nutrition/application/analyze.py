@@ -46,7 +46,7 @@ class NutritionAnalysisData(AnalysisData):
 
     async def prepare(self, request: SkillRequest) -> None:
         with suppress(Exception):
-            await self._sync.refresh()
+            await self._sync.refresh(request.user_id)
 
     async def load(
         self, uow: UnitOfWork, request: SkillRequest, settings: UserSettings, now: datetime
