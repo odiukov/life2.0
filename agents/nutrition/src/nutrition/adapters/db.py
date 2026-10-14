@@ -8,7 +8,9 @@ from typing import Any
 from uuid import UUID
 
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
+from shared.adapters.db.users import SqlUserSettings
 from shared.domain.energy import BodyProfile
+from shared.ports.users import UserSettingsRepository
 from shared.schema.tables import health_logs, users
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -254,5 +256,6 @@ def nutrition_uow(engine: AsyncEngine) -> SqlUnitOfWorkFactory:
             MealRepository: SqlMealRepository,
             ProfileRepository: SqlProfileRepository,
             BodyMetricsRepository: SqlBodyMetricsRepository,
+            UserSettingsRepository: SqlUserSettings,
         },
     )

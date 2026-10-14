@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from datetime import date
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from shared.analysis.chip_rules import PEER_CHIP_RULES
-from shared.analysis.grounding import GROUNDING_RULES
-from shared.analysis.personas import IDENTITY, VOCAB
+from shared.analysis.prompt import PromptSection
 from shared.domain.energy import BodyProfile
 
 from nutrition.application.models import BodyComposition
@@ -31,22 +28,6 @@ SKILL_TAIL: dict[AnalysisMode, str] = {
         "No markdown."
     ),
 }
-
-
-@dataclass(frozen=True, slots=True)
-class AnalysisInputs:
-    mode: AnalysisMode
-    day: date
-    is_today: bool
-    zone: ZoneInfo
-    profile: BodyProfile
-    intake: Macros
-    goal: int | None
-    recent: Sequence[Meal]
-    body: BodyComposition | None
-    peers: Mapping[str, str]
-    memories: Sequence[str]
-    message: str
 
 
 def _macros(m: Macros) -> str:
@@ -77,37 +58,29 @@ def _body(body: BodyComposition | None) -> str:
     )
 
 
-def build_analysis_prompt(inputs: AnalysisInputs) -> tuple[str, str]:
-    system = (
-        f"{IDENTITY['nutrition']}\n\n"
-        f"## Vocabulary you may invoke (only when grounded by data)\n{VOCAB['nutrition']}\n\n"
-        f"{GROUNDING_RULES}"
-    )
-    label = "Today" if inputs.is_today else f"Day ({inputs.day})"
-    goal = f"{inputs.goal} kcal" if inputs.goal else "unknown"
-    remaining = (
-        f"{inputs.goal - round(inputs.intake.kcal)} kcal remaining"
-        if inputs.goal
-        else "goal unknown"
-    )
-    recent = "\n".join(_meal_line(m, inputs.zone) for m in inputs.recent) or "No recent meals."
-    peer_chunks = [
-        f"### {name}\n{inputs.peers[name]}"
-        for name in PEER_ORDER
-        if inputs.peers.get(name, "").strip()
+def analysis_sections(
+    *,
+    day: date,
+    is_today: bool,
+    zone: ZoneInfo,
+    profile: BodyProfile,
+    intake: Macros,
+    goal: int | None,
+    recent: Sequence[Meal],
+    body: BodyComposition | None,
+) -> list[PromptSection]:
+    label = "Today" if is_today else f"Day ({day})"
+    goal_text = f"{goal} kcal" if goal else "unknown"
+    remaining = f"{goal - round(intake.kcal)} kcal remaining" if goal else "goal unknown"
+    recent_text = "\n".join(_meal_line(m, zone) for m in recent) or "No recent meals."
+    return [
+        PromptSection("User profile", _profile(profile)),
+        PromptSection(
+            f"{label} ({day}) intake (Yazio and chat)",
+            f"- Eaten: {_macros(intake)}\n- Goal: {goal_text}\n- {remaining}",
+        ),
+        PromptSection(
+            "Recent meals (last 10, may span several days — each line shows its date)", recent_text
+        ),
+        PromptSection("Latest body composition (cross-context)", _body(body), after_peers=True),
     ]
-    peer_section = "\n## Peer context\n" + "\n\n".join(peer_chunks) + "\n" if peer_chunks else ""
-    memories = "\n".join(f"- {text}" for text in inputs.memories) or "No relevant memories."
-    sections = [
-        f"## User profile\n{_profile(inputs.profile)}",
-        f"## {label} ({inputs.day}) intake (Yazio and chat)\n- Eaten: {_macros(inputs.intake)}\n"
-        f"- Goal: {goal}\n- {remaining}",
-        "## Recent meals (last 10, may span several days — each line shows its date)\n" + recent,
-        peer_section,
-        f"## Latest body composition (cross-context)\n{_body(inputs.body)}",
-        f"## Memories\n{memories}",
-        f"## User request\nTask: {inputs.mode}\nMessage: {inputs.message}",
-        PEER_CHIP_RULES if peer_chunks else "",
-        SKILL_TAIL[inputs.mode],
-    ]
-    return system, "\n\n".join(section for section in sections if section)

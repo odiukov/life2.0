@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from shared.domain.energy import BodyProfile
+from shared.ports.users import UserSettings, UserSettingsRepository
 from shared.testing.fakes import InMemoryUnitOfWorkFactory
 
 from nutrition.application.models import BodyComposition, UserProfile
@@ -85,6 +86,17 @@ class InMemoryProfiles:
         return BodyProfile.from_mapping(body)
 
 
+class ProfilesAsSettings:
+    """UserSettingsRepository over InMemoryProfiles, so tests keep seeding one place."""
+
+    def __init__(self, profiles: InMemoryProfiles) -> None:
+        self._profiles = profiles
+
+    async def get(self, user_id: UUID) -> UserSettings:
+        profile = await self._profiles.get(user_id)
+        return UserSettings(profile.timezone, profile.locale)
+
+
 class InMemoryBodyMetrics:
     def __init__(self) -> None:
         self.rows: dict[UUID, list[BodyComposition]] = {}
@@ -109,5 +121,10 @@ def in_memory_uow(
     meals: InMemoryMeals, profiles: InMemoryProfiles, metrics: InMemoryBodyMetrics
 ) -> InMemoryUnitOfWorkFactory:
     return InMemoryUnitOfWorkFactory(
-        {MealRepository: meals, ProfileRepository: profiles, BodyMetricsRepository: metrics}
+        {
+            MealRepository: meals,
+            ProfileRepository: profiles,
+            BodyMetricsRepository: metrics,
+            UserSettingsRepository: ProfilesAsSettings(profiles),
+        }
     )

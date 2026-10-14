@@ -265,7 +265,7 @@ async def test_adapter_peer_failures_allow_analysis(
         fetch = AsyncMock(side_effect=wait_forever)
         monkeypatch.setattr(peer_adapter, "PEER_TIMEOUT_S", 0.01)
     monkeypatch.setattr(peer_adapter.legacy_peer, "fetch_peer_artifacts", fetch)
-    world.handler._peers = peer_adapter.A2APeerClient(
+    world.handler.peers = peer_adapter.A2APeerClient(
         {"workout": "http://workout", "sleep": "http://sleep"}
     )
     result = await world.handler(world.request(), ("workout", "sleep"))
