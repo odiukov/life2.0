@@ -10,10 +10,12 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Index,
+    LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
     Table,
     Text,
+    Time,
     UniqueConstraint,
     text,
 )
@@ -230,3 +232,95 @@ RLS_TABLES: tuple[str, ...] = (
     "oauth_state",
     "telemetry_consent",
 )
+
+CURRENT_HOUSEHOLD = text("current_household_id()")
+
+
+def _household_fk() -> Column[Any]:
+    return Column(
+        "household_id",
+        UUID(as_uuid=True),
+        ForeignKey("households.id", ondelete="CASCADE"),
+        nullable=False,
+        server_default=CURRENT_HOUSEHOLD,
+    )
+
+
+households = Table(
+    "households",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    Column("name", Text, nullable=False),
+    Column("timezone", Text, nullable=False, server_default=text("'UTC'")),
+    Column("digest_time", Time, nullable=False, server_default=text("'18:00'")),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+)
+
+household_members = Table(
+    "household_members",
+    metadata,
+    Column(
+        "household_id",
+        UUID(as_uuid=True),
+        ForeignKey("households.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    _user_fk(),
+    Column("role", Text, nullable=False),
+    Column("display_name", Text, nullable=False),
+    Column("joined_at", TSTZ, nullable=False, server_default=NOW),
+    PrimaryKeyConstraint("household_id", "user_id", name="household_members_pkey"),
+    UniqueConstraint("user_id", name="household_members_user_id_key"),
+    CheckConstraint("role IN ('owner', 'member')", name="household_members_role_check"),
+)
+Index(
+    "household_members_one_owner",
+    household_members.c.household_id,
+    unique=True,
+    postgresql_where=text("role = 'owner'"),
+)
+
+household_invites = Table(
+    "household_invites",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    _household_fk(),
+    Column("code_hash", LargeBinary, nullable=False),
+    Column(
+        "created_by", UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    ),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    Column("expires_at", TSTZ, nullable=False),
+    Column("redeemed_at", TSTZ),
+    Column("redeemed_by", UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")),
+    UniqueConstraint("code_hash", name="household_invites_code_hash_key"),
+)
+
+household_join_attempts = Table(
+    "household_join_attempts",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    _user_fk(),
+    Column("attempted_at", TSTZ, nullable=False, server_default=NOW),
+    Column("succeeded", Boolean, nullable=False),
+)
+Index(
+    "household_join_attempts_user_idx",
+    household_join_attempts.c.user_id,
+    household_join_attempts.c.attempted_at,
+)
+
+household_tables = Table(
+    "household_tables",
+    metadata,
+    Column("table_name", Text, primary_key=True),
+    Column("move_on_join", Boolean, nullable=False),
+    Column("item_filter", Text),
+)
+
+# Tables whose rows belong to a household (policy: household_id = current_household_id()).
+# The value says whether a sole member's rows move with them when they join another household.
+# Later migrations add their tables here and to the `household_tables` registry.
+HOUSEHOLD_TABLES: dict[str, bool] = {
+    "household_invites": False,
+}

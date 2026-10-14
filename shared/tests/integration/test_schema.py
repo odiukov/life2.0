@@ -1,8 +1,9 @@
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from shared.schema import metadata
-from shared.schema.migrate import downgrade, upgrade
+from shared.schema.migrate import alembic_config, downgrade, upgrade
 from shared.testing.pytest_plugin import PostgresUrls, run_blocking
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -131,7 +132,9 @@ async def test_application_roles_cannot_access_migration_control_table(postgres_
         async with owner.connect() as conn:
             assert (
                 await conn.execute(text("SELECT version_num FROM alembic_version"))
-            ).scalar_one() == "c0001_initial"
+            ).scalar_one() == ScriptDirectory.from_config(
+                alembic_config(postgres_urls.owner)
+            ).get_current_head()
             allowed = (
                 await conn.execute(
                     text(
