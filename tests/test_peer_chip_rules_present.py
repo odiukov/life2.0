@@ -17,7 +17,6 @@ from tests.test_persona_present import (  # type: ignore[import-not-found]
 PEER_TASKS_BY_AGENT = {
     "sleep": ["analyze_sleep", "get_recommendations"],
     "workout": ["analyze_workout", "get_recommendations"],
-    "body": ["analyze_body_trend"],
     "mood": ["analyze_mood", "get_mood_recommendations"],
     "habits": ["analyze_habit"],
     "recovery": ["get_readiness", "analyze_recovery_trend", "get_recommendations"],

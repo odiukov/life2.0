@@ -14,7 +14,6 @@ ANALYTICAL_TASKS = {
     # the AgentCard skill IDs (Sleep.RECOMMENDATIONS, etc.) are a separate layer.
     "sleep": ["analyze_sleep", "get_recommendations"],
     "workout": ["analyze_workout", "get_recommendations"],
-    "body": ["analyze_body_trend"],
     "mood": ["analyze_mood", "get_mood_recommendations"],
     "habits": ["analyze_habit"],
     "recovery": ["get_readiness", "analyze_recovery_trend", "get_recommendations"],

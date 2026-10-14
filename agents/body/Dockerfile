@@ -8,10 +8,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_NO_CACHE=1 PYTHONUNBUFFERED=1 \
 
 WORKDIR /repo
 COPY . .
-RUN uv sync --frozen --no-dev --package agent-body
+RUN uv sync --frozen --no-dev --package agent-body --extra claude
 
 ENV PATH="/opt/venv/bin:$PATH"
-WORKDIR /app
-RUN cp -r /repo/agents/body/app ./app
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8004"]
+CMD ["uvicorn", "body.serve:app", "--host", "0.0.0.0", "--port", "8004"]

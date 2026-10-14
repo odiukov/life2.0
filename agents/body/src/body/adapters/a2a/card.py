@@ -2,14 +2,8 @@
 
 from __future__ import annotations
 
-import os
-from typing import Awaitable, Callable
-
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
 from shared.skill_ids import Body
-from .prompt import build_body_prompt
-
 
 SKILLS: list[AgentSkill] = [
     AgentSkill(
@@ -29,8 +23,7 @@ SKILLS: list[AgentSkill] = [
 ]
 
 
-def build_agent_card() -> AgentCard:
-    url = os.environ.get("BODY_AGENT_URL", "http://agent-body:8004/")
+def build_agent_card(url: str) -> AgentCard:
     return AgentCard(
         protocol_version="0.3.0",
         name="body-agent",
@@ -47,34 +40,6 @@ def build_agent_card() -> AgentCard:
     )
 
 
-PromptFn = Callable[[str, dict], Awaitable[str]]
-
-
-async def _prompt_get_latest(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_body_prompt(
-        "get_latest_body",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-async def _prompt_analyze(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_body_prompt(
-        "analyze_body_trend",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-SKILL_PROMPTS: dict[str, PromptFn] = {
-    Body.GET_LATEST: _prompt_get_latest,
-    Body.ANALYZE_TREND: _prompt_analyze,
-}
-
-
-# Which peer agents this one may consult, and the skill it calls on each.
 PEER_SKILLS: dict[str, str] = {
     "nutrition": "analyze_nutrition",
     "workout": "analyze_workout",
