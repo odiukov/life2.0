@@ -41,7 +41,7 @@ function AuthGuard() {
       router.replace('/(auth)/sign-in');
     } else if (session && inAuthGroup) {
       // TODO: redirect to /(tabs)/chat when app is opened via share intent
-      router.replace('/(tabs)/');
+      router.replace('/(tabs)');
     }
   }, [session, ready, segments, router]);
 
