@@ -10,6 +10,7 @@ package = false
 [tool.uv.workspace]
 members = [
     "shared",
+    "household",
     "orchestrator",
     "sync_service",
     "agents/sleep",
@@ -38,7 +39,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = [".", "shared/src"]
-testpaths = ["tests", "shared/tests", "agents/nutrition/tests"]
+testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin"
 consider_namespace_packages = true
 markers = [
@@ -47,7 +48,7 @@ markers = [
 ]
 
 [tool.importlinter]
-root_packages = ["shared", "nutrition"]
+root_packages = ["shared", "nutrition", "household"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -61,7 +62,7 @@ name = "New shared code does not import legacy modules"
 type = "forbidden"
 # Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
 allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "nutrition"]
+source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "nutrition", "household"]
 forbidden_modules = [
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
     "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
@@ -134,10 +135,10 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["shared/src/shared", "agents/nutrition/src/nutrition"]
+files = ["shared/src/shared", "agents/nutrition/src/nutrition", "household/src/household"]
 exclude = ["/alembic/versions/"]
 # Source roots keep module names aligned with the editable runtime packages.
-mypy_path = ["shared/src", "agents/nutrition/src"]
+mypy_path = ["shared/src", "agents/nutrition/src", "household/src"]
 explicit_package_bases = true
 # Repositories are looked up by their Protocol type: `uow.repo(MealRepository)`.
 disable_error_code = ["type-abstract"]
@@ -156,3 +157,15 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = ["traceloop.*", "apscheduler.*", "testcontainers.*", "qdrant_client.*", "claude_agent_sdk.*"]
 ignore_missing_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Household domain is pure"
+type = "forbidden"
+source_modules = ["household.domain"]
+forbidden_modules = ["household.application", "household.adapters", "shared", "sqlalchemy", "fastapi"]
+
+[[tool.importlinter.contracts]]
+name = "Household application depends on ports, not adapters"
+type = "forbidden"
+source_modules = ["household.application"]
+forbidden_modules = ["household.adapters", "shared.adapters", "shared.schema", "sqlalchemy", "fastapi"]

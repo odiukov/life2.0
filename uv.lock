@@ -12,6 +12,7 @@ members = [
     "agent-recovery",
     "agent-sleep",
     "agent-workout",
+    "household",
     "life-agents",
     "orchestrator",
     "shared",
@@ -1093,6 +1094,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e7/85/7c366e69d84c17bb778fe41419e1fbcce3033d5b7ce29bbffff0a98b859f/h2-4.4.1.tar.gz", hash = "sha256:4e866ffb1a869ae14dd9b5e6beb5c24a13da0495ad72b65925ded182521c1516", size = 2157281, upload-time = "2026-08-03T11:45:09.509Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/22/e85faf23bd72a92d1921e37d674ca56eb298a3c8be31fdecef0ff2b3aaac/h2-4.4.1-py3-none-any.whl", hash = "sha256:0e25f1462b23c9cb82d9eb02e28bc706dac2a68cb457c6a0d74d63c8a2a5d0e6", size = 62636, upload-time = "2026-08-03T11:44:59.164Z" },
+]
+
+[[package]]
+name = "household"
+version = "0.1.0"
+source = { editable = "household" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "shared" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.111" },
+    { name = "shared", editable = "shared" },
 ]
 
 [[package]]
