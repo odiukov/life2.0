@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
+import pytest
 from recovery.domain.daily import assemble_days, row_day
 from shared.ports.health_logs import HealthLogRow
 
@@ -128,3 +129,55 @@ def test_chat_session_counts_when_no_device_row_exists() -> None:
         LISBON,
     )
     assert days[date(2026, 10, 12)].sleep_duration_h == 8.0
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_healthkit_wins_over_overlapping_chat_after_local_midnight(reverse: bool) -> None:
+    rows = [
+        r(
+            "sleep_session",
+            datetime(2026, 10, 12, tzinfo=UTC),
+            "HealthKit",
+            sleep_start="2026-10-12T23:30:00Z",
+            sleep_end="2026-10-13T06:30:00Z",
+            duration_seconds=25200,
+        ),
+        r(
+            "sleep_session",
+            datetime(2026, 10, 13, 0, 30, tzinfo=LISBON),
+            "chat",
+            start_time="2026-10-13T00:30:00+01:00",
+            end_time="2026-10-13T08:00:00+01:00",
+            duration_seconds=27000,
+        ),
+    ]
+    days = assemble_days(iter(reversed(rows) if reverse else rows), LISBON)
+    assert set(days) == {date(2026, 10, 12)}
+    assert days[date(2026, 10, 12)].sleep_duration_h == 7.0
+
+
+@pytest.mark.parametrize("sleep_start", ["2026-10-12T23:30:00Z", "invalid", None])
+def test_nonoverlapping_chat_is_not_discarded(sleep_start: str | None) -> None:
+    days = assemble_days(
+        [
+            r(
+                "sleep_session",
+                datetime(2026, 10, 12, tzinfo=UTC),
+                "HealthKit",
+                sleep_start=sleep_start,
+                sleep_end="2026-10-13T06:30:00Z",
+                duration_seconds=25200,
+            ),
+            r(
+                "sleep_session",
+                datetime(2026, 10, 13, 6, 30, tzinfo=UTC),
+                "chat",
+                duration_seconds=3600,
+            ),
+        ],
+        LISBON,
+    )
+    assert {day: value.sleep_duration_h for day, value in days.items()} == {
+        date(2026, 10, 12): 7.0,
+        date(2026, 10, 13): 1.0,
+    }

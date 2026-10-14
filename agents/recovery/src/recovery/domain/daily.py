@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from math import isfinite
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
@@ -84,9 +85,56 @@ def _session(rows: list[_Row]) -> _Row | None:
     return max(pool, key=lambda r: _num(r.data.get("duration_seconds")) or 0.0) if pool else None
 
 
+def _timestamp(value: object) -> float | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.timestamp() if parsed.tzinfo is not None else None
+
+
+def _interval(row: _Row) -> tuple[float, float] | None:
+    start = _timestamp(row.data.get("start_time"))
+    if start is None:
+        start = _timestamp(row.data.get("sleep_start"))
+    if start is None:
+        # HealthKit recorded_at is a calendar marker, never a session boundary.
+        if row.source == "HealthKit":
+            return None
+        start = row.recorded_at.timestamp()
+    end = _timestamp(row.data.get("end_time"))
+    if end is None:
+        end = _timestamp(row.data.get("sleep_end"))
+    if end is None:
+        duration = _num(row.data.get("duration_seconds"))
+        if duration is None:
+            return None
+        end = start + duration
+    return (start, end) if isfinite(end) and end > start else None
+
+
 def assemble_days(rows: Iterable[_Row], zone: ZoneInfo) -> dict[date, DailyRecovery]:
+    rows = list(rows)
+    device_intervals = [
+        interval
+        for row in rows
+        if row.type == "sleep_session"
+        and row.source != CHAT
+        and (interval := _interval(row)) is not None
+    ]
     by_day: dict[date, dict[str, list[_Row]]] = {}
     for row in rows:
+        # Reconcile actual sessions before calendar grouping: a HealthKit night
+        # marker can precede the local bedtime date of the same chat session.
+        if (
+            row.type == "sleep_session"
+            and row.source == CHAT
+            and (interval := _interval(row)) is not None
+            and any(interval[0] < end and start < interval[1] for start, end in device_intervals)
+        ):
+            continue
         by_day.setdefault(row_day(row, zone), {}).setdefault(row.type, []).append(row)
     out: dict[date, DailyRecovery] = {}
     for day, groups in by_day.items():
