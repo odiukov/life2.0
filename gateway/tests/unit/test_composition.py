@@ -24,7 +24,17 @@ async def test_mount_adds_household_routes() -> None:
     app = FastAPI()
     mount(app, gateway)
     paths = set(app.openapi()["paths"])
-    assert {"/household", "/household/invites", "/household/join", "/kitchen/inventory"} <= paths
+    assert {
+        "/household",
+        "/household/invites",
+        "/household/join",
+        "/kitchen/inventory",
+        "/notifications",
+        "/notifications/read-all",
+        "/notifications/{notification_id}/read",
+        "/me/push-tokens",
+        "/me/push-tokens/{token}",
+    } <= paths
     await gateway.aclose()
 
 

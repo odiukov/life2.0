@@ -15,6 +15,8 @@ from pydantic import ValidationError
 from shared.adapters.a2a.skill_client import A2ASkillClient
 from shared.adapters.clock import SystemClock
 from shared.adapters.db.engine import create_engine
+from shared.adapters.db.uow import SqlUnitOfWorkFactory
+from shared.adapters.notifications import notification_repositories
 from shared.ports.clock import Clock
 from shared.ports.skills import SkillClient
 from shared.ports.stt import SpeechToText
@@ -22,6 +24,7 @@ from shared.ports.stt import SpeechToText
 from gateway.hooks import HouseholdEnsurer
 from gateway.kitchen import KitchenGateway
 from gateway.kitchen import build_router as build_kitchen_router
+from gateway.notifications import build_router as build_notifications_router
 from gateway.settings import GatewaySettings
 
 
@@ -59,6 +62,9 @@ def build_gateway(
     routers = [
         build_router(households, authenticate),
         build_kitchen_router(KitchenGateway(skill_client), authenticate),
+        build_notifications_router(
+            SqlUnitOfWorkFactory(engine, notification_repositories()), clock, authenticate
+        ),
     ]
     return Gateway(
         routers=routers,
