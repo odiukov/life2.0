@@ -201,5 +201,22 @@
       "many": "{n} часов",
       "other": "{n} часа"
     }
+  },
+  "workout": {
+    "log": {
+      "confirmed": "Записал тренировку: {activity}, {minutes} мин{distance}.",
+      "distance": ", {km} км",
+      "not_understood": "Не понял, что за тренировка. Напиши, например: «пробежал 5 км за 28 минут»."
+    },
+    "activity": {
+      "running": "бег",
+      "cycling": "велосипед",
+      "walking": "ходьба",
+      "swimming": "плавание",
+      "strength_training": "силовая",
+      "yoga": "йога",
+      "hiking": "поход",
+      "other": "тренировка"
+    }
   }
 }

@@ -198,5 +198,22 @@
       "one": "{n} hour",
       "other": "{n} hours"
     }
+  },
+  "workout": {
+    "log": {
+      "confirmed": "Logged workout: {activity}, {minutes} min{distance}.",
+      "distance": ", {km} km",
+      "not_understood": "I didn't get the workout. Try “ran 5 km in 28 minutes”."
+    },
+    "activity": {
+      "running": "running",
+      "cycling": "cycling",
+      "walking": "walking",
+      "swimming": "swimming",
+      "strength_training": "strength training",
+      "yoga": "yoga",
+      "hiking": "hiking",
+      "other": "workout"
+    }
   }
 }
