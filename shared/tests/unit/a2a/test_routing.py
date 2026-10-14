@@ -1,5 +1,5 @@
 import pytest
-from shared.a2a.routing import MANDATORY_CONSULTS, resolve_skill
+from shared.a2a.routing import resolve_skill
 from shared.ports.llm import LLMInvalidOutput, LLMUnavailable
 from shared.testing.fakes import FakeLLM
 
@@ -62,12 +62,6 @@ async def test_unusable_answers_give_none(answer: object) -> None:
     llm = FakeLLM()
     llm.queue_structured(answer)
     assert await route(llm) is None
-
-
-def test_legacy_module_shares_the_same_table() -> None:
-    from shared import intent
-
-    assert intent.MANDATORY_CONSULTS is MANDATORY_CONSULTS
 
 
 async def test_empty_focus_overrides_mandatory_consults() -> None:

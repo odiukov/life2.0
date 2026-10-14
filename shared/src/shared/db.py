@@ -40,133 +40,6 @@ async def get_pool() -> asyncpg.Pool:
 
 
 # ---------------------------------------------------------------------------
-# Generic health_logs helpers (user-scoped)
-# ---------------------------------------------------------------------------
-
-
-async def insert_health_log(
-    user_id: UUID,
-    type_: str,
-    recorded_at,
-    data: dict,
-    agent: str = "system",
-    source: str = "manual",
-) -> UUID:
-    """Insert a health_log row scoped to user_id. Returns the new row's UUID."""
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "INSERT INTO health_logs (user_id, agent, type, recorded_at, data, source) "
-        "VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-        user_id,
-        agent,
-        type_,
-        recorded_at,
-        data,
-        source,
-    )
-    return row["id"]
-
-
-async def fetch_health_logs(
-    user_id: UUID,
-    type_: str,
-    limit: int = 20,
-) -> list[dict]:
-    """Fetch health_log rows for user_id filtered by type, ordered DESC."""
-    pool = await get_pool()
-    rows = await pool.fetch(
-        "SELECT id, agent, type, data, recorded_at, source FROM health_logs "
-        "WHERE user_id = $1 AND type = $2 ORDER BY recorded_at DESC LIMIT $3",
-        user_id,
-        type_,
-        limit,
-    )
-    return [dict(r) for r in rows]
-
-
-async def fetch_recent_logs(
-    user_id: UUID,
-    agent: str,
-    limit: int = 20,
-) -> list[dict]:
-    pool = await get_pool()
-    rows = await pool.fetch(
-        "SELECT type, data, recorded_at, source FROM health_logs "
-        "WHERE user_id = $1 AND agent = $2 ORDER BY recorded_at DESC LIMIT $3",
-        user_id,
-        agent,
-        limit,
-    )
-    return [dict(r) for r in rows]
-
-
-async def insert_log(
-    user_id: UUID,
-    agent: str,
-    type_: str,
-    data: dict,
-    source: str = "manual",
-) -> None:
-    pool = await get_pool()
-    await pool.execute(
-        "INSERT INTO health_logs (user_id, agent, type, data, source) VALUES ($1, $2, $3, $4, $5)",
-        user_id,
-        agent,
-        type_,
-        data,
-        source,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Tasks (NOT user-scoped — tasks table has no user_id column yet)
-# ---------------------------------------------------------------------------
-
-
-async def insert_task(agent: str, task_type: str, input_: dict, output: str) -> None:
-    """Legacy single-row insert — kept for callers that don't have task_id yet."""
-    pool = await get_pool()
-    await pool.execute(
-        "INSERT INTO tasks (agent, task_type, input, output) VALUES ($1, $2, $3, $4)",
-        agent,
-        task_type,
-        input_,
-        output,
-    )
-
-
-async def insert_task_record(
-    *,
-    agent: str,
-    task_id: str,
-    context_id: str | None,
-    skill_id: str,
-    input_: dict,
-    output: str,
-    state: str = "completed",
-) -> None:
-    """Persist a completed A2A task with its A2A identifiers."""
-    pool = await get_pool()
-    await pool.execute(
-        """
-        INSERT INTO tasks (task_id, context_id, agent, skill_id, input, output, state)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (task_id) DO UPDATE SET
-            output = EXCLUDED.output,
-            state = EXCLUDED.state,
-            updated_at = NOW()
-        """,
-        task_id,
-        context_id,
-        agent,
-        skill_id,
-        input_,
-        output,
-        state,
-    )
-
-
-# ---------------------------------------------------------------------------
 # Body composition
 # ---------------------------------------------------------------------------
 
@@ -183,23 +56,6 @@ async def fetch_body_logs(user_id: UUID, limit: int = 30) -> list[dict]:
         "WHERE user_id = $1 AND type = $2 ORDER BY recorded_at DESC LIMIT $3",
         user_id,
         "body_composition",
-        limit,
-    )
-    return [dict(r) for r in rows]
-
-
-# ---------------------------------------------------------------------------
-# Mood
-# ---------------------------------------------------------------------------
-
-
-async def fetch_mood_logs(user_id: UUID, limit: int = 30) -> list[dict]:
-    """Return latest mood rows ordered by recorded_at DESC."""
-    pool = await get_pool()
-    rows = await pool.fetch(
-        "SELECT type, data, recorded_at, source FROM health_logs "
-        "WHERE user_id = $1 AND type = 'mood' ORDER BY recorded_at DESC LIMIT $2",
-        user_id,
         limit,
     )
     return [dict(r) for r in rows]
@@ -249,43 +105,6 @@ async def fetch_habit_logs(
             days,
         )
     return [dict(r) for r in rows]
-
-
-async def insert_habit(
-    user_id: UUID,
-    name: str,
-    kind: str,
-    cadence_type: str,
-    cadence_days: list[str] | None = None,
-    target_value: float | None = None,
-    unit: str | None = None,
-) -> str:
-    """Insert a new habit row for user_id. Returns the UUID as string. Raises on unique-name conflict."""
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "INSERT INTO habits (user_id, name, kind, cadence_type, cadence_days, target_value, unit) "
-        "VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id::text",
-        user_id,
-        name,
-        kind,
-        cadence_type,
-        cadence_days,
-        target_value,
-        unit,
-    )
-    return row["id"]
-
-
-async def archive_habit(user_id: UUID, habit_id: str) -> bool:
-    """Soft-delete a habit for user_id. Returns True if a row was updated."""
-    pool = await get_pool()
-    status = await pool.execute(
-        "UPDATE habits SET archived_at = now() "
-        "WHERE user_id = $1 AND id = $2::uuid AND archived_at IS NULL",
-        user_id,
-        habit_id,
-    )
-    return status.endswith(" 1")
 
 
 # ---------------------------------------------------------------------------
@@ -415,30 +234,6 @@ def _normalize_med_name(raw: str) -> str:
     return _MED_NAME_NON_ALNUM.sub("-", raw.strip().lower()).strip("-")
 
 
-async def insert_medication(
-    user_id: UUID,
-    name: str,
-    dose: str | None,
-    schedule: str,
-    notes: str | None = None,
-) -> str:
-    """Insert a new medication row for user_id. Returns the UUID as string. Raises on unique-name conflict."""
-    canonical = _normalize_med_name(name)
-    if not canonical:
-        raise ValueError("medication name cannot be empty")
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "INSERT INTO medications (user_id, name, dose, schedule, notes) "
-        "VALUES ($1, $2, $3, $4, $5) RETURNING id::text",
-        user_id,
-        canonical,
-        dose,
-        schedule,
-        notes,
-    )
-    return row["id"]
-
-
 async def fetch_active_medications(user_id: UUID) -> list[dict]:
     """Return active medication definitions for user_id ordered by created_at ASC."""
     pool = await get_pool()
@@ -448,33 +243,6 @@ async def fetch_active_medications(user_id: UUID) -> list[dict]:
         user_id,
     )
     return [dict(r) for r in rows]
-
-
-async def find_medication_by_name(user_id: UUID, raw: str) -> dict | None:
-    """Find an active medication by name for user_id (canonicalizes input). Returns None if not found."""
-    canonical = _normalize_med_name(raw)
-    if not canonical:
-        return None
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        "SELECT id::text AS id, name, dose, schedule, notes, created_at "
-        "FROM medications WHERE user_id = $1 AND name = $2 AND archived_at IS NULL",
-        user_id,
-        canonical,
-    )
-    return dict(row) if row else None
-
-
-async def archive_medication(user_id: UUID, med_id: str) -> bool:
-    """Soft-delete a medication for user_id. Returns True if a row was updated."""
-    pool = await get_pool()
-    status = await pool.execute(
-        "UPDATE medications SET archived_at = now() "
-        "WHERE user_id = $1 AND id = $2::uuid AND archived_at IS NULL",
-        user_id,
-        med_id,
-    )
-    return status.endswith(" 1")
 
 
 async def fetch_medication_logs(

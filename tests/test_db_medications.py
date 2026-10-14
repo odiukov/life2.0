@@ -7,12 +7,7 @@ from uuid import UUID
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
-from shared.db import (
-    insert_medication,
-    fetch_active_medications,
-    archive_medication,
-    find_medication_by_name,
-)
+from shared.db import fetch_active_medications, get_pool
 
 # Fixed test user UUID to scope all medication test rows
 _TEST_USER_ID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -66,71 +61,16 @@ async def _cleanup():
         _sdb._pool = None
 
 
-async def test_insert_and_fetch():
+async def test_fetch_active_medications_excludes_archived():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    mid = await insert_medication(
+    pool = await get_pool()
+    mid = await pool.fetchval(
+        "INSERT INTO medications (user_id, name, dose, schedule) "
+        "VALUES ($1, 'magnesium', '200mg', 'daily 21:00') RETURNING id::text",
         _TEST_USER_ID,
-        name="magnesium",
-        dose="200mg",
-        schedule="daily 21:00",
-        notes=None,
     )
-    assert mid
     meds = await fetch_active_medications(_TEST_USER_ID)
     assert any(m["id"] == mid and m["name"] == "magnesium" for m in meds)
-    await archive_medication(_TEST_USER_ID, mid)
-
-
-async def test_find_by_name_canonicalizes():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
-    mid = await insert_medication(
-        _TEST_USER_ID,
-        name="vitamin-d",
-        dose="2000IU",
-        schedule="daily morning",
-        notes=None,
-    )
-    found = await find_medication_by_name(_TEST_USER_ID, "Vitamin D")  # different case + space
-    assert found is not None and found["id"] == mid
-    await archive_medication(_TEST_USER_ID, mid)
-
-
-async def test_archive_soft_deletes():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
-    mid = await insert_medication(
-        _TEST_USER_ID,
-        name="zinc",
-        dose="15mg",
-        schedule="daily evening",
-        notes=None,
-    )
-    ok = await archive_medication(_TEST_USER_ID, mid)
-    assert ok is True
-    active = await fetch_active_medications(_TEST_USER_ID)
-    assert not any(m["id"] == mid for m in active)
-
-
-async def test_duplicate_active_name_raises():
-    if not _has_db():
-        pytest.skip("POSTGRES_DSN not set")
-    import asyncpg
-
-    mid = await insert_medication(
-        _TEST_USER_ID,
-        name="iron",
-        dose="18mg",
-        schedule="daily morning",
-        notes=None,
-    )
-    with pytest.raises(asyncpg.UniqueViolationError):
-        await insert_medication(
-            _TEST_USER_ID,
-            name="iron",
-            dose="25mg",
-            schedule="daily evening",
-            notes=None,
-        )
-    await archive_medication(_TEST_USER_ID, mid)
+    await pool.execute("UPDATE medications SET archived_at = now() WHERE id = $1::uuid", mid)
+    assert not any(m["id"] == mid for m in await fetch_active_medications(_TEST_USER_ID))

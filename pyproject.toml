@@ -71,8 +71,8 @@ source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.obs
 forbidden_modules = [
     "shared.personas", "shared.grounding", "shared.peer_chip_rules",
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
-    "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
-    "shared.current_user", "shared.consent", "shared.consulted", "shared.log_entry",
+    "shared.a2a_clients", "shared.i18n",
+    "shared.consent",
     "shared.recovery", "shared.telemetry",
 ]
 
@@ -121,7 +121,6 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 # Legacy code: formatted, not linted, until it migrates onto the foundation.
 "orchestrator/**" = ["ALL"]
 "sync_service/**" = ["ALL"]
-"agents/__init__.py" = ["ALL"]
 "shared/src/shared/*.py" = ["ALL"]
 "tests/**" = ["ALL"]
 "scripts/**" = ["ALL"]
@@ -145,9 +144,9 @@ disable_error_code = ["type-abstract"]
 [[tool.mypy.overrides]]
 # Legacy modules: type-checked only after they migrate.
 module = [
-    "shared.a2a_clients", "shared.a2a_store", "shared.consent", "shared.consulted",
-    "shared.current_user", "shared.db", "shared.embeddings", "shared.grounding",
-    "shared.i18n", "shared.intent", "shared.llm", "shared.log_entry", "shared.peer",
+    "shared.a2a_clients", "shared.consent",
+    "shared.db", "shared.embeddings", "shared.grounding",
+    "shared.i18n", "shared.llm", "shared.peer",
     "shared.peer_chip_rules", "shared.personas", "shared.recovery", "shared.skill_ids",
     "shared.observability.telemetry", "shared.telemetry", "shared.vector",
 ]
