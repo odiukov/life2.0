@@ -155,7 +155,7 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["traceloop.*", "apscheduler.*", "testcontainers.*", "qdrant_client.*", "claude_agent_sdk.*", "faster_whisper.*", "av.*"]
+module = ["traceloop.*", "apscheduler.*", "testcontainers.*", "qdrant_client.*", "claude_agent_sdk.*", "faster_whisper.*", "av.*", "garminconnect.*"]
 ignore_missing_imports = true
 
 [[tool.importlinter.contracts]]
