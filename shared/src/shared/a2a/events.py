@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import datetime
 
 from a2a.types import (
@@ -85,5 +85,15 @@ def consulted_peers_event(
         artifact_id=str(uuid.uuid4()),
         name="consulted_peers",
         parts=[Part(root=DataPart(data={"peers": list(peers)}))],
+    )
+    return _artifact_event(task_id, context_id, artifact)
+
+
+def data_artifact_event(
+    task_id: str, context_id: str, data: Mapping[str, object]
+) -> TaskArtifactUpdateEvent:
+    """Structured skill output for programmatic callers (the gateway), named "data"."""
+    artifact = Artifact(
+        artifact_id=str(uuid.uuid4()), name="data", parts=[Part(root=DataPart(data=dict(data)))]
     )
     return _artifact_event(task_id, context_id, artifact)

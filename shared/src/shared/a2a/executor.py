@@ -12,6 +12,7 @@ from a2a.types import TaskState
 
 from shared.a2a.events import (
     consulted_peers_event,
+    data_artifact_event,
     log_entry_event,
     status_event,
     text_artifact_event,
@@ -40,6 +41,7 @@ class SkillResult:
     log_recorded_at: datetime | None = None
     consulted: tuple[str, ...] = ()
     failed: bool = False
+    data: Mapping[str, object] | None = None
 
 
 SkillHandler = Callable[[SkillRequest, tuple[str, ...]], Awaitable[SkillResult]]
@@ -143,6 +145,10 @@ class SkillExecutor(AgentExecutor):
             await event_queue.enqueue_event(
                 consulted_peers_event(task_id, context_id, result.consulted)
             )
+            if result.data is not None:
+                await event_queue.enqueue_event(
+                    data_artifact_event(task_id, context_id, result.data)
+                )
             await event_queue.enqueue_event(
                 text_artifact_event(task_id, context_id, "analysis", result.output)
             )

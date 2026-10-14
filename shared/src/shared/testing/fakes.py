@@ -15,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 from shared.ports.llm import LLMInvalidOutput, LLMTask
 from shared.ports.notifications import InboxItem, Notification
 from shared.ports.scheduler import Job
+from shared.ports.skills import SkillReply
 from shared.ports.stt import Transcript
 from shared.ports.vector_memory import Memory
 
@@ -307,3 +308,26 @@ class InMemoryUnitOfWorkFactory:
 
     def system(self) -> _InMemoryUnitOfWork:
         return _InMemoryUnitOfWork(self, None)
+
+
+SkillResponder = Callable[[str, UUID, Mapping[str, object], str], SkillReply | Exception]
+
+
+class FakeSkillClient:
+    def __init__(self, responder: SkillResponder) -> None:
+        self._responder = responder
+        self.calls: list[tuple[str, UUID, dict[str, object], str]] = []
+
+    async def call(
+        self,
+        *,
+        skill_id: str,
+        user_id: UUID,
+        params: Mapping[str, object],
+        text: str = "",
+    ) -> SkillReply:
+        self.calls.append((skill_id, user_id, dict(params), text))
+        outcome = self._responder(skill_id, user_id, params, text)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
