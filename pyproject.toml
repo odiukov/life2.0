@@ -23,6 +23,7 @@ members = [
     "agents/recovery",
     "agents/medication",
     "agents/kitchen",
+    "stt_service",
 ]
 
 [dependency-groups]
@@ -42,16 +43,17 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = [".", "shared/src"]
-testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests"]
+testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin"
 consider_namespace_packages = true
 markers = [
     "integration: needs Docker (testcontainers PostgreSQL)",
     "evals: calls a real LLM; run manually with `make evals`",
+    "slow: downloads a real model; run with STT_TEST_MODEL=tiny make test-slow",
 ]
 
 [tool.importlinter]
-root_packages = ["shared", "nutrition", "household", "gateway", "kitchen"]
+root_packages = ["shared", "nutrition", "household", "gateway", "kitchen", "stt_service"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -138,10 +140,10 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["shared/src/shared", "agents/nutrition/src/nutrition", "household/src/household", "gateway/src/gateway", "agents/kitchen/src/kitchen"]
+files = ["shared/src/shared", "agents/nutrition/src/nutrition", "household/src/household", "gateway/src/gateway", "agents/kitchen/src/kitchen", "stt_service/src/stt_service"]
 exclude = ["/alembic/versions/"]
 # Source roots keep module names aligned with the editable runtime packages.
-mypy_path = ["shared/src", "agents/nutrition/src", "household/src", "gateway/src", "agents/kitchen/src"]
+mypy_path = ["shared/src", "agents/nutrition/src", "household/src", "gateway/src", "agents/kitchen/src", "stt_service/src"]
 explicit_package_bases = true
 # Repositories are looked up by their Protocol type: `uow.repo(MealRepository)`.
 disable_error_code = ["type-abstract"]
@@ -158,7 +160,7 @@ module = [
 ignore_errors = true
 
 [[tool.mypy.overrides]]
-module = ["traceloop.*", "apscheduler.*", "testcontainers.*", "qdrant_client.*", "claude_agent_sdk.*"]
+module = ["traceloop.*", "apscheduler.*", "testcontainers.*", "qdrant_client.*", "claude_agent_sdk.*", "faster_whisper.*", "av.*"]
 ignore_missing_imports = true
 
 [[tool.importlinter.contracts]]
@@ -196,3 +198,11 @@ name = "Only the kitchen composition root wires adapters"
 type = "forbidden"
 source_modules = ["kitchen.domain", "kitchen.application", "kitchen.adapters"]
 forbidden_modules = ["kitchen.composition", "kitchen.main", "kitchen.serve"]
+
+[[tool.importlinter.contracts]]
+name = "stt_service stays independent and keeps faster_whisper in its recognizer"
+type = "forbidden"
+# The app uses the recognizer protocol; its implementation alone imports the model.
+allow_indirect_imports = true
+source_modules = ["stt_service.app", "stt_service.settings"]
+forbidden_modules = ["faster_whisper", "shared"]

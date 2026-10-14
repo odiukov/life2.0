@@ -1,4 +1,4 @@
-.PHONY: sync fmt lint test test-integration evals migrate
+.PHONY: sync fmt lint test test-slow test-integration evals migrate
 
 sync:
 	uv sync --all-packages --all-extras
@@ -14,7 +14,10 @@ lint:
 	@if grep -q '^\[tool.importlinter\]' pyproject.toml; then uv run lint-imports; fi
 
 test:
-	uv run pytest -m "not integration and not evals" -q
+	uv run pytest -m "not integration and not evals and not slow" -q
+
+test-slow:
+	uv run pytest -m slow -q
 
 test-integration:
 	uv run pytest -m integration -q

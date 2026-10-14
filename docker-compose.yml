@@ -318,6 +318,23 @@ services:
       retries: 5
       start_period: 30s
 
+  stt:
+    build:
+      context: .
+      dockerfile: stt_service/Dockerfile
+    environment:
+      STT__MODEL: ${STT__MODEL:-large-v3-turbo}
+    volumes:
+      - whisper_models:/models
+    expose:
+      - "8010"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 600s
+
   orchestrator:
     build:
       context: .
@@ -491,6 +508,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  whisper_models:
   postgres_data:
   qdrant_data:
   langfuse_postgres_data:
