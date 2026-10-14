@@ -6,12 +6,14 @@ so auth is stable and scoped to a synthetic user.
 
 from __future__ import annotations
 
+import base64
 import os
 import pytest
 from uuid import UUID
 from httpx import AsyncClient, ASGITransport
 
 os.environ.setdefault("VAULT_BACKEND", "dev")
+os.environ.setdefault("SECRETS__KEY", base64.b64encode(bytes(range(32))).decode())
 os.environ.setdefault("AUTH_MODE", "dev")
 os.environ["DEV_FALLBACK_OWNER"] = "false"
 

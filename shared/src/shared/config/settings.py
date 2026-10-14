@@ -95,6 +95,13 @@ class SecretsSettings(BaseModel):
         return value
 
 
+class SecretsEnvSettings(BaseSettings):
+    """Load the required sealing key for legacy services without other settings."""
+
+    model_config = SettingsConfigDict(env_nested_delimiter="__", extra="ignore")
+    secrets: SecretsSettings
+
+
 class TelemetrySettings(BaseModel):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     log_format: Literal["json", "console"] = "json"

@@ -24,6 +24,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel, Field
 from typing import Literal
 
+from . import vault
 from .auth import current_user
 from .db import (
     clear_activity,
@@ -40,6 +41,7 @@ from .registry import check_agent_health, discover_agents, get_registry
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    vault.ensure_ready()
     global _graph, _pool, _saver
     from .checkpointer import close_checkpointer, open_checkpointer
 
