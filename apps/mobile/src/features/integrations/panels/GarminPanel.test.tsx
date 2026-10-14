@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { ThemeProvider } from '@life-agents/ui';
 import { GarminPanel } from './GarminPanel';
 
-// expo-secure-store and supabase are globally mocked via jest.config moduleNameMapper.
+// expo-secure-store is globally mocked via jest.config moduleNameMapper.
 // We mock the api-client module to avoid pulling its mock-fetch / openapi-fetch chain.
 jest.mock('@/api/client', () => ({ apiBaseUrl: 'http://test' }));
 jest.mock('@/features/auth/getAuthHeaders', () => ({

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
+import base64
 import pytest
 from uuid import UUID
 
-os.environ.setdefault("VAULT_BACKEND", "dev")
 
 import shared.db as _sdb
 from orchestrator.app import vault
@@ -17,7 +16,9 @@ USER = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 
 
 @pytest.fixture(autouse=True)
-async def _pool_and_seed_user():
+async def _pool_and_seed_user(monkeypatch):
+    monkeypatch.setenv("SECRETS__KEY", base64.b64encode(bytes(range(32))).decode())
+    vault._reset_box_for_tests()
     if _sdb._pool is not None:
         await _sdb._pool.close()
         _sdb._pool = None
@@ -36,6 +37,7 @@ async def _pool_and_seed_user():
         )
         await c.execute("DELETE FROM public.users WHERE id=$1", USER)
     await _sdb.close_db_pool()
+    vault._reset_box_for_tests()
 
 
 @pytest.mark.asyncio

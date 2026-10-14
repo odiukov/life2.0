@@ -153,7 +153,7 @@ resulting OAuth tokens live per-user in the encrypted vault
    "life-agents", scopes `.../auth/calendar.events` and
    `.../auth/calendar.readonly`. Add your Google account as a test user.
 5. **Credentials → Create Credentials → OAuth Client ID**: application type
-   **iOS** (this is the mobile client — do not reuse the Supabase Auth Google
+   **iOS** (this is the mobile client — do not reuse the app sign-in Google
    client).
 
 > While the consent screen stays in "Testing" mode, Google expires refresh

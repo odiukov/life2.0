@@ -46,6 +46,48 @@ users = Table(
     Column("preferences", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
 )
 
+auth_identities = Table(
+    "auth_identities",
+    metadata,
+    Column("provider", Text, primary_key=True),
+    Column("subject", Text, primary_key=True),
+    _user_fk(),
+    Column("email", Text),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    UniqueConstraint("user_id", "provider", name="auth_identities_user_provider_key"),
+)
+
+auth_flows = Table(
+    "auth_flows",
+    metadata,
+    Column("state_hash", Text, primary_key=True),
+    Column("provider", Text, nullable=False),
+    Column("code_verifier", Text, nullable=False),
+    Column("nonce", Text, nullable=False),
+    Column("app_challenge", Text, nullable=False),
+    Column("expires_at", TSTZ, nullable=False),
+)
+
+auth_tickets = Table(
+    "auth_tickets",
+    metadata,
+    Column("ticket_hash", Text, primary_key=True),
+    _user_fk(),
+    Column("app_challenge", Text, nullable=False),
+    Column("expires_at", TSTZ, nullable=False),
+)
+
+auth_sessions = Table(
+    "auth_sessions",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True),
+    _user_fk(),
+    Column("refresh_hash", Text, nullable=False),
+    Column("expires_at", TSTZ, nullable=False),
+    Column("revoked_at", TSTZ),
+)
+Index("auth_sessions_user_idx", auth_sessions.c.user_id)
+
 health_logs = Table(
     "health_logs",
     metadata,

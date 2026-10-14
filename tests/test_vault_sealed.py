@@ -1,4 +1,4 @@
-"""The dev vault backend seals credentials (sub-project 3b)."""
+"""The credential store seals integration credentials."""
 
 import base64
 import json
@@ -25,7 +25,6 @@ async def test_put_seals_and_get_reseals_legacy_rows(monkeypatch):
     from orchestrator.app import vault
     from shared.db import get_pool
 
-    monkeypatch.setattr(vault, "VAULT_BACKEND", "dev")
     vault._reset_box_for_tests()
     pool = await get_pool()
     user = uuid4()
@@ -59,7 +58,6 @@ async def test_put_seals_and_get_reseals_legacy_rows(monkeypatch):
 def test_ensure_ready_needs_the_key(monkeypatch):
     from orchestrator.app import vault
 
-    monkeypatch.setattr(vault, "VAULT_BACKEND", "dev")
     monkeypatch.delenv("SECRETS__KEY", raising=False)
     vault._reset_box_for_tests()
     with pytest.raises(ValueError, match="secrets"):  # pydantic ValidationError is a ValueError
@@ -78,7 +76,6 @@ async def test_legacy_resealing_preserves_concurrent_reconnect(monkeypatch):
     from shared.db import get_pool
 
     monkeypatch.setenv("SECRETS__KEY", KEY)
-    monkeypatch.setattr(vault, "VAULT_BACKEND", "dev")
     pool = await get_pool()
     user = uuid4()
     old = {"password": "old"}

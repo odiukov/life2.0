@@ -186,9 +186,33 @@ pnpm ios        # or: pnpm android
 Full instructions, including provider-specific notes, live in
 [RUNNING.md](RUNNING.md).
 
+### Direct Google and Apple sign in
+
+Set `AUTH_MODE=oauth`, `AUTH_JWT_SECRET`, and `AUTH_PUBLIC_URL` in the server
+environment. `AUTH_PUBLIC_URL` is the public HTTPS origin of the orchestrator.
+Register these callback URLs with the providers:
+
+```
+https://<your-api-host>/auth/google/callback
+https://<your-api-host>/auth/apple/callback
+```
+
+Use a Google OAuth web client for `GOOGLE_AUTH_CLIENT_ID` and
+`GOOGLE_AUTH_CLIENT_SECRET`. Configure an Apple Services ID for the public domain
+and set `APPLE_AUTH_SERVICE_ID`, `APPLE_AUTH_TEAM_ID`, `APPLE_AUTH_KEY_ID`, and
+`APPLE_AUTH_PRIVATE_KEY` (the `.p8` key). The app must point at this API through
+`EXPO_PUBLIC_API_BASE_URL` or `EXPO_PUBLIC_API_BASE_URL_CLOUD`. Apple requires a
+public HTTPS callback domain, so the local demo mode below is the practical path
+without a deployed API. Google and Apple sign-ins create separate profiles.
+
+This rollout starts fresh accounts. Previous account IDs and stored integration
+credentials are not linked automatically. Users must reconnect Garmin, Yazio,
+Google Calendar, and other integrations. Keep a database backup if older health
+data may be migrated later.
+
 ### Trying it without any integrations
 
-You do not need a Supabase project, a Garmin account or an Apple Watch to see
+You do not need OAuth provider credentials, a Garmin account or an Apple Watch to see
 the app working. Seed a demo user with synthetic data instead:
 
 ```bash

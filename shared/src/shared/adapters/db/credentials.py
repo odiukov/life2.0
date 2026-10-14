@@ -44,7 +44,7 @@ class SqlCredentialStore:
         else:
             raise CredentialsUnreadable(
                 service
-            )  # Supabase Vault rows are read by the orchestrator only
+            )  # Integration credentials are read by the orchestrator only
         await self._conn.execute(
             update(creds)
             .where(creds.c.user_id == user_id, creds.c.service == service)

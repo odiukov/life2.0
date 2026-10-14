@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, Alert } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '@life-agents/ui';
-import { supabase, SUPABASE_CONFIGURED } from '@/features/auth/SupabaseClient';
+import { useSession } from '@/features/auth/useSession';
 import {
   type IntegrationId,
   isConnected,
@@ -86,7 +86,7 @@ export function ProfileSheet({ visible, onClose, userEmail, displayName }: Props
 
   async function handleSignOut() {
     onClose();
-    if (SUPABASE_CONFIGURED) await supabase.auth.signOut();
+    await useSession.getState().signOut();
   }
 
   const sheetStyle = useAnimatedStyle(() => ({

@@ -14,7 +14,6 @@ from uuid import UUID
 import httpx
 import pytest
 
-os.environ.setdefault("VAULT_BACKEND", "dev")
 os.environ.setdefault("GOOGLE_CALENDAR_OAUTH_CLIENT_ID", "test-client-id")
 os.environ.setdefault("GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET", "test-client-secret")
 os.environ.setdefault(

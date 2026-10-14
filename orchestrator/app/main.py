@@ -26,7 +26,9 @@ from pydantic_settings import SettingsError
 from typing import Literal
 
 from . import vault
-from .auth import current_user
+from .auth import AUTH_MODE, current_user
+from .direct_auth import app_secret
+from .auth_routes import router as auth_router
 from .db import (
     clear_activity,
     fetch_body_logs,
@@ -44,6 +46,8 @@ from .registry import check_agent_health, discover_agents, get_registry
 async def lifespan(app: FastAPI):
     try:
         vault.ensure_ready()
+        if AUTH_MODE != "dev":
+            app_secret()
     except (ValidationError, SettingsError):
         # ASGI logs startup exceptions; suppress validation inputs and their chain.
         raise RuntimeError("orchestrator_configuration_invalid") from None
@@ -88,6 +92,7 @@ app.add_middleware(
     expose_headers=["content-type"],
 )
 app.include_router(integrations_router)
+app.include_router(auth_router)
 from .agent_passthrough import router as agent_passthrough_router
 
 app.include_router(agent_passthrough_router)
@@ -119,6 +124,9 @@ _val_logger = _logging.getLogger("orchestrator.validation")
 
 @app.exception_handler(_RVE)
 async def _log_validation_error(request, exc: _RVE):
+    if request.url.path.startswith("/auth/"):
+        _val_logger.warning("422 %s %s", request.method, request.url.path)
+        return _JR(status_code=422, content={"detail": "invalid_auth_request"})
     body = await request.body()
     _val_logger.warning(
         "422 %s %s errors=%r body=%r",

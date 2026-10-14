@@ -9,7 +9,6 @@ async def test_vault_startup_configuration_error_is_sanitized(monkeypatch):
     from orchestrator.app import main, vault
 
     monkeypatch.setenv("SECRETS__KEY", "synthetic-private-orchestrator-key")
-    monkeypatch.setattr(vault, "VAULT_BACKEND", "dev")
     monkeypatch.setattr(vault, "_box", None)
     with pytest.raises(Exception) as failure:
         async with main.lifespan(main.app):

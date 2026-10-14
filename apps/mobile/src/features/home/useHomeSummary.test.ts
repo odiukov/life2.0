@@ -16,13 +16,6 @@ jest.mock('@/api/client', () => ({
   apiBaseUrl: 'http://localhost:8000',
 }));
 
-jest.mock('@/features/auth/SupabaseClient', () => ({
-  SUPABASE_CONFIGURED: false,
-  supabase: {
-    auth: { getSession: jest.fn().mockResolvedValue({ data: { session: null } }) },
-  },
-}));
-
 // Dynamic import in the hook is also intercepted by jest.mock
 jest.mock('@/features/healthkit/sync', () => ({
   runSync: jest.fn().mockResolvedValue({ uploaded: 0 }),
