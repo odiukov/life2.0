@@ -291,6 +291,8 @@ class _InMemoryUnitOfWork:
             repo = self._factory.repositories[kind]
         except KeyError:
             raise LookupError(f"no repository registered for {kind.__name__}") from None
+        if isinstance(repo, InMemoryCredentialStore):
+            repo = repo.for_tenant(self.user_id)
         return cast(RepoT, repo)
 
 
@@ -414,3 +416,36 @@ class FakeSecretBox:
         if not sealed.startswith(b"fake:"):
             raise SecretsUnreadable("not sealed by FakeSecretBox")
         return sealed[5:][::-1]
+
+
+class InMemoryCredentialStore:
+    def __init__(self, tenant: UUID | None = None) -> None:
+        self._tenant = tenant
+        self.rows: dict[tuple[UUID, str], dict[str, Any]] = {}
+
+    def for_tenant(self, user_id: UUID | None) -> InMemoryCredentialStore:
+        store = InMemoryCredentialStore(user_id)
+        store.rows = self.rows
+        return store
+
+    async def get(self, user_id: UUID, service: str) -> dict[str, Any] | None:
+        if self._tenant is not None and self._tenant != user_id:
+            return None
+        row = self.rows.get((user_id, service))
+        return dict(row) if row is not None else None
+
+    async def put(self, user_id: UUID, service: str, payload: Mapping[str, Any]) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            raise PermissionError("credential actor differs from transaction tenant")
+        self.rows[(user_id, service)] = dict(payload)
+
+    async def merge(self, user_id: UUID, service: str, changes: Mapping[str, Any]) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            return
+        if (user_id, service) in self.rows:
+            self.rows[(user_id, service)] = {**self.rows[(user_id, service)], **changes}
+
+    async def delete(self, user_id: UUID, service: str) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            return
+        self.rows.pop((user_id, service), None)
