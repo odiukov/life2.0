@@ -4,22 +4,30 @@
 set -euo pipefail
 
 input=$(cat)
-file=$(printf '%s' "$input" | jq -r '.tool_input.file_path // ""')
-[ -z "$file" ] && exit 0
-[ -f "$file" ] || exit 0
+repo_root=$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || true)
+[ -n "$repo_root" ] || exit 0
 
-case "$file" in
-  *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.md) ;;
-  *) exit 0 ;;
-esac
-
-case "$file" in
-  */node_modules/*|*/.venv/*|*/dist/*|*/build/*|*/.next/*|*/.expo/*|*/.turbo/*|*/coverage/*) exit 0 ;;
-esac
-
-repo_root=$(git -C "$(dirname "$file")" rev-parse --show-toplevel 2>/dev/null || echo "")
-[ -z "$repo_root" ] && exit 0
-
-cd "$repo_root"
-pnpm exec prettier --write --log-level=warn "$file" >/dev/null 2>&1 || true
+# Codex sends apply_patch edits in tool_input.command; file tools use file_path.
+while IFS= read -r file; do
+  [ -n "$file" ] || continue
+  case "$file" in
+    /*) ;;
+    *) file="$repo_root/$file" ;;
+  esac
+  [ -f "$file" ] || continue
+  case "$file" in
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.md) ;;
+    *) continue ;;
+  esac
+  case "$file" in
+    */node_modules/*|*/.venv/*|*/dist/*|*/build/*|*/.next/*|*/.expo/*|*/.turbo/*|*/coverage/*) continue ;;
+  esac
+  [ "$(git -C "$(dirname "$file")" rev-parse --show-toplevel 2>/dev/null)" = "$repo_root" ] || continue
+  (cd "$repo_root" && pnpm exec prettier --write --log-level=warn "$file" >/dev/null 2>&1) || true
+done < <(printf '%s' "$input" | jq -r '
+  (.tool_input.file_path // empty),
+  ((.tool_input.command // .tool_input.patch // "") | split("\n")[] |
+    select(test("^\\*\\*\\* (Add|Update) File: ")) |
+    sub("^\\*\\*\\* (Add|Update) File: "; ""))
+')
 exit 0

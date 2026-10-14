@@ -8,8 +8,8 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 [ -z "$cmd" ] && exit 0
 
-# Allow .venv-prefixed or rtk-proxied invocations.
-if printf '%s' "$cmd" | grep -qE '(\.venv/bin/|(^|[[:space:]])rtk[[:space:]]+pytest)'; then
+# Allow project-venv, uv, or rtk invocations.
+if printf '%s' "$cmd" | grep -qE '(\.venv/bin/|(^|[[:space:]])(rtk[[:space:]]+pytest|uv[[:space:]]+run[[:space:]]+(python[[:space:]]+-m[[:space:]]+)?pytest))'; then
   exit 0
 fi
 

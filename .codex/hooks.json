@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'${CODEX_PROJECT_ROOT:-.}/.codex/hooks/block-host-python-pytest.sh'"
+            "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/block-host-python-pytest.sh\""
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "'${CODEX_PROJECT_ROOT:-.}/.codex/hooks/prettier-on-edit.sh'"
+            "command": "\"$(git rev-parse --show-toplevel)/.codex/hooks/prettier-on-edit.sh\""
           }
         ]
       }
