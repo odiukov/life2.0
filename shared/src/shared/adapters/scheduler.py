@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from shared.ports.scheduler import Job
 
@@ -23,6 +24,19 @@ class ApschedulerScheduler:
             replace_existing=True,
             misfire_grace_time=MISFIRE_GRACE_S,
             coalesce=True,
+        )
+
+    def add_interval(self, job_id: str, func: Job, *, minutes: int) -> None:
+        if minutes < 1:
+            raise ValueError("interval must be at least one minute")
+        self._scheduler.add_job(
+            func,
+            IntervalTrigger(minutes=minutes),
+            id=job_id,
+            replace_existing=True,
+            misfire_grace_time=MISFIRE_GRACE_S,
+            coalesce=True,
+            max_instances=1,
         )
 
     def job_ids(self) -> list[str]:

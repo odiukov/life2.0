@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, timedelta
 from types import TracebackType
 from typing import Any, Literal, Self, TypeVar, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
 
 from shared.ports.llm import LLMInvalidOutput, LLMTask
+from shared.ports.notifications import InboxItem, Notification
 from shared.ports.scheduler import Job
+from shared.ports.stt import Transcript
 from shared.ports.vector_memory import Memory
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
@@ -156,10 +158,16 @@ class FakeTaskRecords:
 class FakeScheduler:
     def __init__(self) -> None:
         self.jobs: dict[str, tuple[Job, int, int, str]] = {}
+        self.intervals: dict[str, int] = {}
+        self._interval_jobs: dict[str, Job] = {}
         self.running = False
 
     def add_cron(self, job_id: str, func: Job, *, hour: int, minute: int, tz: str) -> None:
         self.jobs[job_id] = (func, hour, minute, tz)
+
+    def add_interval(self, job_id: str, func: Job, *, minutes: int) -> None:
+        self.intervals[job_id] = minutes
+        self._interval_jobs[job_id] = func
 
     async def start(self) -> None:
         self.running = True
@@ -168,17 +176,92 @@ class FakeScheduler:
         self.running = False
 
     async def run(self, job_id: str) -> None:
+        if job_id in self._interval_jobs:
+            await self._interval_jobs[job_id]()
+            return
         await self.jobs[job_id][0]()
 
 
 class FakeSpeechToText:
-    def __init__(self, transcript: str = "") -> None:
-        self.transcript = transcript
+    def __init__(
+        self, transcript: Transcript | None = None, *, error: Exception | None = None
+    ) -> None:
+        self.transcript = transcript or Transcript("", None, 0.0)
+        self.error = error
         self.calls: list[tuple[int, str, str | None]] = []
 
-    async def transcribe(self, audio: bytes, *, mime: str, language: str | None) -> str:
+    async def transcribe(self, audio: bytes, *, mime: str, language: str | None) -> Transcript:
         self.calls.append((len(audio), mime, language))
+        if self.error is not None:
+            raise self.error
         return self.transcript
+
+
+class FakeNotificationSender:
+    def __init__(self) -> None:
+        self.sent: list[tuple[UUID, Notification]] = []
+
+    async def send(self, recipients: Sequence[UUID], notification: Notification) -> None:
+        self.sent.extend((recipient, notification) for recipient in recipients)
+
+
+class InMemoryNotificationInbox:
+    def __init__(self) -> None:
+        self.rows: dict[UUID, list[InboxItem]] = {}
+
+    async def add(self, user_id: UUID, notification: Notification, *, created_at: datetime) -> UUID:
+        item = InboxItem(
+            id=uuid4(),
+            kind=notification.kind,
+            title=notification.title,
+            body=notification.body,
+            data=dict(notification.data),
+            created_at=created_at,
+            read_at=None,
+        )
+        self.rows.setdefault(user_id, []).append(item)
+        return item.id
+
+    async def page(self, user_id: UUID, *, before: datetime | None, limit: int) -> list[InboxItem]:
+        items = [i for i in self.rows.get(user_id, []) if before is None or i.created_at < before]
+        return sorted(items, key=lambda i: (i.created_at, str(i.id)), reverse=True)[:limit]
+
+    async def unread_count(self, user_id: UUID) -> int:
+        return sum(1 for i in self.rows.get(user_id, []) if i.read_at is None)
+
+    async def mark_read(self, user_id: UUID, notification_id: UUID, *, at: datetime) -> bool:
+        items = self.rows.get(user_id, [])
+        for index, item in enumerate(items):
+            if item.id == notification_id:
+                if item.read_at is None:
+                    items[index] = replace(item, read_at=at)
+                return True
+        return False
+
+    async def mark_all_read(self, user_id: UUID, *, at: datetime) -> int:
+        items = self.rows.get(user_id, [])
+        changed = 0
+        for index, item in enumerate(items):
+            if item.read_at is None:
+                items[index] = replace(item, read_at=at)
+                changed += 1
+        return changed
+
+
+class InMemoryPushTokens:
+    def __init__(self) -> None:
+        self.rows: dict[str, tuple[UUID, str, datetime]] = {}
+
+    async def upsert(self, user_id: UUID, token: str, platform: str, *, at: datetime) -> None:
+        self.rows[token] = (user_id, platform, at)
+
+    async def delete(self, user_id: UUID, token: str) -> None:
+        row = self.rows.get(token)
+        if row is not None and row[0] == user_id:
+            del self.rows[token]
+
+    async def for_user(self, user_id: UUID) -> list[str]:
+        return sorted(token for token, row in self.rows.items() if row[0] == user_id)
 
 
 class _InMemoryUnitOfWork:

@@ -14,6 +14,8 @@ class LLMTask(StrEnum):
     FAST = "fast"
     SMART = "smart"
     MOOD_COACH = "mood_coach"
+    KITCHEN_EXTRACT = "kitchen_extract"
+    KITCHEN_QUERY = "kitchen_query"
 
 
 class LLMError(Exception):

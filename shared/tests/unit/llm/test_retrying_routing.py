@@ -45,7 +45,7 @@ async def test_routing_dispatches_by_task() -> None:
     fast, smart = FakeLLM(), FakeLLM()
     fast.queue_text("fast")
     smart.queue_text("smart")
-    llm = RoutingLLM({LLMTask.FAST: fast, LLMTask.SMART: smart, LLMTask.MOOD_COACH: fast})
+    llm = RoutingLLM(dict.fromkeys(LLMTask, fast) | {LLMTask.SMART: smart})
     assert await llm.text(task=LLMTask.SMART, system="s", user="u") == "smart"
     assert await llm.text(task=LLMTask.FAST, system="s", user="u") == "fast"
 
@@ -88,7 +88,9 @@ async def test_text_invalid_output_is_not_retried() -> None:
 async def test_structured_routes_mood_to_its_provider() -> None:
     fast, smart, mood = FakeLLM(), FakeLLM(), FakeLLM()
     mood.queue_structured({"word": "coach"})
-    llm = RoutingLLM({LLMTask.FAST: fast, LLMTask.SMART: smart, LLMTask.MOOD_COACH: mood})
+    llm = RoutingLLM(
+        dict.fromkeys(LLMTask, fast) | {LLMTask.SMART: smart, LLMTask.MOOD_COACH: mood}
+    )
     assert await llm.structured(task=LLMTask.MOOD_COACH, system="s", user="u", schema=Echo) == Echo(
         word="coach"
     )

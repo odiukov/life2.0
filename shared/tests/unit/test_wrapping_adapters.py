@@ -371,3 +371,31 @@ async def test_scheduler_registers_cron_jobs_with_wake_policy() -> None:
     finally:
         await scheduler.shutdown()
         await asyncio.sleep(0)
+
+
+async def test_apscheduler_interval_job_is_coalesced_and_single_instance() -> None:
+    from shared.adapters.scheduler import ApschedulerScheduler
+
+    async def job() -> None:
+        return None
+
+    scheduler = ApschedulerScheduler()
+    scheduler.add_interval("digest", job, minutes=15)
+    await scheduler.start()
+    try:
+        registered = scheduler._scheduler.get_job("digest")
+        assert registered.coalesce is True
+        assert registered.max_instances == 1
+        assert registered.trigger.interval.total_seconds() == 900
+    finally:
+        await scheduler.shutdown()
+
+
+def test_apscheduler_rejects_sub_minute_interval() -> None:
+    from shared.adapters.scheduler import ApschedulerScheduler
+
+    async def job() -> None:
+        return None
+
+    with pytest.raises(ValueError, match="at least one minute"):
+        ApschedulerScheduler().add_interval("x", job, minutes=0)
