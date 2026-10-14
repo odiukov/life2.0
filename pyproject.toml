@@ -131,6 +131,9 @@ strict = true
 plugins = ["pydantic.mypy"]
 files = ["shared/src/shared", "agents/nutrition/src/nutrition"]
 exclude = ["/alembic/versions/"]
+# Source roots keep module names aligned with the editable runtime packages.
+mypy_path = ["shared/src", "agents/nutrition/src"]
+explicit_package_bases = true
 # Repositories are looked up by their Protocol type: `uow.repo(MealRepository)`.
 disable_error_code = ["type-abstract"]
 

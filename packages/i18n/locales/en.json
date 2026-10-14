@@ -33,5 +33,47 @@
   "_test": {
     "greeting": "Hi {name}",
     "enOnly": "Englishfallback"
+  },
+  "nutrition": {
+    "log_meal": {
+      "confirmed": "Logged: {items} — {kcal} kcal · P {protein} / F {fat} / C {carbs}",
+      "item_with_amount": "{name} ({amount} g)",
+      "low_confidence": "This is a rough estimate — correct me if you know better.",
+      "not_understood": "I couldn't tell what you ate. Try, for example: \"3-egg omelette and a toast\"."
+    },
+    "body_profile": {
+      "saved": "Profile updated: {fields}. Your calorie goal is recalculated on the next refresh.",
+      "nothing_found": "I found no profile details. Tell me your height (cm), age, sex, activity level or calorie goal.",
+      "invalid": "Profile not saved, please check: {fields}.",
+      "fields": {
+        "height_cm": "height {value} cm",
+        "age": "age {value}",
+        "sex": "sex: {value}",
+        "activity_level": "activity: {value}",
+        "calorie_goal_override": "goal {value} kcal"
+      },
+      "names": {
+        "height_cm": "height",
+        "age": "age",
+        "sex": "sex",
+        "activity_level": "activity level",
+        "calorie_goal_override": "calorie goal"
+      },
+      "sex": {
+        "male": "male",
+        "female": "female"
+      },
+      "activity": {
+        "sedentary": "sedentary",
+        "light": "light",
+        "moderate": "moderate",
+        "active": "active",
+        "very_active": "very active"
+      },
+      "cleared": "{field} cleared"
+    },
+    "errors": {
+      "llm_unavailable": "I can't reach the model right now. Please try again in a moment."
+    }
   }
 }

@@ -32,5 +32,47 @@
   },
   "_test": {
     "greeting": "Hi {name}"
+  },
+  "nutrition": {
+    "log_meal": {
+      "confirmed": "Записал: {items} — {kcal} ккал · Б {protein} / Ж {fat} / У {carbs}",
+      "item_with_amount": "{name} ({amount} г)",
+      "low_confidence": "Оценка примерная — поправь, если знаешь точнее.",
+      "not_understood": "Не понял, что именно ты съел. Напиши, например: «омлет из 3 яиц и тост»."
+    },
+    "body_profile": {
+      "saved": "Профиль обновлён: {fields}. Цель по калориям пересчитается при следующем обновлении.",
+      "nothing_found": "Не нашёл в сообщении параметров профиля. Укажи рост (см), возраст, пол, уровень активности или цель по калориям.",
+      "invalid": "Профиль не сохранён, проверь: {fields}.",
+      "fields": {
+        "height_cm": "рост {value} см",
+        "age": "возраст {value}",
+        "sex": "пол: {value}",
+        "activity_level": "активность: {value}",
+        "calorie_goal_override": "цель {value} ккал"
+      },
+      "names": {
+        "height_cm": "рост",
+        "age": "возраст",
+        "sex": "пол",
+        "activity_level": "активность",
+        "calorie_goal_override": "цель по калориям"
+      },
+      "sex": {
+        "male": "мужской",
+        "female": "женский"
+      },
+      "activity": {
+        "sedentary": "сидячая",
+        "light": "лёгкая",
+        "moderate": "умеренная",
+        "active": "высокая",
+        "very_active": "очень высокая"
+      },
+      "cleared": "{field}: значение сброшено"
+    },
+    "errors": {
+      "llm_unavailable": "Сейчас не получается связаться с моделью. Попробуй чуть позже."
+    }
   }
 }

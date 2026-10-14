@@ -10,7 +10,7 @@ from alembic.config import Config
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from shared.config import MigrateSettings
+from shared.config.migrate import MigrateSettings
 from shared.schema.roles import RolePasswords, role_statements
 
 ALEMBIC_DIR = Path(__file__).parent / "alembic"
