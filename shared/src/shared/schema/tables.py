@@ -197,6 +197,7 @@ integrations_credentials = Table(
     Column("service", Text, nullable=False),
     Column("secret_id", UUID(as_uuid=True)),
     Column("payload_dev", JSONB),
+    Column("payload_enc", LargeBinary),
     Column("created_at", TSTZ, nullable=False, server_default=NOW),
     Column("last_used_at", TSTZ),
     UniqueConstraint("user_id", "service", name="integrations_credentials_user_id_service_key"),
@@ -205,7 +206,7 @@ integrations_credentials = Table(
         name="integrations_credentials_service_check",
     ),
     CheckConstraint(
-        "(secret_id IS NOT NULL)::int + (payload_dev IS NOT NULL)::int = 1",
+        "(secret_id IS NOT NULL)::int + (payload_dev IS NOT NULL)::int + (payload_enc IS NOT NULL)::int = 1",
         name="integrations_credentials_one_backend_check",
     ),
 )
@@ -232,6 +233,7 @@ RLS_TABLES: tuple[str, ...] = (
     "finance_transactions",
     "finance_category_cache",
     "integrations_credentials",
+    "integration_sync_state",
     "oauth_state",
     "telemetry_consent",
     "notifications",
@@ -438,3 +440,16 @@ HOUSEHOLD_TABLES: dict[str, bool] = {
     "kitchen_clarifications": False,
     "kitchen_digest_runs": False,
 }
+
+
+integration_sync_state = Table(
+    "integration_sync_state",
+    metadata,
+    _user_fk(),
+    Column("service", Text, nullable=False),
+    Column("last_attempt_at", TSTZ),
+    Column("last_success_at", TSTZ),
+    Column("last_error", Text),
+    PrimaryKeyConstraint("user_id", "service", name="integration_sync_state_pkey"),
+    CheckConstraint("service IN ('garmin', 'yazio')", name="integration_sync_state_service_check"),
+)

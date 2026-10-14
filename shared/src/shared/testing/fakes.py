@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
 
+from shared.ports.secrets import SecretsUnreadable
 from shared.ports.health_logs import HealthLogRow
 from shared.ports.users import SUPPORTED_LOCALES, UserSettings, resolve_zone
 from shared.ports.llm import LLMInvalidOutput, LLMTask
@@ -290,6 +291,8 @@ class _InMemoryUnitOfWork:
             repo = self._factory.repositories[kind]
         except KeyError:
             raise LookupError(f"no repository registered for {kind.__name__}") from None
+        if isinstance(repo, InMemoryCredentialStore):
+            repo = repo.for_tenant(self.user_id)
         return cast(RepoT, repo)
 
 
@@ -385,3 +388,72 @@ class InMemoryHealthLogs:
             when += timedelta(microseconds=1)
         self.rows.setdefault(user_id, []).append(replace(row, recorded_at=when))
         return when
+
+    async def upsert(self, user_id: UUID, row: HealthLogRow) -> bool:
+        when = row.recorded_at.astimezone(UTC)
+        rows = self.rows.setdefault(user_id, [])
+        for index, existing in enumerate(rows):
+            if (existing.source, existing.type, existing.recorded_at) == (
+                row.source,
+                row.type,
+                when,
+            ):
+                if dict(existing.data) == dict(row.data):
+                    return False
+                rows[index] = replace(existing, data=dict(row.data))
+                return True
+        rows.append(replace(row, recorded_at=when))
+        return True
+
+
+class FakeSecretBox:
+    """Reversible stand-in for tests that are not about cryptography. Not encryption."""
+
+    def seal(self, plaintext: bytes) -> bytes:
+        return b"fake:" + plaintext[::-1]
+
+    def open(self, sealed: bytes) -> bytes:
+        if not sealed.startswith(b"fake:"):
+            raise SecretsUnreadable("not sealed by FakeSecretBox")
+        return sealed[5:][::-1]
+
+
+class InMemoryCredentialStore:
+    def __init__(self, tenant: UUID | None = None) -> None:
+        self._tenant = tenant
+        self.rows: dict[tuple[UUID, str], dict[str, Any]] = {}
+        self.revisions: dict[tuple[UUID, str], str] = {}
+
+    def for_tenant(self, user_id: UUID | None) -> InMemoryCredentialStore:
+        store = InMemoryCredentialStore(user_id)
+        store.rows = self.rows
+        store.revisions = self.revisions
+        return store
+
+    async def get(self, user_id: UUID, service: str) -> dict[str, Any] | None:
+        if self._tenant is not None and self._tenant != user_id:
+            return None
+        row = self.rows.get((user_id, service))
+        return dict(row) if row is not None else None
+
+    async def revision(self, user_id: UUID, service: str) -> str | None:
+        if await self.get(user_id, service) is None:
+            return None
+        return self.revisions.setdefault((user_id, service), uuid4().hex)
+
+    async def put(self, user_id: UUID, service: str, payload: Mapping[str, Any]) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            raise PermissionError("credential actor differs from transaction tenant")
+        self.rows[(user_id, service)] = dict(payload)
+        self.revisions[(user_id, service)] = uuid4().hex
+
+    async def merge(self, user_id: UUID, service: str, changes: Mapping[str, Any]) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            return
+        if (user_id, service) in self.rows:
+            await self.put(user_id, service, {**self.rows[(user_id, service)], **changes})
+
+    async def delete(self, user_id: UUID, service: str) -> None:
+        if self._tenant is not None and self._tenant != user_id:
+            return
+        self.rows.pop((user_id, service), None)

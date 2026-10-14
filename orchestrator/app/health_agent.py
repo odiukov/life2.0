@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import uuid
 import warnings
@@ -42,7 +43,6 @@ from .state import HealthAgentState, LogEntry, ToolCall
 
 logger = logging.getLogger(__name__)
 
-_SYNC_SERVICE_URL = "http://sync-service:8080/sync"
 _FALLBACK_TZ = datetime.now().astimezone().tzinfo
 
 
@@ -694,20 +694,40 @@ async def ask_medication_agent(
     )
 
 
-@tool
-async def sync_health_data() -> str:
-    """Synchronize health data from Garmin and Yazio."""
+_SYNC_SERVICE_BASE = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:8080")
+_SYNC_HINTS = {
+    "auth_failed": " — reconnect it in Integrations",
+    "rate_limited": " — the provider is limiting requests; try later",
+}
+
+
+async def _sync_health_data_for(user_id: str) -> str:
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(_SYNC_SERVICE_URL)
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(f"{_SYNC_SERVICE_BASE}/sync/user", json={"user_id": user_id})
             resp.raise_for_status()
-            data = resp.json()
-            text = f"Sync complete: {data['synced']} records synced, {data['skipped']} skipped."
-            if data.get("errors"):
-                text += f" Errors: {'; '.join(data['errors'][:3])}"
-            return text
-    except Exception as e:
-        return f"Sync failed: {e}"
+            results = resp.json()["results"]
+    except Exception:
+        return "Sync failed: the sync service is unavailable."
+    parts = []
+    for r in results:
+        if r["status"] in ("disabled", "not_connected"):
+            continue
+        line = f"{r['service']} {r['status']}"
+        if r["status"] in ("ok", "partial"):
+            line += f" ({r['written']} new or updated)"
+        parts.append(line + _SYNC_HINTS.get(r["status"], ""))
+    return ("Sync: " + "; ".join(parts) + ".") if parts else "Sync: no integrations connected."
+
+
+@tool
+async def sync_health_data(state: Annotated[HealthAgentState, InjectedState]) -> str:
+    """Synchronize the user's health data from Garmin and Yazio."""
+    try:
+        user_id = _user_uuid_from_state(state)
+    except Exception:
+        return "Sync failed: unknown user."
+    return await _sync_health_data_for(str(user_id))
 
 
 @tool

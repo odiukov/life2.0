@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from uuid import UUID
 
 import httpx
 from shared.observability.logging import get_logger
@@ -18,11 +19,11 @@ class HttpNutritionSync:
         timeout_s: float = 5.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._url = f"{base_url.rstrip('/')}/sync/nutrition" if base_url else None
+        self._url = f"{base_url.rstrip('/')}/sync/user" if base_url else None
         self._timeout_s = timeout_s
         self._client = client
 
-    async def refresh(self) -> None:
+    async def refresh(self, user_id: UUID) -> None:
         if self._url is None:
             return
         try:
@@ -30,13 +31,19 @@ class HttpNutritionSync:
             # phase timeouts alone do not limit the complete request duration.
             async with asyncio.timeout(self._timeout_s) as deadline:
                 if self._client is not None:
-                    response = await self._client.post(self._url, timeout=self._timeout_s)
+                    response = await self._client.post(
+                        self._url,
+                        timeout=self._timeout_s,
+                        json={"user_id": str(user_id), "services": ["yazio"]},
+                    )
                     response.raise_for_status()
                 else:
                     client = httpx.AsyncClient(timeout=self._timeout_s)
                     request_cancelled = False
                     try:
-                        response = await client.post(self._url)
+                        response = await client.post(
+                            self._url, json={"user_id": str(user_id), "services": ["yazio"]}
+                        )
                         response.raise_for_status()
                     except asyncio.CancelledError:
                         request_cancelled = True
@@ -59,4 +66,7 @@ class HttpNutritionSync:
                                 raise
         except (httpx.HTTPError, TimeoutError) as exc:
             # Stale data is acceptable; log metadata only, never URL or error text.
-            logger.warning("nutrition_sync_failed", error_type=type(exc).__name__)
+            logger.warning(
+                "nutrition_sync_failed", code="unavailable", service="yazio", user_id=str(user_id)
+            )
+            logger.debug("nutrition_sync_error", error_type=type(exc).__name__)

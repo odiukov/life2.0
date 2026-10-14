@@ -111,10 +111,14 @@ class InMemoryBodyMetrics:
 
 class FakeSync:
     def __init__(self) -> None:
-        self.calls = 0
+        self.users: list[UUID] = []
 
-    async def refresh(self) -> None:
-        self.calls += 1
+    @property
+    def calls(self) -> int:
+        return len(self.users)
+
+    async def refresh(self, user_id: UUID) -> None:
+        self.users.append(user_id)
 
 
 def in_memory_uow(

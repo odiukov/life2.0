@@ -104,9 +104,12 @@ async def test_not_connected_returns_none(monkeypatch):
     assert got is None
 
 
-def test_build_auth_url_contains_expected_params():
+def test_build_auth_url_contains_expected_params(monkeypatch):
     from orchestrator.app import google_calendar as gc
 
+    monkeypatch.setattr(
+        gc, "REDIRECT_URI", "com.googleusercontent.apps.test-client-id:/integrations-callback"
+    )
     url = gc.build_auth_url("STATE123", "CHALLENGE123")
     assert "accounts.google.com" in url
     assert "state=STATE123" in url

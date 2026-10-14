@@ -316,3 +316,49 @@ def test_last_resort_respects_configured_level_and_debug_policy_after_reconfigur
             assert captured.out + captured.err == ""
     finally:
         vendor.setLevel(prior_level)
+
+
+@pytest.mark.parametrize("log_format", ["json", "console"])
+@pytest.mark.parametrize("code", ["auth_failed", "unavailable", "unexpected", "ok"])
+def test_sync_privacy_policy_preserves_codes_and_sanitizes_debug(capsys, log_format, code):
+    configure_logging(
+        TelemetrySettings(log_level="DEBUG", log_format=log_format), private_debug=True
+    )
+    get_logger("sync.application.sync_user").warning(
+        "sync_failed",
+        code=code,
+        service="garmin",
+        user_id="user-123",
+        password="private-password",
+    )
+    try:
+        raise RuntimeError("private-exception")
+    except RuntimeError:
+        logging.getLogger("garminconnect").debug(
+            "private-response %s", "private-token", exc_info=True
+        )
+        get_logger("sync.application.sync_user").debug(
+            "sync_failed", body="private-data", exc_info=True
+        )
+    output = capsys.readouterr().err
+    assert code in output
+    assert "garmin" in output
+    assert "private-" not in output
+    assert "Traceback" not in output
+    assert "RuntimeError" in output
+
+
+def test_private_debug_sink_failure_does_not_print_original_record(monkeypatch):
+    import sys
+
+    sink = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", sink)
+    monkeypatch.setattr(logging, "raiseExceptions", True)
+    configure_logging(TelemetrySettings(log_level="DEBUG"), private_debug=True)
+
+    def broken_format(record):
+        raise ValueError("private-format-error")
+
+    monkeypatch.setattr(logging.getLogger().handlers[0], "format", broken_format)
+    logging.getLogger("garminconnect").debug("private-response %s", "private-token")
+    assert sink.getvalue() == "logging_sink_failed\n"

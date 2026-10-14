@@ -19,17 +19,14 @@ export default function AuthCallbackScreen() {
   useEffect(() => {
     async function apply(url: string | null | undefined) {
       if (!url) return;
-      // eslint-disable-next-line no-console
-      console.log('[auth-callback] incoming URL:', url);
 
       if (!SUPABASE_CONFIGURED) {
         router.replace('/(tabs)/chat');
         return;
       }
 
-      const parsed = parseUrl(url);
-
       try {
+        const parsed = parseUrl(url);
         if (parsed.code) {
           await supabase.auth.exchangeCodeForSession(parsed.code);
         } else if (parsed.access_token && parsed.refresh_token) {
@@ -39,18 +36,23 @@ export default function AuthCallbackScreen() {
           });
         } else {
           // eslint-disable-next-line no-console
-          console.warn('[auth-callback] no tokens in URL', parsed);
+          console.warn('[auth-callback] no_tokens');
         }
-      } catch (e) {
+      } catch {
         // eslint-disable-next-line no-console
-        console.warn('[auth-callback] setSession failed', e);
+        console.warn('[auth-callback] set_session_failed');
       }
 
       router.replace('/(tabs)/chat');
     }
 
     // Cold start — the app was launched by tapping the magic link.
-    Linking.getInitialURL().then(apply);
+    void Linking.getInitialURL()
+      .then(apply)
+      .catch(() => {
+        // eslint-disable-next-line no-console
+        console.warn('[auth-callback] set_session_failed');
+      });
 
     // Warm start — app was already running; URL arrives via event.
     const sub = Linking.addEventListener('url', (ev) => apply(ev.url));

@@ -276,7 +276,7 @@ booted simulator — see the flow comments in `apps/mobile/.maestro/config.yaml`
 ```
 agents/           8 peer agents
 orchestrator/     LangGraph orchestrator and its domain modules
-sync_service/     Garmin / Yazio pollers
+sync_service/     Garmin/Yazio sync per user at 09:00 local; credentials sealed with `SECRETS__KEY`
 shared/           Python shared library (LLM factory, A2A client, DB, telemetry)
 apps/
   mobile/         React Native (Expo 54) — HealthKit, share extension, offline SQLite

@@ -1,8 +1,26 @@
 import types
+from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from langchain_core.messages import AIMessage, ToolMessage
+
+
+@pytest.fixture(autouse=True)
+def authenticated_user():
+    from orchestrator.app.auth import current_user
+    from orchestrator.app.main import app
+
+    async def user():
+        return UUID("11111111-1111-1111-1111-111111111111")
+
+    previous = app.dependency_overrides.copy()
+    app.dependency_overrides[current_user] = user
+    try:
+        yield
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(previous)
 
 
 @pytest.mark.asyncio

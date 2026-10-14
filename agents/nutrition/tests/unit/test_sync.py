@@ -1,9 +1,26 @@
 import asyncio
+import json
+import logging
+from collections.abc import Iterator
+from uuid import UUID
 
 import httpx
 import pytest
+import structlog
 from nutrition.adapters.sync import HttpNutritionSync
 from structlog.testing import capture_logs
+
+USER = UUID("11111111-1111-1111-1111-111111111111")
+
+
+@pytest.fixture(autouse=True)
+def debug_log_capture() -> Iterator[None]:
+    config = structlog.get_config()
+    structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG))
+    try:
+        yield
+    finally:
+        structlog.configure(**config)
 
 
 async def test_posts_to_the_sync_service_and_leaves_injected_client_open() -> None:
@@ -14,11 +31,14 @@ async def test_posts_to_the_sync_service_and_leaves_injected_client_open() -> No
         return httpx.Response(200)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        await HttpNutritionSync("http://sync-service:8080/", timeout_s=1.5, client=client).refresh()
+        await HttpNutritionSync("http://sync-service:8080/", timeout_s=1.5, client=client).refresh(
+            USER
+        )
         assert not client.is_closed
     assert [(r.method, str(r.url)) for r in seen] == [
-        ("POST", "http://sync-service:8080/sync/nutrition")
+        ("POST", "http://sync-service:8080/sync/user")
     ]
+    assert json.loads(seen[0].content) == {"user_id": str(USER), "services": ["yazio"]}
     assert seen[0].extensions["timeout"] == {"connect": 1.5, "read": 1.5, "write": 1.5, "pool": 1.5}
 
 
@@ -31,13 +51,13 @@ async def test_missing_url_does_not_make_a_request() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with capture_logs() as logs:
-            await HttpNutritionSync(None, client=client).refresh()
+            await HttpNutritionSync(None, client=client).refresh(USER)
     assert seen == []
     assert logs == []
 
 
 @pytest.mark.parametrize("failure", ["connect", "phase_timeout", "http_status"])
-async def test_failures_are_best_effort_and_logs_contain_only_error_type(failure: str) -> None:
+async def test_failures_log_codes_and_debug_type_without_private_details(failure: str) -> None:
     secret = "private-meal-and-token"
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -49,10 +69,12 @@ async def test_failures_are_best_effort_and_logs_contain_only_error_type(failure
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with capture_logs() as logs:
-            await HttpNutritionSync(f"http://sync-service:8080/{secret}", client=client).refresh()
-    assert len(logs) == 1
+            await HttpNutritionSync(f"http://sync-service:8080/{secret}", client=client).refresh(
+                USER
+            )
+    assert len(logs) == 2
     assert (
-        logs[0]["error_type"]
+        logs[1]["error_type"]
         == {
             "connect": "ConnectError",
             "phase_timeout": "ReadTimeout",
@@ -60,7 +82,8 @@ async def test_failures_are_best_effort_and_logs_contain_only_error_type(failure
         }[failure]
     )
     assert logs[0]["log_level"] in {"info", "warning", "error"}
-    assert set(logs[0]) == {"event", "error_type", "log_level"}
+    assert set(logs[0]) == {"event", "code", "user_id", "service", "log_level"}
+    assert logs[1]["log_level"] == "debug"
     assert secret not in str(logs)
     assert "http://" not in str(logs)
 
@@ -82,13 +105,20 @@ async def test_complete_refresh_has_a_deadline_even_when_transport_ignores_phase
             await asyncio.wait_for(
                 HttpNutritionSync(
                     "http://sync-service:8080", timeout_s=0.02, client=client
-                ).refresh(),
+                ).refresh(USER),
                 timeout=0.5,
             )
     assert started.is_set()
     assert cancelled.is_set()
     assert logs == [
-        {"event": "nutrition_sync_failed", "error_type": "TimeoutError", "log_level": "warning"}
+        {
+            "event": "nutrition_sync_failed",
+            "code": "unavailable",
+            "service": "yazio",
+            "user_id": str(USER),
+            "log_level": "warning",
+        },
+        {"event": "nutrition_sync_error", "error_type": "TimeoutError", "log_level": "debug"},
     ]
 
 
@@ -117,12 +147,12 @@ async def test_deadline_includes_owned_client_cleanup(monkeypatch: pytest.Monkey
     monkeypatch.setattr(httpx, "AsyncClient", client_factory)
     with capture_logs() as logs:
         await asyncio.wait_for(
-            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh(), timeout=0.5
+            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh(USER), timeout=0.5
         )
     assert closing.is_set()
     assert cancelled.is_set()
     assert clients[0].is_closed
-    assert logs[0]["error_type"] == "TimeoutError"
+    assert logs[1]["error_type"] == "TimeoutError"
 
 
 async def test_caller_cancellation_propagates() -> None:
@@ -131,7 +161,7 @@ async def test_caller_cancellation_propagates() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with capture_logs() as logs, pytest.raises(asyncio.CancelledError):
-            await HttpNutritionSync("http://sync-service:8080", client=client).refresh()
+            await HttpNutritionSync("http://sync-service:8080", client=client).refresh(USER)
     assert logs == []
 
 
@@ -171,14 +201,21 @@ async def test_request_timeout_still_bounds_subsequent_owned_client_cleanup(
     monkeypatch.setattr(httpx, "AsyncClient", client_factory)
     with capture_logs() as logs:
         await asyncio.wait_for(
-            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh(), timeout=0.1
+            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh(USER), timeout=0.1
         )
     assert request_cancelled.is_set()
     assert closing.is_set()
     assert cleanup_cancelled.is_set()
     assert clients[0].is_closed
     assert logs == [
-        {"event": "nutrition_sync_failed", "error_type": "TimeoutError", "log_level": "warning"}
+        {
+            "event": "nutrition_sync_failed",
+            "code": "unavailable",
+            "service": "yazio",
+            "user_id": str(USER),
+            "log_level": "warning",
+        },
+        {"event": "nutrition_sync_error", "error_type": "TimeoutError", "log_level": "debug"},
     ]
 
 
@@ -211,7 +248,7 @@ async def test_caller_cancellation_is_not_replaced_by_owned_cleanup_deadline(
     monkeypatch.setattr(httpx, "AsyncClient", client_factory)
     with capture_logs() as logs:
         task = asyncio.create_task(
-            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh()
+            HttpNutritionSync("http://sync-service:8080", timeout_s=0.02).refresh(USER)
         )
         await started.wait()
         task.cancel()
@@ -251,7 +288,7 @@ async def test_owned_cleanup_failure_cannot_swallow_caller_cancellation(
     monkeypatch.setattr(httpx, "AsyncClient", client_factory)
     with capture_logs() as logs:
         task = asyncio.create_task(
-            HttpNutritionSync("http://sync-service:8080", timeout_s=0.5).refresh()
+            HttpNutritionSync("http://sync-service:8080", timeout_s=0.5).refresh(USER)
         )
         await started.wait()
         task.cancel()

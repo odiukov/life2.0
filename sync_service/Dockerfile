@@ -11,7 +11,4 @@ COPY . .
 RUN uv sync --frozen --no-dev --package sync-service
 
 ENV PATH="/opt/venv/bin:$PATH"
-WORKDIR /app
-RUN cp -r /repo/sync_service/app ./app
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "sync.serve:app", "--host", "0.0.0.0", "--port", "8080"]

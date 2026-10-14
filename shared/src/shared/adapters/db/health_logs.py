@@ -74,3 +74,20 @@ class SqlHealthLogs:
                 return when
             when += _ONE_US
         raise RuntimeError("no free timestamp for the health log row")
+
+    async def upsert(self, user_id: UUID, row: HealthLogRow) -> bool:
+        c = health_logs.c
+        statement = insert(health_logs).values(
+            user_id=user_id,
+            agent=row.agent,
+            type=row.type,
+            source=row.source,
+            recorded_at=row.recorded_at.astimezone(UTC),
+            data=dict(row.data),
+        )
+        upsert = statement.on_conflict_do_update(
+            index_elements=[c.user_id, c.source, c.type, c.recorded_at],
+            set_={"data": statement.excluded.data},
+            where=c.data.is_distinct_from(statement.excluded.data),
+        ).returning(c.id)
+        return (await self._conn.execute(upsert)).first() is not None
