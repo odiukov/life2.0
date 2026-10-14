@@ -159,3 +159,27 @@ async def test_rows_are_isolated_per_user(backend: Backend) -> None:
         await uow.repo(HealthLogRepository).add(a, row("mood", T0, agent="mood"))
     async with backend.uow.for_user(b) as uow:
         assert await uow.repo(HealthLogRepository).recent(b, types=["mood"]) == []
+
+
+async def test_upsert_inserts_replaces_changed_and_skips_identical(backend: Backend) -> None:
+    user = uuid4()
+    await backend.seed_user(user, "UTC", {})
+    async with backend.uow.for_user(user) as uow:
+        repo = uow.repo(HealthLogRepository)
+        base = row("activity", T0, source="garmin", agent="workout", calories=400)
+        assert await repo.upsert(user, base) is True
+        assert await repo.upsert(user, base) is False
+        assert (
+            await repo.upsert(
+                user, row("activity", T0, source="garmin", agent="workout", calories=450)
+            )
+            is True
+        )
+        [stored] = await repo.recent(user, types=["activity"])
+        assert stored.data == {"calories": 450}
+        # a different source at the same instant is a separate row
+        assert (
+            await repo.upsert(user, row("activity", T0, source="chat", agent="workout", calories=1))
+            is True
+        )
+        assert len(await repo.recent(user, types=["activity"])) == 2

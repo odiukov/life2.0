@@ -6,6 +6,8 @@ Legacy vector adapters and OTEL/Traceloop retain their env configuration for now
 
 from __future__ import annotations
 
+import base64
+import binascii
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -74,6 +76,23 @@ class DatabaseSettings(BaseModel):
         if isinstance(raw, str) and raw.startswith("postgresql://"):
             return "postgresql+asyncpg://" + raw.removeprefix("postgresql://")
         return raw
+
+
+class SecretsSettings(BaseModel):
+    key: SecretStr
+
+    @field_validator("key")
+    @classmethod
+    def _key(cls, value: SecretStr) -> SecretStr:
+        try:
+            raw = base64.b64decode(value.get_secret_value(), validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("SECRETS__KEY must be base64") from exc
+        if len(raw) != 32:
+            raise ValueError(
+                "SECRETS__KEY must decode to 32 bytes (generate: openssl rand -base64 32)"
+            )
+        return value
 
 
 class TelemetrySettings(BaseModel):

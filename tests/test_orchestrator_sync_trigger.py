@@ -15,7 +15,10 @@ from httpx import ASGITransport, AsyncClient
 AUTH_HEADER = {"X-User-Id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"}
 
 
-async def test_sync_trigger_calls_sync_all():
+async def test_sync_trigger_calls_sync_all(monkeypatch):
+    from orchestrator.app import auth
+
+    monkeypatch.setattr(auth, "AUTH_MODE", "dev")
     from orchestrator.app.main import app
 
     posted_urls: list[str] = []

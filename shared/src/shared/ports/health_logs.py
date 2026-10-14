@@ -35,3 +35,7 @@ class HealthLogRepository(Protocol):
     async def add(self, user_id: UUID, row: HealthLogRow) -> datetime:
         """Store the row; on a (user, source, type, recorded_at) clash shift by 1 µs until free."""
         ...
+
+    async def upsert(self, user_id: UUID, row: HealthLogRow) -> bool:
+        """Insert, or replace data on a (user, source, type, recorded_at) clash when it differs; True if written."""
+        ...

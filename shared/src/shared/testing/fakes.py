@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
 
+from shared.ports.secrets import SecretsUnreadable
 from shared.ports.health_logs import HealthLogRow
 from shared.ports.users import SUPPORTED_LOCALES, UserSettings, resolve_zone
 from shared.ports.llm import LLMInvalidOutput, LLMTask
@@ -385,3 +386,31 @@ class InMemoryHealthLogs:
             when += timedelta(microseconds=1)
         self.rows.setdefault(user_id, []).append(replace(row, recorded_at=when))
         return when
+
+    async def upsert(self, user_id: UUID, row: HealthLogRow) -> bool:
+        when = row.recorded_at.astimezone(UTC)
+        rows = self.rows.setdefault(user_id, [])
+        for index, existing in enumerate(rows):
+            if (existing.source, existing.type, existing.recorded_at) == (
+                row.source,
+                row.type,
+                when,
+            ):
+                if dict(existing.data) == dict(row.data):
+                    return False
+                rows[index] = replace(existing, data=dict(row.data))
+                return True
+        rows.append(replace(row, recorded_at=when))
+        return True
+
+
+class FakeSecretBox:
+    """Reversible stand-in for tests that are not about cryptography. Not encryption."""
+
+    def seal(self, plaintext: bytes) -> bytes:
+        return b"fake:" + plaintext[::-1]
+
+    def open(self, sealed: bytes) -> bytes:
+        if not sealed.startswith(b"fake:"):
+            raise SecretsUnreadable("not sealed by FakeSecretBox")
+        return sealed[5:][::-1]
