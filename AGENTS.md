@@ -83,7 +83,7 @@ Observability: self-hosted Langfuse v3 stack (:3100), OTEL via Traceloop SDK
 
 ### Key patterns
 
-**Agent structure** — legacy peers use this layout; nutrition uses `agents/nutrition/src/nutrition/` with domain, application, adapters and composition modules:
+**Agent structure** — all health peers use the foundation layout with domain, application, adapters and composition modules:
 
 The new `household` library and `agents/kitchen` follow the same layered layout: pure
 `domain`, port-dependent `application`, infrastructure `adapters`, and `composition.py`
@@ -92,12 +92,21 @@ orchestrator. `stt_service` is an internal HTTP service with its own settings an
 Agents speak only A2A; the app reaches them through the gateway, never directly.
 
 ```
-agents/<name>/app/
-  main.py       # FastAPI + A2A request handler
-  executor.py   # Skill routing + LLM call
-  skills.py     # AgentCard skill definitions
-  prompt.py     # Domain prompt builders
+agents/<name>/src/<name>/
+  domain/       # pure types and rules
+  application/  # use cases, AnalysisData and schemas on ports
+  adapters/     # SQL repositories and A2A card/executor/spec
+  composition.py # dependency wiring
+  main.py       # service entry point
 ```
+
+**Adding skills**: for analysis, implement `AnalysisData`, register a tail for the skill in
+`AnalysisSpec`, and add a prompt snapshot test. The shared `AnalysisSkill` loads tenant data,
+fetches selected peers and optional memories, composes the prompt, calls the model and saves
+memory. Read raw health logs through `HealthLogRepository`, then map rows to domain types.
+For writes, add an application use case and extraction schema, a stored-row shape test,
+and real-provider eval cases. User-facing text must use locale keys through `Translator`;
+keep English extraction instructions separate from localized replies.
 
 **health_logs table** is the universal sink. Dedup key is `(user_id, source, type, recorded_at)` — not an upsert, so duplicates are blocked on insert. Every agent uses `agent='sleep'|'workout'|...` when reading; the aggregator agent column must always be set when writing (see healthkit_aggregator_agent_column memory).
 
@@ -115,7 +124,7 @@ to `HOUSEHOLD_TABLES` and to the registry in its migration.
 
 **Shared Python library**: `shared/src/shared/` is installed through the uv workspace (`make sync`) into every Python service. Add cross-service utilities here (LLM factory, DB helpers, A2A client cache, vector ops, telemetry init).
 
-**LLM factory** (`shared/llm.py`): legacy services get their LLM via `LLM_PROVIDER` env var (anthropic | openrouter | gemini | groq | ollama). Nutrition uses typed `LLM__DEFAULT` / `LLM__TASKS__*` routes and the shared LLM adapters. Mood coach is hard-locked to Groq (`MOOD_COACH_PROVIDER`); it never falls back to paid providers.
+**LLM factory** (`shared/llm.py`): legacy services get their LLM via `LLM_PROVIDER` env var (anthropic | openrouter | gemini | groq | ollama). All health peers use typed `LLM__DEFAULT` / `LLM__TASKS__*` routes and the shared LLM adapters. Mood coach is hard-locked to Groq (`MOOD_COACH_PROVIDER`); it never falls back to paid providers.
 
 **Telemetry**: call `init_telemetry("service-name")` before application imports in legacy `main.py` or migrated `serve.py`. Migrated composition configures privacy-safe logging before constructing adapters. Three consent modes: `full` (dev), `metadata` (token counts only), `consented` (per-user opt-in via `telemetry_consent` table).
 

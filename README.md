@@ -63,14 +63,14 @@ exposes three to four domain skills, and streams artifacts back.
 
 | Agent        | Port | What it owns                                         |
 | ------------ | ---- | ---------------------------------------------------- |
-| `sleep`      | 8001 | Sleep stages, duration, debt, bedtime consistency    |
-| `workout`    | 8002 | Training sessions, load, weekly volume               |
+| `sleep`      | 8001 | Sleep stages, duration, debt, bedtime consistency; foundation (ports, pipeline, RLS) |
+| `workout`    | 8002 | Training sessions, load, weekly volume; foundation (ports, pipeline, RLS) |
 | `nutrition`  | 8003 | Meals, macros, calorie balance                       |
-| `body`       | 8004 | Weight, body composition, measurements               |
-| `mood`       | 8005 | Check-ins and a coaching loop (Groq-only, zero cost) |
-| `habits`     | 8006 | Habit definitions, streaks, adherence                |
-| `recovery`   | 8007 | HRV, resting HR, readiness across domains            |
-| `medication` | 8008 | Medication registry, doses, adherence                |
+| `body`       | 8004 | Weight, body composition, measurements; foundation (ports, pipeline, RLS) |
+| `mood`       | 8005 | Check-ins and a coaching loop (Groq-only, zero cost); foundation (ports, pipeline, RLS) |
+| `habits`     | 8006 | Habit definitions, streaks, adherence; foundation (ports, pipeline, RLS) |
+| `recovery`   | 8007 | HRV, resting HR, readiness across domains; foundation (ports, pipeline, RLS) |
+| `medication` | 8008 | Medication registry, doses, adherence; foundation (ports, pipeline, RLS) |
 | `kitchen`    | 8009 (internal) | Household food inventory and expiry digest |
 | `stt`        | 8010 (internal) | Local speech-to-text service |
 
@@ -82,14 +82,19 @@ Kitchen inventory is shared with its members; health logs and other personal dat
 Joining from a one-person household moves its active kitchen items into the destination household.
 Household members receive the same daily expiry digest in their own notification inboxes.
 
-Legacy peers use this layout; nutrition uses the foundation layout below:
+The seven migrated health agents share `shared.analysis.AnalysisSkill`: load typed data
+within a user-scoped unit of work, fetch selected peer context and optional memories,
+compose a localized prompt, call the model, and save memory. Skill-specific data loaders
+and prompt tails keep domain behavior separate. Writing skills use application use cases
+and extraction schemas; all raw health-log access uses `HealthLogRepository`.
 
 ```
-agents/<name>/app/
-  main.py       # FastAPI + A2A request handler
-  executor.py   # skill routing + LLM call
-  skills.py     # AgentCard skill definitions
-  prompt.py     # domain prompt builders
+agents/<name>/src/<name>/
+  domain/       # pure types and rules
+  application/  # use cases, AnalysisData and schemas on ports
+  adapters/     # SQL repositories and A2A card/executor/spec
+  composition.py # dependency wiring
+  main.py       # service entry point
 ```
 
 `health_logs` is the universal sink for all ingested data, deduplicated on
@@ -110,9 +115,9 @@ New and migrated code follows a ports-and-adapters layout:
 - `agents/nutrition/src/nutrition/` — the first migrated agent: `domain/` (pure), `application/`
   (use cases on ports), `adapters/` (SQL, HTTP, A2A card), `composition.py` (wiring).
 
-import-linter enforces the direction of these dependencies (`make lint`). The other agents,
-the orchestrator and the sync service still use the legacy modules at the top of `shared/src/shared/`
-and move over one at a time.
+import-linter enforces the direction of these dependencies (`make lint`). The orchestrator
+and the sync service still use legacy modules at the top of `shared/src/shared/` and
+move over one at a time.
 
 ## Database roles and row-level security
 

@@ -17,9 +17,9 @@
 3. Set `APP_OWNER_PASSWORD`, `APP_RW_PASSWORD` and `APP_LEGACY_PASSWORD` in `.env`
    (letters, digits, `-` and `_`). The migrate service bootstraps roles as the configured
    administrator, then runs Alembic strictly as `app_owner`; services wait for success.
-4. Nutrition reads `LLM__DEFAULT` (`<provider>:<model>`) and optional `LLM__TASKS__*`
+4. All health peers read `LLM__DEFAULT` (`<provider>:<model>`) and optional `LLM__TASKS__*`
    routes instead of `LLM_PROVIDER` / `LLM_MODEL`. Keep both routes aligned for the same
-   provider, and supply its API key. Nutrition connects using `app_rw`; unmigrated
+   provider, and supply its API key. Health peers connect using `app_rw`; unmigrated
    services use `app_legacy`. See [database role details](deploy/postgres/README.md).
 
 ## LLM provider
@@ -443,3 +443,21 @@ orchestrator chat and verbatim relay are then reported as `SKIP`, while SQL-seed
 still exercises joining, actions, digest and isolation. Skipped acceptance exits nonzero and
 must not be reported as a complete pass. Also run `make lint`, `make test`,
 `make test-integration`, `pnpm -r typecheck`, and the mobile and UI tests.
+
+### Migrated health-agent acceptance
+
+`make evals` includes the health agents' real-provider evals. A skipped eval is not
+an acceptance pass. Regenerate prompt snapshots with `uv run pytest --update-snapshots`
+(select the relevant snapshot tests when needed). Review snapshot diffs in every PR
+that changes a prompt.
+
+With a configured stack running in `AUTH_MODE=dev`, run
+`bash scripts/acceptance_agents.sh` from the repository root. It needs `curl`, `jq`,
+Docker Compose and database credentials (`APP_RW_PASSWORD`, `POSTGRES_DB`, from `.env`
+or the environment). It writes synthetic entries for a dedicated test user, checks
+stored row values under RLS and prints analysis answers with fact checks. Review the
+printed answers for accuracy beyond those checks, especially recovery and body where
+no direct entry is logged. Use `COMPOSE_PROJECT_NAME` for an isolated stack; the script
+never removes volumes. API and agent-card host URLs can be overridden via `API` and
+`AGENT_HOST`. Existing entries are preserved; run against a fresh isolated database
+for a clean acceptance run.
