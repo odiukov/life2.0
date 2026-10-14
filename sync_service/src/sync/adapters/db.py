@@ -12,11 +12,18 @@ from shared.ports.health_logs import HealthLogRepository
 from shared.ports.secrets import SecretBox
 from shared.ports.users import UserSettingsRepository
 from shared.schema.tables import integration_sync_state as state
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from sync.application.ports import Service, SyncStateRepository, SyncStatus
+from sync.application.ports import (
+    SERVICES,
+    DueUser,
+    Service,
+    SyncDirectory,
+    SyncStateRepository,
+    SyncStatus,
+)
 
 
 class SqlSyncState:
@@ -66,5 +73,26 @@ def sync_uow(engine: AsyncEngine, box: SecretBox) -> SqlUnitOfWorkFactory:
             HealthLogRepository: SqlHealthLogs,
             UserSettingsRepository: SqlUserSettings,
             SyncStateRepository: SqlSyncState,
+            SyncDirectory: SqlSyncDirectory,
         },
     )
+
+
+class SqlSyncDirectory:
+    def __init__(self, conn: AsyncConnection) -> None:
+        self._conn = conn
+
+    async def due(self, now: datetime, hour: int) -> list[DueUser]:
+        rows = await self._conn.execute(
+            text(
+                "SELECT user_id, services FROM integration_users_due(:now, :hour) ORDER BY user_id"
+            ),
+            {"now": now, "hour": hour},
+        )
+        return [DueUser(r.user_id, tuple(s for s in SERVICES if s in r.services)) for r in rows]
+
+    async def plaintext(self) -> list[tuple[UUID, str]]:
+        rows = await self._conn.execute(
+            text("SELECT user_id, service FROM credentials_plaintext()")
+        )
+        return [(r.user_id, r.service) for r in rows]

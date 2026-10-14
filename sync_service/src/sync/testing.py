@@ -18,7 +18,15 @@ from shared.testing.fakes import (
     InMemoryUserSettings,
 )
 
-from sync.application.ports import Credentials, Service, SyncStateRepository, SyncStatus
+from sync.application.ports import (
+    SERVICES,
+    Credentials,
+    DueUser,
+    Service,
+    SyncDirectory,
+    SyncStateRepository,
+    SyncStatus,
+)
 from sync.domain.garmin import GarminBundle
 from sync.domain.yazio import YazioBundle
 
@@ -53,6 +61,7 @@ class RecordingCredentialStore(InMemoryCredentialStore):
 
     def __init__(self) -> None:
         super().__init__()
+        self.plaintext: set[tuple[UUID, str]] = set()
         self.unreadable: set[tuple[UUID, str]] = set()
         self.merges: list[tuple[UUID, str, dict[str, Any]]] = []
 
@@ -60,6 +69,7 @@ class RecordingCredentialStore(InMemoryCredentialStore):
         store = RecordingCredentialStore()
         store._tenant = user_id
         store.rows = self.rows
+        store.plaintext = self.plaintext
         store.unreadable = self.unreadable
         store.merges = self.merges
         return store
@@ -69,7 +79,9 @@ class RecordingCredentialStore(InMemoryCredentialStore):
             return None
         if (user_id, service) in self.unreadable:
             raise CredentialsUnreadable(service)
-        return await super().get(user_id, service)
+        result = await super().get(user_id, service)
+        self.plaintext.discard((user_id, service))
+        return result
 
     async def merge(self, user_id: UUID, service: str, changes: Mapping[str, Any]) -> None:
         self.merges.append((user_id, service, dict(changes)))
@@ -85,21 +97,67 @@ class FailingHealthLogs(InMemoryHealthLogs):
         return await super().upsert(user_id, row)
 
 
+class InMemorySyncDirectory:
+    """The rule of integration_users_due(), in Python; tests/contract keeps the two in step."""
+
+    def __init__(self, backend: MemoryBackend) -> None:
+        self._backend = backend
+
+    async def due(self, now: datetime, hour: int) -> list[DueUser]:
+        found: dict[UUID, list[Service]] = {}
+        for user_id, service in sorted(
+            self._backend.credentials.rows, key=lambda k: (str(k[0]), k[1])
+        ):
+            if service not in SERVICES or user_id not in self._backend.users.rows:
+                continue
+            zone = (await self._backend.users.get(user_id)).timezone
+            local = now.astimezone(zone)
+            status = self._backend.state.rows.get((user_id, service), SyncStatus(None, None, None))
+            if local.hour < hour:
+                continue
+            if (
+                status.last_success_at is not None
+                and status.last_success_at.astimezone(zone).date() >= local.date()
+            ):
+                continue
+            if status.last_attempt_at is not None and status.last_attempt_at > now - timedelta(
+                hours=1
+            ):
+                continue
+            # SQL NOT(auth_failed AND local_attempt_date = today) also excludes NULL attempts.
+            if status.last_error == "auth_failed" and (
+                status.last_attempt_at is None
+                or status.last_attempt_at.astimezone(zone).date() == local.date()
+            ):
+                continue
+            found.setdefault(user_id, []).append(service)
+        return [
+            DueUser(user, tuple(s for s in SERVICES if s in services))
+            for user, services in found.items()
+        ]
+
+    async def plaintext(self) -> list[tuple[UUID, str]]:
+        return sorted(self._backend.credentials.plaintext, key=lambda k: (str(k[0]), k[1]))
+
+
 @dataclass
 class MemoryBackend:
     users: InMemoryUserSettings = field(default_factory=InMemoryUserSettings)
     credentials: RecordingCredentialStore = field(default_factory=RecordingCredentialStore)
     logs: FailingHealthLogs = field(default_factory=FailingHealthLogs)
     state: InMemorySyncState = field(default_factory=InMemorySyncState)
+    directory: InMemorySyncDirectory = field(init=False)
     uow: InMemoryUnitOfWorkFactory = field(init=False)
 
     def __post_init__(self) -> None:
+        self.directory = InMemorySyncDirectory(self)
         self.uow = InMemoryUnitOfWorkFactory(
             {
                 UserSettingsRepository: self.users,
                 CredentialStore: self.credentials,
                 HealthLogRepository: self.logs,
                 SyncStateRepository: self.state,
+                SyncDirectory: self.directory,
             }
         )
 

@@ -91,3 +91,19 @@ class SyncStateRepository(Protocol):
     ) -> None:
         """Record an outcome: last_attempt_at = now, last_error = error; last_success_at = now on success."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class DueUser:
+    user_id: UUID
+    services: tuple[Service, ...]
+
+
+class SyncDirectory(Protocol):
+    """Cross-tenant questions answered by SECURITY DEFINER functions; use through `uow.system()` only."""
+
+    async def due(self, now: datetime, hour: int) -> list[DueUser]: ...
+
+    async def plaintext(self) -> list[tuple[UUID, str]]:
+        """(user, service) of credential rows still stored as plaintext."""
+        ...
