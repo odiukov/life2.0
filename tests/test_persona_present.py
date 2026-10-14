@@ -12,7 +12,6 @@ import pytest
 ANALYTICAL_TASKS = {
     # skills.py passes the bare task name "get_recommendations" to build_X_prompt;
     # the AgentCard skill IDs (Sleep.RECOMMENDATIONS, etc.) are a separate layer.
-    "mood": ["analyze_mood", "get_mood_recommendations"],
     "habits": ["analyze_habit"],
     "medication": ["analyze_adherence"],
 }

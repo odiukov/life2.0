@@ -215,5 +215,18 @@
       "hiking": "hiking",
       "other": "workout"
     }
+  },
+  "mood": {
+    "log": {
+      "confirmed_score": "Logged mood {score}/10{tags}.",
+      "confirmed": "Logged mood{tags}.",
+      "tags": ": {tags}",
+      "saved_raw": "Saved as written — I couldn't read a score.",
+      "no_signal": "I didn't see a mood in that message — nothing saved."
+    },
+    "coach": {
+      "saved": "Saved the session summary.",
+      "summary": "{summary}"
+    }
   }
 }
