@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from shared.skill_ids import (
     BodySkillId,
     HabitsSkillId,
+    KitchenSkillId,
     RecoverySkillId,
     MedicationSkillId,
 )
@@ -427,7 +428,15 @@ async def _run_calendar_call(state: HealthAgentState, action: str, call):
 async def _run_peer_tool(
     *,
     agent: Literal[
-        "sleep", "workout", "nutrition", "body", "mood", "habits", "recovery", "medication"
+        "sleep",
+        "workout",
+        "nutrition",
+        "body",
+        "mood",
+        "habits",
+        "recovery",
+        "medication",
+        "kitchen",
     ],
     message: str,
     skill: str,
@@ -549,6 +558,29 @@ async def ask_nutrition_agent(
         tool_call_id=tool_call_id,
         state=state,
         focus_sources=merged,
+    )
+
+
+@tool
+async def ask_kitchen_agent(
+    message: str,
+    skill: KitchenSkillId,
+    tool_call_id: Annotated[str, InjectedToolCallId],
+    state: Annotated[HealthAgentState, InjectedState],
+) -> Command:
+    """Call kitchen-agent about the household's food at home (fridge, freezer, pantry).
+    Skills: kitchen.update_inventory (food bought, eaten, opened, moved or thrown away, or the user
+    asks to undo their last kitchen change) / kitchen.query (what is at home, what expires soon).
+    Pass the user's words unchanged. Relay the kitchen reply to the user verbatim, including any
+    question it asks. When the user answers a kitchen question, send that answer to
+    ask_kitchen_agent with skill=kitchen.update_inventory."""
+    return await _run_peer_tool(
+        agent="kitchen",
+        message=message,
+        skill=skill,
+        tool_name="ask_kitchen_agent",
+        tool_call_id=tool_call_id,
+        state=state,
     )
 
 
@@ -926,13 +958,18 @@ async def query_finance_runway(
 
 
 _SYSTEM_PROMPT = (
-    "You are a personal health assistant. You have eight peer agents: sleep, workout, "
-    "nutrition, body, mood, habits, recovery, medication. Each tool accepts a skill parameter — pick "
+    "You are a personal health assistant. You have nine peer agents: sleep, workout, "
+    "nutrition, body, mood, habits, recovery, medication, kitchen. Each tool accepts a skill parameter — pick "
     "the one that matches intent (log/analyze/recommend/query). Route mood/feelings/stress/journal "
     "language to the mood agent. For habits, only invoke log_habit_check when the user "
     "message starts with '/habit' or a habit inline-button callback payload — free text "
     "like 'I read today' must NOT log a habit. Analyze/streak queries ('my streak', "
     "'how are my habits') → analyze_habit / get_streak_summary. "
+    "\n\n"
+    "Use ask_kitchen_agent for food stored at home — purchases, eating, throwing away, opening, "
+    "moving, expiry questions and undoing kitchen changes. Meals the user ate for calorie "
+    "tracking still go to ask_nutrition_agent; when a message is both (e.g. 'I ate yogurt from "
+    "the fridge'), call both tools. Relay the kitchen reply verbatim."
     "\n\n"
     "Three tools — ask_sleep_agent, ask_workout_agent, ask_nutrition_agent — accept an optional "
     "focus_sources parameter. Pass it ONLY when the user explicitly cites another domain as the "
@@ -1019,6 +1056,7 @@ async def create_health_agent(checkpointer=None):
         ask_sleep_agent,
         ask_workout_agent,
         ask_nutrition_agent,
+        ask_kitchen_agent,
         ask_body_agent,
         ask_mood_agent,
         ask_habits_agent,

@@ -12,6 +12,7 @@ from household.adapters.db import household_uow
 from household.adapters.http import Authenticate, build_router
 from household.application.service import HouseholdService
 from pydantic import ValidationError
+from shared.adapters.a2a.skill_client import A2ASkillClient
 from shared.adapters.clock import SystemClock
 from shared.adapters.db.engine import create_engine
 from shared.ports.clock import Clock
@@ -19,6 +20,8 @@ from shared.ports.skills import SkillClient
 from shared.ports.stt import SpeechToText
 
 from gateway.hooks import HouseholdEnsurer
+from gateway.kitchen import KitchenGateway
+from gateway.kitchen import build_router as build_kitchen_router
 from gateway.settings import GatewaySettings
 
 
@@ -50,7 +53,13 @@ def build_gateway(
     engine = create_engine(settings.database)
     http = http or httpx.AsyncClient()
     households = HouseholdService(household_uow(engine), clock)
-    routers = [build_router(households, authenticate)]
+    skill_client = skill_client or A2ASkillClient(
+        settings.kitchen_agent_url, http, timeout_s=settings.skill_timeout_s
+    )
+    routers = [
+        build_router(households, authenticate),
+        build_kitchen_router(KitchenGateway(skill_client), authenticate),
+    ]
     return Gateway(
         routers=routers,
         post_auth_hook=HouseholdEnsurer(households),
