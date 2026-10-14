@@ -25,7 +25,7 @@ from shared.a2a.request import (
     requested_skill,
     to_request,
 )
-from shared.a2a.routing import resolve_skill
+from shared.a2a.routing import SkillChoice, resolve_skill
 from shared.observability.logging import get_logger, logging_context
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
@@ -57,9 +57,11 @@ class SkillExecutor(AgentExecutor):
         llm: LLMProvider,
         task_records: TaskRecords,
         clock: Clock,
+        routable: Sequence[str] | None = None,
     ) -> None:
         self._agent = agent
         self._handlers = dict(handlers)
+        self._routable = list(routable) if routable is not None else list(handlers)
         self._peers = list(peers)
         self._llm = llm
         self._task_records = task_records
@@ -75,14 +77,18 @@ class SkillExecutor(AgentExecutor):
         await event_queue.enqueue_event(status_event(task_id, context_id, TaskState.working))
         with logging_context(agent=self._agent, task_id=task_id):
             try:
-                choice = await resolve_skill(
-                    llm=self._llm,
-                    message=envelope.text,
-                    skills=list(self._handlers),
-                    candidate_peers=self._peers,
-                    requested_skill=requested_skill(envelope.metadata),
-                    focus_sources=focus_sources(envelope.metadata),
-                )
+                requested = requested_skill(envelope.metadata)
+                if requested in self._handlers and requested not in self._routable:
+                    choice: SkillChoice | None = SkillChoice(requested, ())
+                else:
+                    choice = await resolve_skill(
+                        llm=self._llm,
+                        message=envelope.text,
+                        skills=self._routable,
+                        candidate_peers=self._peers,
+                        requested_skill=requested,
+                        focus_sources=focus_sources(envelope.metadata),
+                    )
             except Exception:
                 logger.exception("skill_failed")
                 await event_queue.enqueue_event(

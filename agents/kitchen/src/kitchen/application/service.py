@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -247,10 +247,33 @@ class InventoryService:
         expires_on: date | None = None,
         quantity: Decimal | None = None,
     ) -> tuple[UUID, Batch | None]:
+        """Perform an item action, retaining the original two-value return contract."""
+        group_id, batch, _ = await self.act_with_context(
+            user_id,
+            batch_id,
+            action,
+            location=location,
+            expires_on=expires_on,
+            quantity=quantity,
+        )
+        return group_id, batch
+
+    async def act_with_context(
+        self,
+        user_id: UUID,
+        batch_id: UUID,
+        action: ItemAction,
+        *,
+        location: Location | None = None,
+        expires_on: date | None = None,
+        quantity: Decimal | None = None,
+    ) -> tuple[UUID, Batch | None, HouseholdContext]:
+        """Return response context captured while the action's household lock is held."""
         now = self._clock.now()
         group_id = uuid4()
         async with self._uow.for_user(user_id) as uow:
             context = await _locked_context(uow, user_id)
+            context = replace(context, members=dict(context.members))
             today = context.today(now)
             repo = uow.repo(BatchRepository)
             batch = await repo.get(batch_id)
@@ -305,7 +328,7 @@ class InventoryService:
                     changes=(_logged(applied),),
                 )
             )
-        return group_id, change.after
+        return group_id, change.after, context
 
     async def undo(self, user_id: UUID, group_id: UUID) -> UndoOutcome:
         now = self._clock.now()
