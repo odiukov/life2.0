@@ -1,11 +1,12 @@
-"""Ports of the sync service. Task 6 appends the sync-state ports to this module."""
+"""Ports of the sync service."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any, ClassVar, Literal, Protocol
+from uuid import UUID
 
 from sync.domain.garmin import GarminBundle
 from sync.domain.yazio import YazioBundle
@@ -67,3 +68,26 @@ class YazioClient(Protocol):
         ...
 
     async def check(self, credentials: Credentials) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SyncStatus:
+    last_attempt_at: datetime | None
+    last_success_at: datetime | None
+    last_error: str | None
+
+
+class SyncStateRepository(Protocol):
+    async def get(self, user_id: UUID, service: Service) -> SyncStatus | None: ...
+
+    async def claim(
+        self, user_id: UUID, service: Service, *, now: datetime, cooldown: timedelta
+    ) -> bool:
+        """Atomically set last_attempt_at = now unless the last attempt is younger than cooldown."""
+        ...
+
+    async def finish(
+        self, user_id: UUID, service: Service, *, now: datetime, error: str | None, success: bool
+    ) -> None:
+        """Record an outcome: last_attempt_at = now, last_error = error; last_success_at = now on success."""
+        ...
