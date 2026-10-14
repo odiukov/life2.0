@@ -1,0 +1,12 @@
+define:
+  - {text: "медитация 10 минут каждый день", expect: {name: meditation, kind: quantitative, cadence_type: daily, target_value: 10}}
+  - {text: "холодный душ по пн, ср, пт", expect: {name: cold-shower, kind: boolean, cadence_type: weekly, cadence_days: [mon, wed, fri]}}
+  - {text: "читать 30 страниц ежедневно", expect: {kind: quantitative, target_value: 30, unit_any: [pages, page, стр]}}
+  - {text: "не пить алкоголь", expect: {kind: boolean, cadence_type: daily}}
+  - {text: "gym on weekends", expect: {cadence_type: weekly, cadence_days: [sat, sun]}}
+  - {text: "пробежка 5 км по вторникам и четвергам", expect: {cadence_type: weekly, cadence_days: [tue, thu], target_value: 5}}
+resolve:
+  - {text: "отметь медитацию", names: [meditation, cold-shower, reading], expect: meditation}
+  - {text: "сделал холодный душ", names: [meditation, cold-shower, reading], expect: cold-shower}
+  - {text: "прочитал 20 страниц", names: [meditation, cold-shower, reading], expect: reading}
+  - {text: "сходил в бассейн", names: [meditation, cold-shower, reading], expect: null}

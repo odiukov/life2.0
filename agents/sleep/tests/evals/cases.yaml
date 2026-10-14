@@ -1,0 +1,8 @@
+- {text: "спал с 23:30 до 7", expect: {bed_time: "23:30", wake_time: "07:00"}}
+- {text: "лёг в полночь, встал в 8, выспался", expect: {bed_time: "00:00", wake_time: "08:00", quality_min: 4}}
+- {text: "спал 6 часов, ужасно", expect: {duration_minutes: 360, quality_max: 2}}
+- {text: "slept 7.5h", expect: {duration_minutes: 450}}
+- {text: "проснулся в 5 утра и больше не уснул, лёг в час", expect: {bed_time: "01:00", wake_time: "05:00"}}
+- {text: "спал нормально", expect: {placeable: false}}
+- {text: "вчера лёг в 22:45, проснулся в 6:15", expect: {bed_time: "22:45", wake_time: "06:15"}}
+- {text: "поспал днём 40 минут", expect: {duration_minutes: 40}}

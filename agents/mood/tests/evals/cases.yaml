@@ -1,0 +1,8 @@
+- {text: "устал от работы, 6 из 10", expect: {mood_score: 6, tags_any: ["устал", "усталость", "работа"]}}
+- {text: "отличный день, полон сил", expect: {valence: pos, energy_min: 7}}
+- {text: "тревожно перед презентацией", expect: {valence: neg, stress_min: 6}}
+- {text: "нормально, ничего особенного", expect: {valence: neu}}
+- {text: "feeling calm and focused", expect: {valence: pos, tags_any: ["calm", "focused"]}}
+- {text: "купи молока по дороге", expect: {no_signal: true}}
+- {text: "грустно и одиноко, 3/10", expect: {mood_score: 3, valence: neg}}
+- {text: "энергии ноль, но настроение ок", expect: {energy_max: 3}}

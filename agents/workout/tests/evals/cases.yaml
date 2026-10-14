@@ -1,0 +1,8 @@
+- {text: "пробежал 5 км за 28 минут", expect: {activity_type: running, duration_minutes: 28, distance_km: 5}}
+- {text: "час силовой, тяжело, 8 из 10", expect: {activity_type: strength_training, duration_minutes: 60, effort: 8}}
+- {text: "покатался на велике 1.5 часа, 40 км", expect: {activity_type: cycling, duration_minutes: 90, distance_km: 40}}
+- {text: "йога 30 минут утром в 7", expect: {activity_type: yoga, duration_minutes: 30, started_at: "07:00"}}
+- {text: "плавал 45 минут", expect: {activity_type: swimming, duration_minutes: 45}}
+- {text: "прошёл 10 тысяч шагов, минут 90", expect: {activity_type: walking, duration_minutes: 90}}
+- {text: "ran 10k in 52 min", expect: {activity_type: running, duration_minutes: 52, distance_km: 10}}
+- {text: "завтра пойду в зал", expect: {not_a_workout: true}}

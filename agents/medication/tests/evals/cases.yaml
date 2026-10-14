@@ -1,0 +1,12 @@
+define:
+  - {text: "витамин D 2000 МЕ каждое утро", expect: {name_any: [vitamin-d, vitamin-d3], dose_any: ["2000"]}}
+  - {text: "B12 1000 мкг по пн, ср, пт", expect: {name: b12, schedule_any: [mon, пн]}}
+  - {text: "ибупрофен 400 мг при головной боли", expect: {name: ibuprofen, dose_any: ["400"]}}
+  - {text: "магний перед сном", expect: {name: magnesium, schedule_any: [sleep, bed, сном]}}
+  - {text: "омега-3 2 капсулы с едой ежедневно", expect: {name_any: [omega-3, omega3], notes_or_schedule_any: [food, еда, едой]}}
+  - {text: "мелатонин 3 мг в 23:00", expect: {name: melatonin, schedule_any: ["23"]}}
+resolve:
+  - {text: "принял витамин д", names: [vitamin-d, b12, magnesium], expect: vitamin-d}
+  - {text: "выпил магний", names: [vitamin-d, b12, magnesium], expect: magnesium}
+  - {text: "b12 принят", names: [vitamin-d, b12, magnesium], expect: b12}
+  - {text: "принял аспирин", names: [vitamin-d, b12, magnesium], expect: null}
