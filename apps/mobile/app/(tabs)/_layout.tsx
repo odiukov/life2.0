@@ -13,8 +13,8 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
-        sceneContainerStyle={{ backgroundColor: colors.bg0 }}
         screenOptions={{
+          sceneStyle: { backgroundColor: colors.bg0 },
           headerShown: false,
           tabBarStyle: { backgroundColor: colors.bg1, borderTopColor: colors.border },
           tabBarActiveTintColor: colors.accentHi,

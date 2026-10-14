@@ -115,6 +115,7 @@ describe('useHomeSummary', () => {
     expect(result.current.data?.rings).toEqual({
       readyPct: 65,
       hrvPct: 50,
+      hrvMs: 6000,
       stepsPct: 80,
       moodPct: 70,
     });

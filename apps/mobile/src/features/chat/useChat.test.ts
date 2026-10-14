@@ -1,6 +1,9 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useChat } from './useChat';
 
+// Exercise the real-route selection while replacing only the transport stream.
+jest.mock('@/api/client', () => ({ apiMode: 'local' }));
+
 jest.mock('./realFileStream', () => ({
   realFileStream: jest.fn(async function* () {
     yield { type: 'token', content: 'Импортировал 1 измерение.' };

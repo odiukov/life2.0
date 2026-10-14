@@ -25,6 +25,13 @@ export type HomeRings = {
   moodPct: number | null; // 0–100 mood score
 };
 
+export type HomeAlert = {
+  title: string;
+  body: string;
+  severity: 'info' | 'warn' | 'danger';
+  icon?: 'pill' | 'dot' | 'warning';
+};
+
 export type FeaturedSleep = {
   durationLabel: string; // "6h 45m"
   durationPct: number; // 0–100 vs goal
@@ -79,6 +86,8 @@ export type FeaturedBody = {
 
 export type HomeSummary = {
   agents: HomeAgent[];
+  briefingText?: string | null;
+  alerts?: HomeAlert[];
   recovery?: string | null;
   rings?: HomeRings;
   featuredSleep?: FeaturedSleep | null;
@@ -193,6 +202,8 @@ export function useHomeSummary() {
       const [hkStepsPct, hkHrv] = await Promise.all([getTodayStepsPct(), getLast30DHrv()]);
       return {
         agents,
+        briefingText: raw?.briefingText ?? null,
+        alerts: raw?.alerts ?? [],
         recovery: raw?.recovery ?? null,
         rings: raw?.rings
           ? (() => {
@@ -210,7 +221,7 @@ export function useHomeSummary() {
                 readyPct: raw.rings.readyPct ?? null,
                 hrvPct,
                 hrvMs,
-                stepsPct: raw.rings.stepsPct ?? hkStepsPct ?? null,
+                stepsPct: hkStepsPct ?? raw.rings.stepsPct ?? null,
                 moodPct: raw.rings.moodPct ?? null,
               };
             })()

@@ -118,8 +118,8 @@ export function ChatScreen() {
       type: 'application/pdf',
       copyToCacheDirectory: true,
     });
-    if (result.canceled) return;
-    const asset = result.assets[0];
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return;
     setPendingFile({ uri: asset.uri, name: asset.name });
   }, []);
 
