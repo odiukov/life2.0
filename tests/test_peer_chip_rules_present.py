@@ -15,7 +15,6 @@ from tests.test_persona_present import (  # type: ignore[import-not-found]
 
 
 PEER_TASKS_BY_AGENT = {
-    "habits": ["analyze_habit"],
     "medication": ["analyze_adherence"],
 }
 

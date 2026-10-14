@@ -43,7 +43,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = [".", "shared/src", "agents/kitchen/tests"]
-testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests", "agents/body/tests", "agents/recovery/tests", "agents/sleep/tests", "agents/workout/tests", "agents/mood/tests"]
+testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests", "agents/body/tests", "agents/recovery/tests", "agents/sleep/tests", "agents/workout/tests", "agents/mood/tests", "agents/habits/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin -p pytester"
 consider_namespace_packages = true
 markers = [
@@ -53,7 +53,7 @@ markers = [
 ]
 
 [tool.importlinter]
-root_packages = ["shared", "nutrition", "household", "gateway", "kitchen", "stt_service", "body", "recovery", "sleep", "workout", "mood"]
+root_packages = ["shared", "nutrition", "household", "gateway", "kitchen", "stt_service", "body", "recovery", "sleep", "workout", "mood", "habits"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -67,7 +67,7 @@ name = "New shared code does not import legacy modules"
 type = "forbidden"
 # Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
 allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "shared.analysis", "nutrition", "household", "gateway", "kitchen", "body", "recovery", "sleep", "workout", "mood"]
+source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "shared.analysis", "nutrition", "household", "gateway", "kitchen", "body", "recovery", "sleep", "workout", "mood", "habits"]
 forbidden_modules = [
     "shared.personas", "shared.grounding", "shared.peer_chip_rules",
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
@@ -121,7 +121,6 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 # Legacy code: formatted, not linted, until it migrates onto the foundation.
 "orchestrator/**" = ["ALL"]
 "sync_service/**" = ["ALL"]
-"agents/habits/**" = ["ALL"]
 "agents/medication/**" = ["ALL"]
 "agents/__init__.py" = ["ALL"]
 "shared/src/shared/*.py" = ["ALL"]
@@ -136,10 +135,10 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["shared/src/shared", "agents/nutrition/src/nutrition", "household/src/household", "gateway/src/gateway", "agents/kitchen/src/kitchen", "stt_service/src/stt_service", "agents/body/src/body", "agents/recovery/src/recovery", "agents/sleep/src/sleep", "agents/workout/src/workout", "agents/mood/src/mood"]
+files = ["shared/src/shared", "agents/nutrition/src/nutrition", "household/src/household", "gateway/src/gateway", "agents/kitchen/src/kitchen", "stt_service/src/stt_service", "agents/body/src/body", "agents/recovery/src/recovery", "agents/sleep/src/sleep", "agents/workout/src/workout", "agents/mood/src/mood", "agents/habits/src/habits"]
 exclude = ["/alembic/versions/"]
 # Source roots keep module names aligned with the editable runtime packages.
-mypy_path = ["shared/src", "agents/nutrition/src", "household/src", "gateway/src", "agents/kitchen/src", "stt_service/src", "agents/body/src", "agents/recovery/src", "agents/sleep/src", "agents/workout/src", "agents/mood/src"]
+mypy_path = ["shared/src", "agents/nutrition/src", "household/src", "gateway/src", "agents/kitchen/src", "stt_service/src", "agents/body/src", "agents/recovery/src", "agents/sleep/src", "agents/workout/src", "agents/mood/src", "agents/habits/src"]
 explicit_package_bases = true
 # Repositories are looked up by their Protocol type: `uow.repo(MealRepository)`.
 disable_error_code = ["type-abstract"]
@@ -297,3 +296,22 @@ name = "Only the mood composition root wires adapters"
 type = "forbidden"
 source_modules = ["mood.domain", "mood.application", "mood.adapters"]
 forbidden_modules = ["mood.composition", "mood.main", "mood.serve"]
+
+# habits
+[[tool.importlinter.contracts]]
+name = "Habits domain is pure"
+type = "forbidden"
+source_modules = ["habits.domain"]
+forbidden_modules = ["habits.application", "habits.adapters", "sqlalchemy", "a2a", "pydantic"]
+
+[[tool.importlinter.contracts]]
+name = "Habits application depends on ports, not adapters"
+type = "forbidden"
+source_modules = ["habits.application"]
+forbidden_modules = ["habits.adapters", "shared.adapters", "shared.schema", "sqlalchemy", "httpx"]
+
+[[tool.importlinter.contracts]]
+name = "Only the habits composition root wires adapters"
+type = "forbidden"
+source_modules = ["habits.domain", "habits.application", "habits.adapters"]
+forbidden_modules = ["habits.composition", "habits.main", "habits.serve"]

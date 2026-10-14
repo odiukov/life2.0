@@ -228,5 +228,35 @@
       "saved": "Saved the session summary.",
       "summary": "{summary}"
     }
+  },
+  "habits": {
+    "define": {
+      "created": "Tracking “{name}” ({cadence}).",
+      "exists": "“{name}” is already tracked.",
+      "not_understood": "I didn't get the habit. Try “meditation 10 minutes every day”."
+    },
+    "cadence": {
+      "daily": "daily",
+      "weekly": "on {days}"
+    },
+    "check": {
+      "done": "Checked “{name}”{value}.",
+      "value": ": {value} {unit}",
+      "not_found": "I couldn't find that habit. “/habits” lists them, “/habit new …” creates one."
+    },
+    "archive": {
+      "done": "Archived “{name}”.",
+      "already": "“{name}” is already archived.",
+      "not_found": "I couldn't find that habit."
+    },
+    "streak": {
+      "line": "{mark} {name} — {days}{progress}",
+      "progress": " ({done}/{target} {unit})",
+      "none": "No active habits."
+    },
+    "days": {
+      "one": "{n} day",
+      "other": "{n} days"
+    }
   }
 }

@@ -1,15 +1,5 @@
-"""Habits agent skill declarations + per-skill prompt builders."""
-
-from __future__ import annotations
-
-import os
-from typing import Awaitable, Callable
-
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
 from shared.skill_ids import Habits
-from .prompt import build_habits_prompt
-
 
 SKILLS: list[AgentSkill] = [
     AgentSkill(
@@ -80,15 +70,20 @@ SKILLS: list[AgentSkill] = [
 ]
 
 
-def build_agent_card() -> AgentCard:
-    url = os.environ.get("HABITS_AGENT_URL", "http://agent-habits:8006/")
+PEER_SKILLS: dict[str, str] = {
+    "mood": "analyze_mood",
+    "sleep": "analyze_sleep",
+    "workout": "analyze_workout",
+}
+
+LEGACY_DESCRIPTION = "Owns habit definitions and daily check-ins: creates habits, logs completions (boolean or quantitative), and calculates streaks."
+
+
+def build_agent_card(url: str) -> AgentCard:
     return AgentCard(
         protocol_version="0.3.0",
         name="habits-agent",
-        description=(
-            "Owns habit definitions and daily check-ins: creates habits, logs completions "
-            "(boolean or quantitative), and calculates streaks."
-        ),
+        description=LEGACY_DESCRIPTION,
         url=url,
         version="1.0.0",
         capabilities=AgentCapabilities(streaming=True, push_notifications=False),
@@ -96,50 +91,3 @@ def build_agent_card() -> AgentCard:
         default_output_modes=["text"],
         skills=SKILLS,
     )
-
-
-PromptFn = Callable[[str, dict], Awaitable[str]]
-
-
-async def _prompt_define(message: str, params: dict) -> str:
-    return await build_habits_prompt("define_habit", {**params, "message": message})
-
-
-async def _prompt_log_check(message: str, params: dict) -> str:
-    return await build_habits_prompt("log_habit_check", {**params, "message": message})
-
-
-async def _prompt_analyze(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_habits_prompt(
-        "analyze_habit",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-async def _prompt_streak(message: str, params: dict) -> str:
-    return await build_habits_prompt("get_streak_summary", {**params, "message": message})
-
-
-async def _prompt_archive(message: str, params: dict) -> str:
-    return await build_habits_prompt("archive_habit", {**params, "message": message})
-
-
-SKILL_PROMPTS: dict[str, PromptFn] = {
-    Habits.DEFINE: _prompt_define,
-    Habits.LOG_CHECK: _prompt_log_check,
-    Habits.ANALYZE: _prompt_analyze,
-    Habits.STREAK_SUMMARY: _prompt_streak,
-    Habits.ARCHIVE: _prompt_archive,
-}
-
-
-# Which peer agents this one may consult, and the skill it calls on each.
-# Only analyze_habit uses peer artifacts — the other 4 skills are deterministic
-# or JSON parsers.
-PEER_SKILLS: dict[str, str] = {
-    "mood": "analyze_mood",
-    "sleep": "analyze_sleep",
-    "workout": "analyze_workout",
-}

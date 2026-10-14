@@ -231,5 +231,37 @@
       "saved": "Сохранил итог сессии.",
       "summary": "{summary}"
     }
+  },
+  "habits": {
+    "define": {
+      "created": "Слежу за привычкой «{name}» ({cadence}).",
+      "exists": "Привычку «{name}» уже отслеживаю.",
+      "not_understood": "Не понял, какую привычку завести. Напиши, например: «медитация 10 минут каждый день»."
+    },
+    "cadence": {
+      "daily": "каждый день",
+      "weekly": "по дням: {days}"
+    },
+    "check": {
+      "done": "Отметил «{name}»{value}.",
+      "value": ": {value} {unit}",
+      "not_found": "Не нашёл такую привычку. Список — «/habits», новая — «/habit new …»."
+    },
+    "archive": {
+      "done": "Убрал привычку «{name}».",
+      "already": "Привычка «{name}» уже в архиве.",
+      "not_found": "Не нашёл такую привычку."
+    },
+    "streak": {
+      "line": "{mark} {name} — {days}{progress}",
+      "progress": " ({done}/{target} {unit})",
+      "none": "Нет активных привычек."
+    },
+    "days": {
+      "one": "{n} день",
+      "few": "{n} дня",
+      "many": "{n} дней",
+      "other": "{n} дня"
+    }
   }
 }
