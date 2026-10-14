@@ -8,6 +8,8 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from pydantic import ValidationError
+from pydantic_settings import SettingsError
 from shared.adapters.db.engine import create_engine
 from shared.adapters.secrets import AesGcmSecretBox
 from shared.observability.logging import configure_logging
@@ -30,9 +32,16 @@ async def _run(settings: SyncServiceSettings) -> int:
 
 
 def main() -> None:
-    settings = SyncServiceSettings()
-    configure_logging(settings.telemetry)
-    sys.exit(asyncio.run(_run(settings)))
+    try:
+        settings = SyncServiceSettings()
+    except (ValidationError, SettingsError):
+        raise SystemExit("sync_configuration_invalid") from None
+    try:
+        configure_logging(settings.telemetry, private_debug=True)
+        code = asyncio.run(_run(settings))
+    except Exception:
+        raise SystemExit("sync_reencrypt_unavailable") from None
+    sys.exit(code)
 
 
 if __name__ == "__main__":

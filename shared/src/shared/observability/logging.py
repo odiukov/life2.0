@@ -7,6 +7,7 @@ import re
 import sys
 from collections.abc import Iterator, MutableMapping
 from contextlib import contextmanager
+from functools import partial
 from typing import Any
 
 import structlog
@@ -54,10 +55,12 @@ _METRIC_FIELDS = frozenset(
 
 
 class _PrivateStreamHandler(logging.StreamHandler[Any]):
+    private_debug = False
+
     def handleError(self, record: logging.LogRecord) -> None:  # noqa: N802
         # ProcessorFormatter sanitizes a copy; the original record is still private.
         # Never send it or the exception text to logging's default stderr diagnostic.
-        if record.levelno < logging.INFO:
+        if record.levelno < logging.INFO and not self.private_debug:
             super().handleError(record)
             return
         if logging.raiseExceptions:
@@ -77,14 +80,14 @@ def _add_trace_ids(
 
 
 def _private_errors(
-    logger: Any, method_name: str, event: MutableMapping[str, Any]
+    logger: Any, method_name: str, event: MutableMapping[str, Any], *, private_debug: bool = False
 ) -> MutableMapping[str, Any]:
     """INFO+ accepts identifiers and known scalar metadata; bodies belong in traces.
 
     Callers must use literal event names and trusted identifiers for string metadata.
     An identifier pattern cannot distinguish every possible user message.
     """
-    if method_name == "debug":
+    if method_name == "debug" and not private_debug:
         return event
     exc_info = event.pop("exc_info", None)
     if exc_info is True:
@@ -95,6 +98,29 @@ def _private_errors(
         event.setdefault("error_type", exc_info[0].__name__)
     for key, value in list(event.items()):
         if key in {"event", "_record", "_from_structlog"}:
+            continue
+        if event.get("_from_structlog") is not False:
+            if (
+                key == "code"
+                and isinstance(value, str)
+                and value
+                in {
+                    "ok",
+                    "partial",
+                    "already_fresh",
+                    "not_connected",
+                    "disabled",
+                    "auth_failed",
+                    "rate_limited",
+                    "unavailable",
+                    "unexpected",
+                }
+            ):
+                continue
+            if key == "service" and isinstance(value, str) and value in {"garmin", "yazio"}:
+                continue
+        if private_debug and method_name != "debug" and key in {"error_type", "exc_type"}:
+            event.pop(key, None)
             continue
         if key in _STRING_FIELDS and (isinstance(value, str) or value is None):
             continue
@@ -111,7 +137,12 @@ def _private_errors(
     return event
 
 
-def configure_logging(settings: TelemetrySettings) -> None:
+def configure_logging(settings: TelemetrySettings, *, private_debug: bool = False) -> None:
+    """Configure all output sinks; private_debug also redacts DEBUG and sink errors.
+
+    Sync entrypoints require this mode because vendor DEBUG messages include tokens
+    and response bodies. Exception types remain available at DEBUG only in this mode.
+    """
     level = logging.getLevelNamesMapping()[settings.log_level]
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
@@ -126,6 +157,7 @@ def configure_logging(settings: TelemetrySettings) -> None:
         else structlog.dev.ConsoleRenderer()
     )
     handler = _PrivateStreamHandler()
+    handler.private_debug = private_debug
     handler.set_name(_HANDLER_NAME)
     handler.setLevel(level)
     handler.setFormatter(
@@ -136,7 +168,7 @@ def configure_logging(settings: TelemetrySettings) -> None:
             pass_foreign_args=True,
             foreign_pre_chain=shared_processors,
             processors=[
-                _private_errors,
+                partial(_private_errors, private_debug=private_debug),
                 structlog.stdlib.PositionalArgumentsFormatter(),
                 structlog.processors.format_exc_info,
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,

@@ -100,3 +100,47 @@ async def test_scheduled_run_at_0905_local_syncs_once(clean_db: PostgresUrls) ->
         assert (await tx.repo(CredentialStore).get(user, "garmin"))["garmin_token"] == '{"t": 1}'  # type: ignore[index]
     await admin.dispose()
     await engine.dispose()
+
+
+async def test_reconnect_during_fetch_does_not_attach_old_token_or_data(
+    clean_db: PostgresUrls,
+) -> None:
+    admin = create_async_engine(clean_db.admin)
+    engine = create_engine(DatabaseSettings.model_validate({"dsn": clean_db.rw}))
+    original = {"email": "a@b.c", "password": "pw"}
+    user = await seed(admin, "UTC", {"garmin": original})
+    uow = sync_uow(engine, BOX)
+
+    class ReconnectingGarmin(FakeGarminClient):
+        async def fetch(self, days, credentials, token):
+            async with uow.for_user(user) as tx:
+                # Identical credentials still represent a new connection generation.
+                await tx.repo(CredentialStore).put(user, "garmin", original)
+            return GarminBundle(stats=((date(2026, 10, 13), STATS),)), '{"obsolete": 1}'
+
+    sync = SyncUser(
+        uow=uow,
+        garmin=ReconnectingGarmin(),
+        yazio=None,
+        clock=FixedClock(datetime(2026, 10, 13, 8, 5, tzinfo=UTC)),
+        cooldown=timedelta(minutes=10),
+    )
+    try:
+        assert (await sync(user, ["garmin"]))[0].status == "unavailable"
+        async with uow.for_user(user) as tx:
+            assert await tx.repo(CredentialStore).get(user, "garmin") == original
+        async with admin.connect() as conn:
+            assert (
+                await conn.execute(
+                    text("SELECT count(*) FROM health_logs WHERE user_id=:u"), {"u": user}
+                )
+            ).scalar_one() == 0
+            assert (
+                await conn.execute(
+                    text("SELECT last_success_at FROM integration_sync_state WHERE user_id=:u"),
+                    {"u": user},
+                )
+            ).scalar_one() is None
+    finally:
+        await admin.dispose()
+        await engine.dispose()

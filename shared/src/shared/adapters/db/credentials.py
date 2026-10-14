@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from hashlib import sha256
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -50,6 +51,19 @@ class SqlCredentialStore:
             .values(last_used_at=datetime.now(UTC))
         )
         return payload
+
+    async def revision(self, user_id: UUID, service: str) -> str | None:
+        row = (
+            await self._conn.execute(
+                select(creds.c.payload_enc)
+                .where(creds.c.user_id == user_id, creds.c.service == service)
+                .with_for_update()
+            )
+        ).one_or_none()
+        if row is None or row.payload_enc is None:
+            return None
+        # A fresh random nonce makes even identical replacements a new generation.
+        return sha256(bytes(row.payload_enc)).hexdigest()
 
     async def _write(self, user_id: UUID, service: str, payload: Mapping[str, Any]) -> None:
         sealed = seal_json(self._box, dict(payload))

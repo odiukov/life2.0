@@ -96,3 +96,18 @@ async def test_put_rejects_actor_outside_transaction_tenant(backend: Backend) ->
     for actor in (backend.user, backend.other):
         async with backend.uow.for_user(actor) as uow:
             assert await uow.repo(CredentialStore).get(actor, "garmin") == {"marker": str(actor)}
+
+
+async def test_revision_changes_even_on_identical_reconnect(backend: Backend) -> None:
+    async with backend.uow.for_user(backend.user) as uow:
+        store = uow.repo(CredentialStore)
+        assert await store.revision(backend.user, "garmin") is None
+        payload = {"email": "a@b.c", "password": "pw"}
+        await store.put(backend.user, "garmin", payload)
+        first = await store.revision(backend.user, "garmin")
+        assert first is not None
+        assert await store.revision(backend.user, "garmin") == first
+        await store.put(backend.user, "garmin", payload)
+        assert await store.revision(backend.user, "garmin") != first
+        await store.delete(backend.user, "garmin")
+        assert await store.revision(backend.user, "garmin") is None

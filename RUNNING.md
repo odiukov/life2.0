@@ -260,6 +260,70 @@ for the integration — check HA System Information.
   Groq Llama 3.3 70B (recommended), this is rare but possible. File an
   issue and consider a stricter gate.
 
+## Garmin and Yazio sync
+
+The `sync-service` pulls each user's Garmin sleep, activities, daily stats, and HRV for the last
+7 days, and Yazio diary for the last 2 days. It runs once a day after 09:00 in the user's own
+time zone (`users.timezone`). A failed run is retried after an hour. An authentication failure
+is retried the next day, to avoid repeated login attempts after a password change. The app's
+"Sync now" button and chat tool sync only the asking user, at most once per 10 minutes per service.
+
+### Migration release order
+
+Stop the legacy sync writer before deploying migration `c0006_sync_rekey`. Deploy `c0006` only
+with the Task 8 writer cutover to the new `sync-service`; do not run the legacy writer after the
+migration. The old writer can recreate legacy time keys and cause duplicate health logs.
+Deploy the updated orchestrator and `sync-service` together, then run `make sync-reencrypt`.
+
+### Credentials key (required)
+
+Integration passwords and tokens are sealed with AES-256-GCM. Before the first deployment,
+generate the key once in `.env` if `SECRETS__KEY` is absent:
+
+```bash
+echo "SECRETS__KEY=$(openssl rand -base64 32)" >> .env
+```
+
+Never replace the key after credentials have been sealed. Back up `.env` securely. Without the key,
+stored credentials cannot be read and users must
+reconnect Garmin and Yazio. The orchestrator and sync service refuse to start without it.
+After upgrading from plaintext storage, seal remaining rows:
+
+```bash
+make sync-reencrypt
+```
+
+The command reports the number resealed and the number of plaintext rows remaining. It exits
+with a failure code if any plaintext rows remain.
+
+### Yazio client (optional)
+
+Yazio has no public API; the service uses the mobile app's OAuth client. Set
+`SYNC__YAZIO_CLIENT_ID` and `SYNC__YAZIO_CLIENT_SECRET` in `.env` (renamed from
+`YAZIO_CLIENT_ID` and `YAZIO_CLIENT_SECRET`). Without them, Yazio reports `disabled`.
+
+### Settings
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SYNC__HOUR` | `9` | Local hour after which daily sync runs |
+| `SYNC__INTERVAL_MINUTES` | `15` | How often the scheduler looks for due users |
+| `SYNC__MANUAL_COOLDOWN_MINUTES` | `10` | Minimum gap between manual syncs per user and service |
+| `SYNC__GARMIN_DAYS` / `SYNC__YAZIO_DAYS` | `7` / `2` | Days re-read on every run |
+
+### Smoke test against the real APIs
+
+```bash
+make sync-smoke USER_ID=<uuid> DRY_RUN=1  # fetch and count rows, write no rows or sync state
+make sync-smoke USER_ID=<uuid>            # real sync for this user, ignoring the cooldown
+```
+
+Dry run can re-seal a legacy plaintext credential when it is read. Run `make sync-reencrypt`
+first if a strictly read-only credential store is required. Output contains statuses and counts
+only. Statuses are `ok`, `partial` (some parts failed and are retried in the next full window),
+`auth_failed` (reconnect the integration), `rate_limited`, `unavailable`, `not_connected`, and
+`disabled`.
+
 ## Payoneer Finance PDF
 
 **One-time setup:**
@@ -461,3 +525,15 @@ no direct entry is logged. Use `COMPOSE_PROJECT_NAME` for an isolated stack; the
 never removes volumes. API and agent-card host URLs can be overridden via `API` and
 `AGENT_HOST`. Existing entries are preserved; run against a fresh isolated database
 for a clean acceptance run.
+
+### Sync privacy and concurrent reconnects
+
+Sync's service, smoke and re-encryption entrypoints sanitize logs at every level,
+including vendor DEBUG messages. Diagnostics retain fixed codes and service identifiers;
+exception text, credentials, tokens and fetched data are never printed. Re-encryption
+failures exit nonzero with `sync_configuration_invalid` or `sync_reencrypt_unavailable`.
+
+If credentials are replaced or disconnected during a fetch, sync discards the obsolete
+results and returns `unavailable` without marking success. Token persistence and data
+writes each check the locked credential revision. Identical reconnects also invalidate
+in-flight work; retry after the normal cooldown.

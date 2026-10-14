@@ -205,3 +205,55 @@ async def test_invalid_credentials_still_honour_cooldown(backend: MemoryBackend)
     sync = build(backend, garmin=FakeGarminClient())
     assert (await sync(USER, ["garmin"]))[0].status == "auth_failed"
     assert (await sync(USER, ["garmin"]))[0].status == "already_fresh"
+
+
+@pytest.mark.parametrize(
+    "replacement", [None, GARMIN, {"email": "new@example.com", "password": "new"}]
+)
+@pytest.mark.parametrize("token", [None, '{"old": 1}', '{"refreshed": 1}'])
+async def test_reconnect_during_fetch_discards_obsolete_results(backend, replacement, token):
+    class ReconnectingGarmin(FakeGarminClient):
+        async def fetch(self, days, credentials, stored):
+            # Deterministic interleaving while the provider request is in flight.
+            if replacement is None:
+                await backend.credentials.delete(USER, "garmin")
+            else:
+                await backend.credentials.put(USER, "garmin", replacement)
+            return GarminBundle(activities=(ACTIVITY,)), token
+
+    result = await build(backend, garmin=ReconnectingGarmin())(USER, ["garmin"])
+    assert result == [ServiceResult("garmin", "unavailable")]
+    assert await backend.credentials.get(USER, "garmin") == replacement
+    assert not backend.logs.rows.get(USER)
+    assert backend.state.rows[(USER, "garmin")].last_success_at is None
+
+
+async def test_reconnect_between_token_and_rows_discards_obsolete_results(backend):
+    from contextlib import asynccontextmanager
+
+    original_uow = backend.uow
+    replacement = {"email": "new@example.com", "password": "new"}
+
+    class ReconnectingUnitOfWork:
+        calls = 0
+
+        @asynccontextmanager
+        async def for_user(self, user_id):
+            self.calls += 1
+            if self.calls == 3:
+                assert (
+                    backend.credentials.rows[(USER, "garmin")]["garmin_token"] == '{"refreshed": 1}'
+                )
+                await backend.credentials.put(USER, "garmin", replacement)
+            async with original_uow.for_user(user_id) as tx:
+                yield tx
+
+    backend.uow = ReconnectingUnitOfWork()
+    result = await build(
+        backend,
+        garmin=FakeGarminClient(GarminBundle(activities=(ACTIVITY,)), token='{"refreshed": 1}'),
+    )(USER, ["garmin"])
+    assert result == [ServiceResult("garmin", "unavailable")]
+    assert await backend.credentials.get(USER, "garmin") == replacement
+    assert not backend.logs.rows.get(USER)
+    assert backend.state.rows[(USER, "garmin")].last_success_at is None

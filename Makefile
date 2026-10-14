@@ -1,4 +1,4 @@
-.PHONY: sync fmt lint test test-slow test-integration evals migrate
+.PHONY: sync fmt lint test test-slow test-integration evals migrate sync-smoke sync-reencrypt
 
 sync:
 	uv sync --all-packages --all-extras
@@ -31,3 +31,11 @@ evals:
 
 migrate:
 	uv run python -m shared.schema
+
+sync-smoke:
+	@test -n "$(USER_ID)" || { echo "usage: make sync-smoke USER_ID=<uuid> [SERVICE=garmin|yazio] [DRY_RUN=1]"; exit 2; }
+	docker compose run --rm sync-service python -m sync.smoke --user $(USER_ID) \
+		$(if $(SERVICE),--service $(SERVICE),) $(if $(DRY_RUN),--dry-run,)
+
+sync-reencrypt:
+	docker compose run --rm sync-service python -m sync.reencrypt

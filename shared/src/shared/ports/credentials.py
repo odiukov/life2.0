@@ -14,6 +14,14 @@ class CredentialStore(Protocol):
         """None when the integration is not connected; raises CredentialsUnreadable."""
         ...
 
+    async def revision(self, user_id: UUID, service: str) -> str | None:
+        """Opaque write generation; lock the row until transaction exit.
+
+        Read after get() (which may reseal legacy data). Every replacement, including
+        identical credentials, changes it. Never log this value.
+        """
+        ...
+
     async def put(self, user_id: UUID, service: str, payload: Mapping[str, Any]) -> None:
         """Replace the credentials of this service."""
         ...

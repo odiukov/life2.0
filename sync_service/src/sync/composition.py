@@ -46,7 +46,7 @@ def build_runtime(
     clock: Clock | None = None,
     scheduler: Scheduler | None = None,
 ) -> SyncRuntime:
-    configure_logging(settings.telemetry)
+    configure_logging(settings.telemetry, private_debug=True)
     options = settings.sync
     engine = create_engine(settings.database)
     uow = sync_uow(engine, AesGcmSecretBox.from_settings(settings.secrets))

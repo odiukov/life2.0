@@ -52,6 +52,13 @@ class ServiceResult:
     unchanged: int = 0
 
 
+@dataclass(frozen=True, slots=True)
+class Preview:
+    status: Status
+    counts: dict[str, int]
+    failures: tuple[str, ...]
+
+
 def to_health_log(row: Row) -> HealthLogRow:
     return HealthLogRow(
         type=row.type,
@@ -96,6 +103,36 @@ class SyncUser:
     def _enabled(self, service: Service) -> bool:
         return (self._garmin if service == "garmin" else self._yazio) is not None
 
+    async def preview(self, user_id: UUID, service: Service) -> Preview:
+        """Fetch and map without writing rows, tokens, or sync state."""
+        if not self._enabled(service):
+            return Preview("disabled", {}, ())
+        try:
+            async with self._uow.for_user(user_id) as tx:
+                settings = await tx.repo(UserSettingsRepository).get(user_id)
+                payload = await tx.repo(CredentialStore).get(user_id, service)
+        except CredentialsUnreadable:
+            return Preview("auth_failed", {}, ())
+        if payload is None:
+            return Preview("not_connected", {}, ())
+        credentials = Credentials.from_payload(payload)
+        if credentials is None:
+            return Preview("auth_failed", {}, ())
+        try:
+            fetched = await self._fetch(
+                service,
+                self._window(settings, self._clock.now(), service),
+                credentials,
+                payload.get(TOKEN_KEYS[service]),
+                settings,
+            )
+        except IntegrationError as error:
+            return Preview(error.code, {}, ())
+        counts: dict[str, int] = {}
+        for row in fetched.rows:
+            counts[row.type] = counts.get(row.type, 0) + 1
+        return Preview("partial" if fetched.failures else "ok", counts, fetched.failures)
+
     async def _one(self, user_id: UUID, service: Service) -> ServiceResult:
         if not self._enabled(service):
             return ServiceResult(service, "disabled")
@@ -110,6 +147,9 @@ class SyncUser:
                     payload = {}
                 if payload is None:
                     return ServiceResult(service, "not_connected")
+                revision = (
+                    await tx.repo(CredentialStore).revision(user_id, service) if payload else None
+                )
                 credentials = Credentials.from_payload(payload)
                 if not await tx.repo(SyncStateRepository).claim(
                     user_id, service, now=now, cooldown=self._cooldown
@@ -126,16 +166,19 @@ class SyncUser:
                 service, self._window(settings, now, service), credentials, stored, settings
             )
         except IntegrationError as error:
-            return await self._fail(user_id, service, error.code)
+            return await self._fail(user_id, service, error.code, revision=revision)
         except Exception:
-            return await self._fail(user_id, service, "unavailable")
+            return await self._fail(user_id, service, "unavailable", revision=revision)
 
         if fetched.token is not None and fetched.token != stored:
             try:
                 async with self._uow.for_user(user_id) as tx:
-                    await tx.repo(CredentialStore).merge(
-                        user_id, service, {TOKEN_KEYS[service]: fetched.token}
-                    )
+                    store = tx.repo(CredentialStore)
+                    if await store.revision(user_id, service) != revision:
+                        return ServiceResult(service, "unavailable")
+                    await store.merge(user_id, service, {TOKEN_KEYS[service]: fetched.token})
+                    next_revision = await store.revision(user_id, service)
+                revision = next_revision
             except Exception:  # keep going: the rows are still worth writing
                 logger.warning(
                     "sync_token_not_saved",
@@ -146,6 +189,10 @@ class SyncUser:
 
         try:
             async with self._uow.for_user(user_id) as tx:
+                # Hold the credential lock through row writes and success marking.
+                # This also covers reconnects between the token and data transactions.
+                if await tx.repo(CredentialStore).revision(user_id, service) != revision:
+                    return ServiceResult(service, "unavailable")
                 logs = tx.repo(HealthLogRepository)
                 written = 0
                 for row in fetched.rows:
@@ -158,7 +205,7 @@ class SyncUser:
                     success=True,
                 )
         except Exception:
-            return await self._fail(user_id, service, "unavailable")
+            return await self._fail(user_id, service, "unavailable", revision=revision)
         status: Status = "partial" if fetched.failures else "ok"
         logger.info("sync_done", service=service, user_id=str(user_id), code=status)
         return ServiceResult(
@@ -189,10 +236,17 @@ class SyncUser:
         )
         return _Fetched(map_yazio(yazio, settings.timezone), yazio.failures, new)
 
-    async def _fail(self, user_id: UUID, service: Service, code: ErrorCode) -> ServiceResult:
+    async def _fail(
+        self, user_id: UUID, service: Service, code: ErrorCode, *, revision: str | None = None
+    ) -> ServiceResult:
         logger.warning("sync_failed", code=code, service=service, user_id=str(user_id))
         try:
             async with self._uow.for_user(user_id) as tx:
+                if (
+                    revision is not None
+                    and await tx.repo(CredentialStore).revision(user_id, service) != revision
+                ):
+                    return ServiceResult(service, "unavailable")
                 await tx.repo(SyncStateRepository).finish(
                     user_id, service, now=self._clock.now(), error=code, success=False
                 )

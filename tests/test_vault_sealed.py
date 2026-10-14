@@ -36,7 +36,9 @@ async def test_put_seals_and_get_reseals_legacy_rows(monkeypatch):
         row = await c.fetchrow(
             "SELECT payload_dev, payload_enc FROM integrations_credentials WHERE user_id=$1", user
         )
-    assert row["payload_dev"] is None and b"pw" not in bytes(row["payload_enc"])
+    sealed = bytes(row["payload_enc"])
+    assert row["payload_dev"] is None
+    assert sealed[0] == 1 and len(sealed) >= 1 + 12 + 16
     assert await vault.get(user, "garmin") == {"email": "a@b.c", "password": "pw"}
     async with pool.acquire() as c:  # a legacy plaintext row
         await c.execute(

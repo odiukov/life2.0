@@ -422,10 +422,12 @@ class InMemoryCredentialStore:
     def __init__(self, tenant: UUID | None = None) -> None:
         self._tenant = tenant
         self.rows: dict[tuple[UUID, str], dict[str, Any]] = {}
+        self.revisions: dict[tuple[UUID, str], str] = {}
 
     def for_tenant(self, user_id: UUID | None) -> InMemoryCredentialStore:
         store = InMemoryCredentialStore(user_id)
         store.rows = self.rows
+        store.revisions = self.revisions
         return store
 
     async def get(self, user_id: UUID, service: str) -> dict[str, Any] | None:
@@ -434,16 +436,22 @@ class InMemoryCredentialStore:
         row = self.rows.get((user_id, service))
         return dict(row) if row is not None else None
 
+    async def revision(self, user_id: UUID, service: str) -> str | None:
+        if await self.get(user_id, service) is None:
+            return None
+        return self.revisions.setdefault((user_id, service), uuid4().hex)
+
     async def put(self, user_id: UUID, service: str, payload: Mapping[str, Any]) -> None:
         if self._tenant is not None and self._tenant != user_id:
             raise PermissionError("credential actor differs from transaction tenant")
         self.rows[(user_id, service)] = dict(payload)
+        self.revisions[(user_id, service)] = uuid4().hex
 
     async def merge(self, user_id: UUID, service: str, changes: Mapping[str, Any]) -> None:
         if self._tenant is not None and self._tenant != user_id:
             return
         if (user_id, service) in self.rows:
-            self.rows[(user_id, service)] = {**self.rows[(user_id, service)], **changes}
+            await self.put(user_id, service, {**self.rows[(user_id, service)], **changes})
 
     async def delete(self, user_id: UUID, service: str) -> None:
         if self._tenant is not None and self._tenant != user_id:

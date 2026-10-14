@@ -69,6 +69,7 @@ class RecordingCredentialStore(InMemoryCredentialStore):
         store = RecordingCredentialStore()
         store._tenant = user_id
         store.rows = self.rows
+        store.revisions = self.revisions
         store.plaintext = self.plaintext
         store.unreadable = self.unreadable
         store.merges = self.merges
