@@ -1,1 +1,1 @@
-"""Kitchen application boundary."""
+"""Kitchen application."""

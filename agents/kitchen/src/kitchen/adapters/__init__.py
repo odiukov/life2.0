@@ -1,1 +1,1 @@
-"""Kitchen adapters boundary."""
+"""Kitchen adapters."""
