@@ -98,6 +98,7 @@ async def test_not_food_writes_nothing(answer: object) -> None:
     world.llm.queue_structured(answer)
     result = await world.handler(world.request("привет"), ())
     assert result.output.startswith("Не понял")
+    assert result.failed is isinstance(answer, LLMInvalidOutput)
     assert result.log_entry is None
     assert world.stored() == []
 
@@ -107,6 +108,7 @@ async def test_llm_down_is_reported_politely() -> None:
     world.llm.queue_structured(LLMUnavailable("down"))
     result = await world.handler(world.request("съел суп"), ())
     assert result.output == TR.t("nutrition.errors.llm_unavailable", "ru")
+    assert result.failed is True
     assert world.stored() == []
 
 

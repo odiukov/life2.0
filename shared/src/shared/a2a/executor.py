@@ -39,6 +39,7 @@ class SkillResult:
     log_entry: str | None = None
     log_recorded_at: datetime | None = None
     consulted: tuple[str, ...] = ()
+    failed: bool = False
 
 
 SkillHandler = Callable[[SkillRequest, tuple[str, ...]], Awaitable[SkillResult]]
@@ -61,6 +62,10 @@ class SkillExecutor(AgentExecutor):
         self._llm = llm
         self._task_records = task_records
         self._clock = clock
+
+    @property
+    def skill_ids(self) -> tuple[str, ...]:
+        return tuple(self._handlers)
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         envelope = read_envelope(context)
@@ -106,6 +111,13 @@ class SkillExecutor(AgentExecutor):
             try:
                 consult = () if request.is_peer_call else choice.consult
                 result = await self._handlers[choice.skill_id](request, consult)
+                if result.failed:
+                    await event_queue.enqueue_event(
+                        status_event(
+                            task_id, context_id, TaskState.failed, error=result.output, final=True
+                        )
+                    )
+                    return
                 await self._task_records.record(
                     agent=self._agent,
                     task_id=task_id,

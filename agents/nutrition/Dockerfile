@@ -8,10 +8,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_NO_CACHE=1 PYTHONUNBUFFERED=1 \
 
 WORKDIR /repo
 COPY . .
-RUN uv sync --frozen --no-dev --package agent-nutrition
+RUN uv sync --frozen --no-dev --package agent-nutrition --extra claude
 
 ENV PATH="/opt/venv/bin:$PATH"
-WORKDIR /app
-RUN cp -r /repo/agents/nutrition/app ./app
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["uvicorn", "nutrition.serve:app", "--host", "0.0.0.0", "--port", "8003"]

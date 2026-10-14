@@ -43,3 +43,10 @@ async def ensure_test_user() -> _uuid.UUID:
     finally:
         await conn.close()
     return TEST_USER_ID
+
+
+def skills_module_name(agent: str) -> str:
+    """Module holding an agent's SKILLS / PEER_SKILLS."""
+    if agent == "nutrition":
+        return "nutrition.adapters.a2a.card"
+    return f"agents.{agent}.app.skills"

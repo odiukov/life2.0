@@ -1,0 +1,95 @@
+{
+  "log_meal": [
+    {
+      "contextId": "ctx-1",
+      "final": false,
+      "kind": "status-update",
+      "status": {
+        "state": "working"
+      },
+      "taskId": "task-1"
+    },
+    {
+      "contextId": "ctx-1",
+      "final": true,
+      "kind": "status-update",
+      "status": {
+        "message": {
+          "kind": "message",
+          "messageId": "<uuid>",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "<failure-message>"
+            }
+          ],
+          "role": "agent"
+        },
+        "state": "failed"
+      },
+      "taskId": "task-1"
+    }
+  ],
+  "analyze_nutrition": [
+    {
+      "contextId": "ctx-1",
+      "final": false,
+      "kind": "status-update",
+      "status": {
+        "state": "working"
+      },
+      "taskId": "task-1"
+    },
+    {
+      "contextId": "ctx-1",
+      "final": true,
+      "kind": "status-update",
+      "status": {
+        "message": {
+          "kind": "message",
+          "messageId": "<uuid>",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "<failure-message>"
+            }
+          ],
+          "role": "agent"
+        },
+        "state": "failed"
+      },
+      "taskId": "task-1"
+    }
+  ],
+  "get_nutrition_recommendations": [
+    {
+      "contextId": "ctx-1",
+      "final": false,
+      "kind": "status-update",
+      "status": {
+        "state": "working"
+      },
+      "taskId": "task-1"
+    },
+    {
+      "contextId": "ctx-1",
+      "final": true,
+      "kind": "status-update",
+      "status": {
+        "message": {
+          "kind": "message",
+          "messageId": "<uuid>",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "<failure-message>"
+            }
+          ],
+          "role": "agent"
+        },
+        "state": "failed"
+      },
+      "taskId": "task-1"
+    }
+  ]
+}

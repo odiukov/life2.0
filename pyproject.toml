@@ -89,6 +89,12 @@ type = "forbidden"
 source_modules = ["nutrition.application"]
 forbidden_modules = ["nutrition.adapters", "shared.adapters", "shared.schema", "sqlalchemy", "httpx"]
 
+[[tool.importlinter.contracts]]
+name = "Only the nutrition composition root wires adapters"
+type = "forbidden"
+source_modules = ["nutrition.domain", "nutrition.application", "nutrition.adapters"]
+forbidden_modules = ["nutrition.composition", "nutrition.main", "nutrition.serve"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -115,7 +121,6 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 "agents/habits/**" = ["ALL"]
 "agents/recovery/**" = ["ALL"]
 "agents/medication/**" = ["ALL"]
-"agents/nutrition/app/**" = ["ALL"]
 "agents/__init__.py" = ["ALL"]
 "shared/src/shared/*.py" = ["ALL"]
 "tests/**" = ["ALL"]

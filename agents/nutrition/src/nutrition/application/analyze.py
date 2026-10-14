@@ -111,7 +111,9 @@ class AnalyzeNutrition:
             output = await self._llm.text(task=LLMTask.SMART, system=system, user=user)
         except LLMError:
             locale = profile.locale or self._default_locale
-            return SkillResult(output=self._tr.t("nutrition.errors.llm_unavailable", locale))
+            return SkillResult(
+                output=self._tr.t("nutrition.errors.llm_unavailable", locale), failed=True
+            )
         with suppress(Exception):
             await self._memory.upsert(
                 user_id=uid,

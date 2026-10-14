@@ -64,9 +64,13 @@ class LogMeal:
                 schema=MealExtraction,
             )
         except LLMInvalidOutput:
-            return SkillResult(output=self._tr.t("nutrition.log_meal.not_understood", locale))
+            return SkillResult(
+                output=self._tr.t("nutrition.log_meal.not_understood", locale), failed=True
+            )
         except LLMError:
-            return SkillResult(output=self._tr.t("nutrition.errors.llm_unavailable", locale))
+            return SkillResult(
+                output=self._tr.t("nutrition.errors.llm_unavailable", locale), failed=True
+            )
         if not extraction.items:
             return SkillResult(output=self._tr.t("nutrition.log_meal.not_understood", locale))
         meal = Meal.from_items(

@@ -1,0 +1,322 @@
+{
+  "card": {
+    "capabilities": {
+      "pushNotifications": false,
+      "streaming": true
+    },
+    "defaultInputModes": [
+      "text"
+    ],
+    "defaultOutputModes": [
+      "text"
+    ],
+    "description": "Logs meals from free text, parses macros with Claude, analyzes nutrition patterns, and gives recommendations tailored to recent workout load.",
+    "name": "nutrition-agent",
+    "preferredTransport": "JSONRPC",
+    "protocolVersion": "0.3.0",
+    "skills": [
+      {
+        "description": "Log a meal from free text and estimate macros (kcal, protein, carbs, fat).",
+        "examples": [
+          "Съел омлет из 3 яиц и тост",
+          "Had chicken salad for lunch"
+        ],
+        "id": "log_meal",
+        "name": "Log Meal",
+        "tags": [
+          "nutrition",
+          "logging"
+        ]
+      },
+      {
+        "description": "Analyze nutrition patterns, macro trends, and meal timing.",
+        "examples": [
+          "Как у меня с питанием за неделю?"
+        ],
+        "id": "analyze_nutrition",
+        "name": "Analyze Nutrition",
+        "tags": [
+          "nutrition",
+          "analysis"
+        ]
+      },
+      {
+        "description": "Give actionable nutrition recommendations based on recent workouts and macros.",
+        "id": "get_nutrition_recommendations",
+        "name": "Nutrition Recommendations",
+        "tags": [
+          "nutrition",
+          "advice"
+        ]
+      },
+      {
+        "description": "Save the user's body profile (height, age, sex, activity level, calorie goal override) used to calculate their daily TDEE calorie goal.",
+        "examples": [
+          "I'm 180cm tall, 30 years old, male, moderately active",
+          "My height is 165cm and I'm lightly active"
+        ],
+        "id": "set_body_profile",
+        "name": "Set Body Profile",
+        "tags": [
+          "nutrition",
+          "profile"
+        ]
+      }
+    ],
+    "url": "http://agent-nutrition:8003/",
+    "version": "1.0.0"
+  },
+  "peers": {
+    "workout": "analyze_workout",
+    "body": "analyze_body_trend",
+    "sleep": "analyze_sleep",
+    "mood": "analyze_mood",
+    "medication": "analyze_adherence"
+  },
+  "events": {
+    "log_meal": [
+      {
+        "contextId": "ctx-1",
+        "final": false,
+        "kind": "status-update",
+        "status": {
+          "state": "working"
+        },
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "log_entry",
+          "parts": [
+            {
+              "data": {
+                "summary": "fixture input",
+                "timestamp": "<timestamp>"
+              },
+              "kind": "data"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "consulted_peers",
+          "parts": [
+            {
+              "data": {
+                "peers": []
+              },
+              "kind": "data"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "analysis",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "fixture output"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "contextId": "ctx-1",
+        "final": true,
+        "kind": "status-update",
+        "status": {
+          "state": "completed"
+        },
+        "taskId": "task-1"
+      }
+    ],
+    "analyze_nutrition": [
+      {
+        "contextId": "ctx-1",
+        "final": false,
+        "kind": "status-update",
+        "status": {
+          "state": "working"
+        },
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "consulted_peers",
+          "parts": [
+            {
+              "data": {
+                "peers": []
+              },
+              "kind": "data"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "analysis",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "fixture output"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "contextId": "ctx-1",
+        "final": true,
+        "kind": "status-update",
+        "status": {
+          "state": "completed"
+        },
+        "taskId": "task-1"
+      }
+    ],
+    "get_nutrition_recommendations": [
+      {
+        "contextId": "ctx-1",
+        "final": false,
+        "kind": "status-update",
+        "status": {
+          "state": "working"
+        },
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "consulted_peers",
+          "parts": [
+            {
+              "data": {
+                "peers": []
+              },
+              "kind": "data"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "analysis",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "fixture output"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "contextId": "ctx-1",
+        "final": true,
+        "kind": "status-update",
+        "status": {
+          "state": "completed"
+        },
+        "taskId": "task-1"
+      }
+    ],
+    "set_body_profile": [
+      {
+        "contextId": "ctx-1",
+        "final": false,
+        "kind": "status-update",
+        "status": {
+          "state": "working"
+        },
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "consulted_peers",
+          "parts": [
+            {
+              "data": {
+                "peers": []
+              },
+              "kind": "data"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "append": false,
+        "artifact": {
+          "artifactId": "<uuid>",
+          "name": "analysis",
+          "parts": [
+            {
+              "kind": "text",
+              "text": "fixture output"
+            }
+          ]
+        },
+        "contextId": "ctx-1",
+        "kind": "artifact-update",
+        "lastChunk": true,
+        "taskId": "task-1"
+      },
+      {
+        "contextId": "ctx-1",
+        "final": true,
+        "kind": "status-update",
+        "status": {
+          "state": "completed"
+        },
+        "taskId": "task-1"
+      }
+    ]
+  }
+}

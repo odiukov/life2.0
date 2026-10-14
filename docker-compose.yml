@@ -129,7 +129,7 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
       QDRANT_PORT: ${QDRANT_PORT}
       GEMINI_API_KEY: ${GEMINI_API_KEY}

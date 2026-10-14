@@ -190,6 +190,7 @@ async def test_llm_down_answers_politely_and_remembers_nothing() -> None:
     world = World(answer=LLMUnavailable("down"))
     result = await world.handler(world.request(), ())
     assert result.output == TR.t("nutrition.errors.llm_unavailable", "ru")
+    assert result.failed is True
     assert world.memory.items == []
 
 
@@ -341,4 +342,5 @@ async def test_llm_failure_uses_profile_locale() -> None:
     world.profiles.seed(world.user, preferences={"locale": "en"})
     result = await world.handler(world.request(), ())
     assert result.output == TR.t("nutrition.errors.llm_unavailable", "en")
+    assert result.failed is True
     assert world.memory.items == []

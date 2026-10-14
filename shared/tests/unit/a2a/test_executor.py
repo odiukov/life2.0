@@ -364,3 +364,22 @@ async def test_handler_invalid_request_is_an_internal_error() -> None:
     assert summary(queue.events) == ["status:working", "status:failed:final"]
     assert queue.events[-1].status.message.parts[0].root.text == "internal error"
     assert records.rows == []
+
+
+async def test_failed_handler_result_emits_only_localized_final_failure_without_record() -> None:
+    async def handler(request: SkillRequest, consult: tuple[str, ...]) -> SkillResult:
+        return SkillResult(
+            output="Provider temporarily unavailable.",
+            failed=True,
+            log_entry="must not emit",
+            consulted=("workout",),
+        )
+
+    records = FakeTaskRecords()
+    queue = Queue()
+    await build(handler, records).execute(
+        ctx({"skillId": "log_meal", "user_id": str(uuid4())}), cast(EventQueue, queue)
+    )
+    assert summary(queue.events) == ["status:working", "status:failed:final"]
+    assert queue.events[-1].status.message.parts[0].root.text == "Provider temporarily unavailable."
+    assert records.rows == []

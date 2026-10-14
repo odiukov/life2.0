@@ -16,6 +16,8 @@ import typing
 
 import pytest
 
+from tests.conftest import skills_module_name
+
 
 _AGENT_TO_CLASS = {
     "sleep": "Sleep",
@@ -37,7 +39,7 @@ def _expected_ids_from_class(cls) -> set[str]:
 @pytest.mark.parametrize("agent_name,class_name", list(_AGENT_TO_CLASS.items()))
 def test_agent_card_skill_ids(agent_name, class_name):
     """AgentCard's SKILLS list matches the constants in shared.skill_ids."""
-    skills_mod = importlib.import_module(f"agents.{agent_name}.app.skills")
+    skills_mod = importlib.import_module(skills_module_name(agent_name))
     ids_mod = importlib.import_module("shared.skill_ids")
 
     cls = getattr(ids_mod, class_name)
@@ -52,7 +54,7 @@ def test_agent_card_skill_ids(agent_name, class_name):
 @pytest.mark.parametrize("agent_name", list(_AGENT_TO_CLASS))
 def test_skill_prompts_match_skills(agent_name):
     """SKILL_PROMPTS keys (if present) cover every AgentSkill.id."""
-    skills_mod = importlib.import_module(f"agents.{agent_name}.app.skills")
+    skills_mod = importlib.import_module(skills_module_name(agent_name))
     if not hasattr(skills_mod, "SKILL_PROMPTS"):
         pytest.skip(f"{agent_name} has no SKILL_PROMPTS")
 
@@ -94,7 +96,7 @@ def test_orchestrator_tool_literal_matches_skills(tool_name, agent_name):
     """
     from orchestrator.app import health_agent
 
-    skills_mod = importlib.import_module(f"agents.{agent_name}.app.skills")
+    skills_mod = importlib.import_module(skills_module_name(agent_name))
 
     tool = getattr(health_agent, tool_name)
     declared = {s.id for s in skills_mod.SKILLS}

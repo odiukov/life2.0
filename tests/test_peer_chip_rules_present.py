@@ -17,7 +17,6 @@ from tests.test_persona_present import (  # type: ignore[import-not-found]
 PEER_TASKS_BY_AGENT = {
     "sleep": ["analyze_sleep", "get_recommendations"],
     "workout": ["analyze_workout", "get_recommendations"],
-    "nutrition": ["analyze_nutrition", "get_recommendations"],
     "body": ["analyze_body_trend"],
     "mood": ["analyze_mood", "get_mood_recommendations"],
     "habits": ["analyze_habit"],
@@ -31,7 +30,6 @@ def _stub_peer(agent: str) -> dict:
     pick = {
         "sleep": ("workout", "training summary"),
         "workout": ("recovery", "recovery state summary"),
-        "nutrition": ("workout", "training summary"),
         "body": ("nutrition", "intake summary"),
         "mood": ("sleep", "sleep summary"),
         "habits": ("mood", "mood summary"),
