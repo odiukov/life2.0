@@ -182,5 +182,10 @@
       "household_sole_member": "You are the only member — there is nowhere to leave to.",
       "generic": "Something went wrong. Try again."
     }
+  },
+  "analysis": {
+    "errors": {
+      "llm_unavailable": "I can't answer right now — the model is unavailable. Try again in a minute."
+    }
   }
 }
