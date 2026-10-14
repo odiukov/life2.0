@@ -22,7 +22,7 @@ test('typing /sleep + space sets tag and clears the slash from text', () => {
 });
 
 test('renders chip when tag is set', () => {
-  renderBar({ value: '', tag: 'sleep' });
+  renderBar({ value: '', tag: 'sleep', onChangeText: jest.fn() });
   expect(screen.getByText('sleep')).toBeOnTheScreen();
 });
 
@@ -85,4 +85,31 @@ test('typing /calendar without blockedAgents prop still promotes (regression)', 
   });
   fireEvent.changeText(screen.getByTestId('ask-input'), '/calendar ');
   expect(onChange).toHaveBeenLastCalledWith({ tag: 'calendar', text: '' });
+});
+
+test('mic reports hold start and end and displays recording duration', () => {
+  const onVoiceStart = jest.fn();
+  const onVoiceEnd = jest.fn();
+  const { rerender } = renderBar({ onVoiceStart, onVoiceEnd, voiceState: 'idle' });
+  fireEvent(screen.getByTestId('ask-mic'), 'pressIn');
+  fireEvent(screen.getByTestId('ask-mic'), 'pressOut');
+  expect(onVoiceStart).toHaveBeenCalledTimes(1);
+  expect(onVoiceEnd).toHaveBeenCalledTimes(1);
+  rerender(
+    <ThemeProvider>
+      <AskBar onSubmit={jest.fn()} voiceState="recording" recordingSeconds={7} />
+    </ThemeProvider>,
+  );
+  expect(screen.getByText('0:07')).toBeOnTheScreen();
+});
+
+test('a typed draft keeps both Send and hold-to-talk available', () => {
+  const onVoiceStart = jest.fn();
+  const onVoiceEnd = jest.fn();
+  renderBar({ value: 'already typed', onChangeText: jest.fn(), onVoiceStart, onVoiceEnd });
+  expect(screen.getByTestId('ask-send')).toBeOnTheScreen();
+  fireEvent(screen.getByTestId('ask-mic'), 'pressIn');
+  fireEvent(screen.getByTestId('ask-mic'), 'pressOut');
+  expect(onVoiceStart).toHaveBeenCalledTimes(1);
+  expect(onVoiceEnd).toHaveBeenCalledTimes(1);
 });

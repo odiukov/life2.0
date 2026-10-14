@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { ThemeProvider } from '@life-agents/ui';
 import { ChatScreen } from './ChatScreen';
 
@@ -170,4 +170,49 @@ test('prefill with tag query params seeds the AskBar with chip and empty text', 
   expect(screen.getByTestId('agent-chip-remove')).toBeOnTheScreen();
   // Send was not auto-invoked (this is prefill, not send).
   expect(mockSend).not.toHaveBeenCalled();
+});
+
+test('hold-to-talk puts the transcript in the draft for review without sending', async () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(0);
+  mockMessages = [];
+  render(
+    <ThemeProvider>
+      <ChatScreen />
+    </ThemeProvider>,
+  );
+  await act(async () => {
+    fireEvent(screen.getByTestId('ask-mic'), 'pressIn');
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(700);
+    fireEvent(screen.getByTestId('ask-mic'), 'pressOut');
+  });
+  await waitFor(() => expect(screen.getByTestId('ask-input').props.value).toBe('bought bread'));
+  expect(mockSend).not.toHaveBeenCalled();
+  jest.useRealTimers();
+});
+
+test('hold-to-talk appends speech to text already in the draft', async () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(0);
+  mockMessages = [];
+  render(
+    <ThemeProvider>
+      <ChatScreen />
+    </ThemeProvider>,
+  );
+  fireEvent.changeText(screen.getByTestId('ask-input'), 'and milk');
+  await act(async () => {
+    fireEvent(screen.getByTestId('ask-mic'), 'pressIn');
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(700);
+    fireEvent(screen.getByTestId('ask-mic'), 'pressOut');
+  });
+  await waitFor(() =>
+    expect(screen.getByTestId('ask-input').props.value).toBe('and milk bought bread'),
+  );
+  expect(mockSend).not.toHaveBeenCalled();
+  jest.useRealTimers();
 });

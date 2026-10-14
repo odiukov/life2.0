@@ -1,4 +1,15 @@
 {
+  "voice": {
+    "hold": "Hold to talk",
+    "not_heard": "Didn't catch that, try again.",
+    "too_long": "Recording too long — up to one minute.",
+    "unavailable": "Speech recognition is unavailable right now.",
+    "permission_title": "No microphone access",
+    "permission_body": "Allow the microphone in Settings to talk to the app.",
+    "open_settings": "Open Settings",
+    "cancel": "Cancel",
+    "mock_transcript": "bought bread"
+  },
   "onboarding": {
     "welcomeHero": "Your health, your money, your days — one conversation.",
     "getStarted": "Get started",

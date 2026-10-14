@@ -41,6 +41,12 @@
         {
           "color": "#06b6d4"
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Life Agents uses the microphone only while you hold the mic button, to turn your voice into chat text."
+        }
       ]
     ],
     "experiments": {

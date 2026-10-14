@@ -23,6 +23,7 @@
     "@supabase/supabase-js": "^2.104.0",
     "@tanstack/react-query": "^5.99.2",
     "expo": "~54.0.33",
+    "expo-audio": "~1.1.1",
     "expo-background-fetch": "^14.0.9",
     "expo-document-picker": "^55.0.13",
     "expo-font": "~14.0.11",

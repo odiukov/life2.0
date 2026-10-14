@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTheme } from '../../theme';
 import { Icon } from '../Icon';
 import { AgentChip } from '../AgentChip';
@@ -31,6 +31,10 @@ type AskBarProps = {
   onChangeText?: (next: AskBarChange) => void;
   onSubmit: (next: AskBarChange) => void;
   onVoice?: () => void;
+  onVoiceStart?: () => void;
+  onVoiceEnd?: () => void;
+  voiceState?: 'idle' | 'recording' | 'transcribing';
+  recordingSeconds?: number;
   onAttach?: () => void;
   hasAttachment?: boolean;
   disabled?: boolean;
@@ -44,6 +48,10 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
     onChangeText,
     onSubmit,
     onVoice,
+    onVoiceStart,
+    onVoiceEnd,
+    voiceState,
+    recordingSeconds,
     onAttach,
     hasAttachment,
     disabled,
@@ -167,7 +175,7 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
         blurOnSubmit={false}
         editable={!disabled}
       />
-      {canSend ? (
+      {canSend && (
         <Pressable
           testID="ask-send"
           onPress={send}
@@ -190,10 +198,14 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
             weight="fill"
           />
         </Pressable>
-      ) : (
+      )}
+      {(!canSend || onVoiceStart || onVoiceEnd) && (
         <Pressable
           testID="ask-mic"
           onPress={onVoice}
+          onPressIn={onVoiceStart}
+          onPressOut={onVoiceEnd}
+          disabled={disabled || voiceState === 'transcribing'}
           hitSlop={4}
           style={[
             styles.circle,
@@ -201,12 +213,27 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
               width: circleSize,
               height: circleSize,
               borderRadius: circleSize / 2,
-              backgroundColor: colors.bg3,
+              backgroundColor: voiceState === 'recording' ? colors.danger : colors.bg3,
+              marginLeft: canSend ? 6 : 0,
             },
           ]}
         >
-          <Icon name="Microphone" size={18} color={colors.fg2} testID="ask-mic-icon" />
+          {voiceState === 'transcribing' ? (
+            <ActivityIndicator size="small" color={colors.fg2} />
+          ) : (
+            <Icon
+              name="Microphone"
+              size={18}
+              color={voiceState === 'recording' ? colors.fg1 : colors.fg2}
+              testID="ask-mic-icon"
+            />
+          )}
         </Pressable>
+      )}
+      {voiceState === 'recording' && (
+        <Text style={{ color: colors.danger, marginLeft: 6, fontVariant: ['tabular-nums'] }}>
+          {`${Math.floor((recordingSeconds ?? 0) / 60)}:${String((recordingSeconds ?? 0) % 60).padStart(2, '0')}`}
+        </Text>
       )}
     </View>
   );

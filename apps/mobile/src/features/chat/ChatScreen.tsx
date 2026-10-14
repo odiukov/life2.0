@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Keyboard, View } from 'react-native';
+import { FlatList, Keyboard, Text, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import {
@@ -24,16 +24,35 @@ import { isAgentId } from '../agents/agentStatusRules';
 import { FilePreviewChip } from './FilePreviewChip';
 import { consumePendingShareUrl } from './pendingShare';
 import { parseAgentTags } from './parseAgentTags';
+import { useVoiceInput } from '../voice/useVoiceInput';
+import { mergeTranscript } from '../voice/voiceState';
 
 type PendingFile = { uri: string; name: string };
 
 export function ChatScreen() {
   const { messages, send: sendMessage, sendFile, resetThread } = useChat();
-  const { spacing } = useTheme();
+  const { spacing, colors } = useTheme();
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const [draft, setDraft] = useState<{ tag?: AgentId; text: string }>({ tag: undefined, text: '' });
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voice = useVoiceInput({
+    onTranscript: (text) =>
+      setDraft((current) => ({ ...current, text: mergeTranscript(current.text, text) })),
+    onNotice: (text) => {
+      setVoiceNotice(text);
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+      noticeTimer.current = setTimeout(() => setVoiceNotice(null), 3000);
+    },
+  });
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
   const connected = useConnectedIntegrations();
   const blocked = useMemo(() => blockedAgents(connected), [connected]);
   const commandMatches = matchCommands(draft.text, connected);
@@ -174,6 +193,11 @@ export function ChatScreen() {
         {pendingFile && (
           <FilePreviewChip fileName={pendingFile.name} onDismiss={() => setPendingFile(null)} />
         )}
+        {voiceNotice && (
+          <Text style={{ color: colors.fg3, textAlign: 'center', marginBottom: 4 }}>
+            {voiceNotice}
+          </Text>
+        )}
         <AskBar
           ref={askBarRef}
           value={draft.text}
@@ -181,7 +205,14 @@ export function ChatScreen() {
           onChangeText={(next) => setDraft(next)}
           onSubmit={handleSend}
           onAttach={handleAttach}
-          onVoice={() => {}}
+          onVoiceStart={() => {
+            void voice.start();
+          }}
+          onVoiceEnd={() => {
+            void voice.stop();
+          }}
+          voiceState={voice.state}
+          recordingSeconds={voice.seconds}
           hasAttachment={!!pendingFile}
           disabled={isStreaming}
           blockedAgents={blocked}

@@ -52,6 +52,8 @@
     <string>Life Agents reads your health data (sleep, heart rate, activity, nutrition) to provide personalised coaching.</string>
     <key>NSHealthUpdateUsageDescription</key>
     <string>life-agents wants to update your health data</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Life Agents uses the microphone only while you hold the mic button, to turn your voice into chat text.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
