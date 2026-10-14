@@ -14,9 +14,7 @@ from tests.test_persona_present import (  # type: ignore[import-not-found]
 )
 
 
-PEER_TASKS_BY_AGENT = {
-    "medication": ["analyze_adherence"],
-}
+PEER_TASKS_BY_AGENT = {}
 
 
 def _stub_peer(agent: str) -> dict:

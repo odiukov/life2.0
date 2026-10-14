@@ -1,0 +1,112 @@
+{
+  "additionalInterfaces": null,
+  "capabilities": {
+    "extensions": null,
+    "pushNotifications": false,
+    "stateTransitionHistory": null,
+    "streaming": true
+  },
+  "defaultInputModes": [
+    "text"
+  ],
+  "defaultOutputModes": [
+    "text"
+  ],
+  "description": "Owns medication/supplement definitions and intake logs: creates schedules, records doses taken, and computes adherence.",
+  "documentationUrl": null,
+  "iconUrl": null,
+  "name": "medication-agent",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "provider": null,
+  "security": null,
+  "securitySchemes": null,
+  "signatures": null,
+  "skills": [
+    {
+      "description": "Parse free text into a structured medication definition: name (kebab-case), dose (e.g. '200mg'), schedule (free-text e.g. 'daily 21:00' or 'mon,wed,fri morning'), optional notes. Inserts a row in the medications table.",
+      "examples": [
+        "магний 200мг каждый вечер в 21:00",
+        "vitamin D 2000IU every morning",
+        "iron 25mg mon/wed/fri"
+      ],
+      "id": "define_medication",
+      "inputModes": null,
+      "name": "Define Medication",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "medication",
+        "define"
+      ]
+    },
+    {
+      "description": "Record a single dose taken. Accepts {name} (resolved via registry with name normalization) and optional {dose_override, note}.",
+      "examples": [
+        "/med magnesium",
+        "выпил магний вечером",
+        "took iron with breakfast"
+      ],
+      "id": "log_medication",
+      "inputModes": null,
+      "name": "Log Medication Taken",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "medication",
+        "log"
+      ]
+    },
+    {
+      "description": "Deterministic list of active medications with last-taken recency.",
+      "examples": [
+        "/med list",
+        "what am I currently taking"
+      ],
+      "id": "list_active",
+      "inputModes": null,
+      "name": "List Active Medications",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "medication",
+        "list"
+      ]
+    },
+    {
+      "description": "Compute adherence window (default 14 days): expected doses from schedule × actual logs from health_logs → percentage + missed days + streak. Aggregations in SQL, final summary via LLM.",
+      "examples": [
+        "how's my medication adherence",
+        "did I miss any doses last week"
+      ],
+      "id": "analyze_adherence",
+      "inputModes": null,
+      "name": "Analyze Adherence",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "medication",
+        "analysis"
+      ]
+    },
+    {
+      "description": "Soft-delete a medication (set archived_at). History in health_logs is preserved via the denormalized `name` field.",
+      "examples": [
+        "/med stop magnesium",
+        "stop tracking iron"
+      ],
+      "id": "archive_medication",
+      "inputModes": null,
+      "name": "Archive Medication",
+      "outputModes": null,
+      "security": null,
+      "tags": [
+        "medication",
+        "archive"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": null,
+  "url": "http://agent-medication:8008/",
+  "version": "1.0.0"
+}

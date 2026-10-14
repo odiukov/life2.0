@@ -1,15 +1,5 @@
-"""Medication agent skill declarations + per-skill prompt builders."""
-
-from __future__ import annotations
-
-import os
-from typing import Awaitable, Callable
-
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
 from shared.skill_ids import Medication
-from .prompt import build_medication_prompt
-
 
 SKILLS: list[AgentSkill] = [
     AgentSkill(
@@ -76,15 +66,14 @@ SKILLS: list[AgentSkill] = [
 ]
 
 
-def build_agent_card() -> AgentCard:
-    url = os.environ.get("MEDICATION_AGENT_URL", "http://agent-medication:8008/")
+LEGACY_DESCRIPTION = "Owns medication/supplement definitions and intake logs: creates schedules, records doses taken, and computes adherence."
+
+
+def build_agent_card(url: str) -> AgentCard:
     return AgentCard(
         protocol_version="0.3.0",
         name="medication-agent",
-        description=(
-            "Owns medication/supplement definitions and intake logs: creates "
-            "schedules, records doses taken, and computes adherence."
-        ),
+        description=LEGACY_DESCRIPTION,
         url=url,
         version="1.0.0",
         capabilities=AgentCapabilities(streaming=True, push_notifications=False),
@@ -94,43 +83,6 @@ def build_agent_card() -> AgentCard:
     )
 
 
-PromptFn = Callable[[str, dict], Awaitable[str]]
-
-
-async def _prompt_define(message: str, params: dict) -> str:
-    return await build_medication_prompt("define_medication", {**params, "message": message})
-
-
-async def _prompt_log(message: str, params: dict) -> str:
-    return await build_medication_prompt(Medication.LOG, {**params, "message": message})
-
-
-async def _prompt_list(message: str, params: dict) -> str:
-    return await build_medication_prompt("list_active", {**params, "message": message})
-
-
-async def _prompt_analyze(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_medication_prompt(
-        "analyze_adherence",
-        {**params, "message": message, "peer_artifacts": peer},
-    )
-
-
-async def _prompt_archive(message: str, params: dict) -> str:
-    return await build_medication_prompt("archive_medication", {**params, "message": message})
-
-
-SKILL_PROMPTS: dict[str, PromptFn] = {
-    Medication.DEFINE: _prompt_define,
-    Medication.LOG: _prompt_log,
-    Medication.LIST: _prompt_list,
-    Medication.ANALYZE: _prompt_analyze,
-    Medication.ARCHIVE: _prompt_archive,
-}
-
-
-# Which peer agents this one may consult, and the skill it calls on each.
 PEER_SKILLS: dict[str, str] = {
     "mood": "analyze_mood",
     "sleep": "analyze_sleep",

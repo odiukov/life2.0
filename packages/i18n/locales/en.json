@@ -258,5 +258,29 @@
       "one": "{n} day",
       "other": "{n} days"
     }
+  },
+  "medication": {
+    "define": {
+      "created": "Tracking “{name}”{dose} · {schedule}.",
+      "exists": "“{name}” is already tracked.",
+      "not_understood": "I didn't get the medication. Try “vitamin D 2000 IU every morning”."
+    },
+    "dose": " {dose}",
+    "log": {
+      "done": "Logged: {name}{dose}.",
+      "not_found": "I couldn't find that medication. “/med list” shows them, “/med new …” adds one."
+    },
+    "list": {
+      "line": "• {name}{dose} · {schedule}",
+      "none": "No active medications."
+    },
+    "archive": {
+      "done": "Removed “{name}”.",
+      "already": "“{name}” is already archived.",
+      "not_found": "I couldn't find that medication."
+    },
+    "analyze": {
+      "none": "No active medications to analyse."
+    }
   }
 }

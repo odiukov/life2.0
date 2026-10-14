@@ -137,7 +137,7 @@ def test_medication_tool_accepts_all_skill_ids():
     """The Literal in ask_medication_agent must list every skill ID
     declared in agents.medication.app.skills.SKILLS."""
     from orchestrator.app import health_agent
-    from agents.medication.app.skills import SKILLS
+    from medication.adapters.a2a.card import SKILLS
     import typing
 
     tool = health_agent.ask_medication_agent
