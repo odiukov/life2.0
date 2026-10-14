@@ -12,6 +12,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
 
+from shared.ports.health_logs import HealthLogRow
+from shared.ports.users import SUPPORTED_LOCALES, UserSettings, resolve_zone
 from shared.ports.llm import LLMInvalidOutput, LLMTask
 from shared.ports.notifications import InboxItem, Notification
 from shared.ports.scheduler import Job
@@ -331,3 +333,55 @@ class FakeSkillClient:
         if isinstance(outcome, Exception):
             raise outcome
         return outcome
+
+
+class InMemoryUserSettings:
+    def __init__(self) -> None:
+        self.rows: dict[UUID, UserSettings] = {}
+
+    def seed(
+        self, user_id: UUID, *, timezone: str | None = "UTC", locale: str | None = None
+    ) -> None:
+        self.rows[user_id] = UserSettings(
+            resolve_zone(timezone), locale if locale in SUPPORTED_LOCALES else None
+        )
+
+    async def get(self, user_id: UUID) -> UserSettings:
+        return self.rows.get(user_id, UserSettings(resolve_zone(None), None))
+
+
+class InMemoryHealthLogs:
+    def __init__(self) -> None:
+        self.rows: dict[UUID, list[HealthLogRow]] = {}
+
+    def seed(self, user_id: UUID, row: HealthLogRow) -> None:
+        self.rows.setdefault(user_id, []).append(row)
+
+    async def recent(
+        self,
+        user_id: UUID,
+        *,
+        types: Sequence[str],
+        limit: int | None = None,
+        since: datetime | None = None,
+        agent: str | None = None,
+        data_equals: Mapping[str, str] | None = None,
+    ) -> list[HealthLogRow]:
+        found = [
+            r
+            for r in self.rows.get(user_id, [])
+            if r.type in types
+            and (since is None or r.recorded_at >= since)
+            and (agent is None or r.agent == agent)
+            and all(str(r.data.get(k)) == v for k, v in (data_equals or {}).items())
+        ]
+        found.sort(key=lambda r: r.recorded_at, reverse=True)
+        return found if limit is None else found[:limit]
+
+    async def add(self, user_id: UUID, row: HealthLogRow) -> datetime:
+        when = row.recorded_at.astimezone(UTC)
+        taken = {(r.source, r.type, r.recorded_at) for r in self.rows.get(user_id, [])}
+        while (row.source, row.type, when) in taken:
+            when += timedelta(microseconds=1)
+        self.rows.setdefault(user_id, []).append(replace(row, recorded_at=when))
+        return when

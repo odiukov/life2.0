@@ -8,10 +8,10 @@ from datetime import date
 from typing import Literal
 from zoneinfo import ZoneInfo
 
+from shared.analysis.chip_rules import PEER_CHIP_RULES
+from shared.analysis.grounding import GROUNDING_RULES
+from shared.analysis.personas import IDENTITY, VOCAB
 from shared.domain.energy import BodyProfile
-from shared.grounding import GROUNDING_RULES
-from shared.peer_chip_rules import PEER_CHIP_RULES
-from shared.personas import IDENTITY, VOCAB
 
 from nutrition.application.models import BodyComposition
 from nutrition.domain.meal import Macros, Meal

@@ -6,9 +6,10 @@ Loaded for every run via `-p shared.testing.pytest_plugin` (see pyproject.toml).
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Coroutine, Iterator
+from collections.abc import Callable, Coroutine, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar
 
 import pytest
@@ -120,3 +121,34 @@ def _legacy_dsn_for_integration(request: pytest.FixtureRequest) -> Iterator[None
         yield
     finally:
         patch.undo()
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--update-snapshots",
+        action="store_true",
+        default=False,
+        help="Write prompt snapshot files instead of comparing against them.",
+    )
+
+
+@pytest.fixture
+def snapshot(request: pytest.FixtureRequest) -> Callable[[str, str], None]:
+    """Compare text with <test dir>/snapshots/<name>.txt (use --update-snapshots to write)."""
+    folder = Path(str(request.node.path)).parent / "snapshots"
+    update = bool(request.config.getoption("--update-snapshots"))
+
+    def check(name: str, text: str) -> None:
+        path = folder / f"{name}.txt"
+        if update:
+            folder.mkdir(exist_ok=True)
+            path.write_text(text, "utf-8")
+            return
+        assert path.exists(), (
+            f"missing snapshot {path}; run pytest --update-snapshots and review the diff"
+        )
+        assert path.read_text("utf-8") == text, (
+            f"snapshot {path} differs; review, then --update-snapshots"
+        )
+
+    return check

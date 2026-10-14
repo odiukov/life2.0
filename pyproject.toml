@@ -44,7 +44,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = [".", "shared/src", "agents/kitchen/tests"]
 testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests"]
-addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin"
+addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin -p pytester"
 consider_namespace_packages = true
 markers = [
     "integration: needs Docker (testcontainers PostgreSQL)",
@@ -67,8 +67,9 @@ name = "New shared code does not import legacy modules"
 type = "forbidden"
 # Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
 allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "nutrition", "household", "gateway", "kitchen"]
+source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "shared.analysis", "nutrition", "household", "gateway", "kitchen"]
 forbidden_modules = [
+    "shared.personas", "shared.grounding", "shared.peer_chip_rules",
     "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
     "shared.a2a_clients", "shared.a2a_store", "shared.intent", "shared.i18n",
     "shared.current_user", "shared.consent", "shared.consulted", "shared.log_entry",
