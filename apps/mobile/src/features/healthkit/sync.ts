@@ -8,7 +8,7 @@
 
 import * as SecureStore from 'expo-secure-store';
 import { apiBaseUrl } from '@/api/client';
-import { supabase, SUPABASE_CONFIGURED } from '@/features/auth/SupabaseClient';
+import { getAuthHeaders as getSessionAuthHeaders } from '@/features/auth/getAuthHeaders';
 import { useSyncTimestamp } from '@/features/sync/syncTimestamp';
 import type { HealthSample, HealthKitReadType } from './types';
 import { HK_QUANTITY_TYPES, HK_CATEGORY_TYPES } from './types';
@@ -65,10 +65,7 @@ function isHealthKitAvailable(): boolean {
 }
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
-  if (!SUPABASE_CONFIGURED) return {};
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return getSessionAuthHeaders();
 }
 
 async function postChunk(samples: HealthSample[]): Promise<void> {

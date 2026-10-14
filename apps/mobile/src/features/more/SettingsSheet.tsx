@@ -26,7 +26,7 @@ import { useT } from '@life-agents/i18n';
 import { HouseholdPanel } from '@/features/household/HouseholdPanel';
 import { appLocale } from '@/lib/locale';
 import { useSession } from '@/features/auth/useSession';
-import { SUPABASE_CONFIGURED } from '@/features/auth/SupabaseClient';
+import { DEV_USER_ID } from '@/features/auth/getAuthHeaders';
 import {
   BACKDROP_IN_MS,
   BACKDROP_OUT_MS,
@@ -580,7 +580,7 @@ export function SettingsSheet({ visible, onClose, initialPanel }: Props) {
                 </Card>
 
                 {/* Sign out */}
-                {SUPABASE_CONFIGURED && session && (
+                {!DEV_USER_ID && session && (
                   <Pressable
                     testID="sign-out"
                     onPress={confirmSignOut}

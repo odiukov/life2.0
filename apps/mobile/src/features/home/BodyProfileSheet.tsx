@@ -7,7 +7,7 @@ import { useSheetAnimation } from '@/lib/sheetAnimation';
 import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
 import { api } from '@/api/client';
 import * as DocumentPicker from 'expo-document-picker';
-import { supabase, SUPABASE_CONFIGURED } from '@/features/auth/SupabaseClient';
+import { getAuthHeaders } from '@/features/auth/getAuthHeaders';
 import { apiBaseUrl } from '@/api/client';
 
 type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
@@ -96,15 +96,11 @@ export function BodyProfileSheet({ visible, onClose, onSaved }: Props) {
         type: 'application/pdf',
       } as any);
 
-      let token: string | undefined;
-      if (SUPABASE_CONFIGURED) {
-        const { data } = await supabase.auth.getSession();
-        token = data.session?.access_token;
-      }
+      const headers = await getAuthHeaders();
 
       const response = await fetch(`${apiBaseUrl}/me/profile/import-pdf`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers,
         body: formData,
       });
 

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { ThemeProvider } from '@life-agents/ui';
 import { YazioPanel } from './YazioPanel';
 
-// expo-secure-store and supabase are globally mocked via jest.config moduleNameMapper.
+// expo-secure-store is globally mocked via jest.config moduleNameMapper.
 jest.mock('@/api/client', () => ({ apiBaseUrl: 'http://test' }));
 jest.mock('@/features/auth/getAuthHeaders', () => ({
   getAuthHeaders: async () => ({}),

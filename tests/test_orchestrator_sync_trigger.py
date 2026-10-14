@@ -6,7 +6,6 @@ import asyncio
 import os
 
 os.environ.setdefault("AUTH_MODE", "dev")
-os.environ.setdefault("VAULT_BACKEND", "dev")
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

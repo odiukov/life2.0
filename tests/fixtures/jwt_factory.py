@@ -1,4 +1,4 @@
-"""Builds Supabase-shaped JWTs signed with an ephemeral RSA key for tests.
+"""Builds provider JWTs signed with an ephemeral RSA key for tests.
 
 The keypair is generated once per test session in memory — nothing is written
 to disk and no private key material lives in the repository.
@@ -16,8 +16,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 
 KID = "testkid"
-ISSUER = "https://test.supabase.co/auth/v1"
-AUDIENCE = "authenticated"
+ISSUER = "https://accounts.google.com"
+AUDIENCE = "test-client"
 
 
 @lru_cache(maxsize=1)
@@ -42,8 +42,9 @@ def build(
     iss: str = ISSUER,
     ttl: int = 3600,
     kid: str = KID,
+    nonce: str = "test-nonce",
 ) -> str:
-    """Return a signed JWT with Supabase-shaped claims."""
+    """Return a signed provider JWT."""
     private_pem, _ = _keypair()
     return jwt.encode(
         {
@@ -53,6 +54,7 @@ def build(
             "exp": int(time.time()) + ttl,
             "iat": int(time.time()),
             "role": "authenticated",
+            "nonce": nonce,
         },
         private_pem,
         algorithm="RS256",

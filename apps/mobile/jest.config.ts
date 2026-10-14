@@ -24,7 +24,7 @@ const config: Config = {
     '^expo-router$': '<rootDir>/src/__mocks__/expo-router.tsx',
     '^react-native-url-polyfill(/.*)?$': '<rootDir>/src/__mocks__/react-native-url-polyfill.ts',
     '^expo-secure-store$': '<rootDir>/src/__mocks__/expo-secure-store.ts',
-    '^@supabase/supabase-js$': '<rootDir>/src/__mocks__/@supabase/supabase-js.ts',
+    '^expo-crypto$': '<rootDir>/src/__mocks__/expo-crypto.ts',
     '^@kingstinct/react-native-healthkit$':
       '<rootDir>/src/__mocks__/@kingstinct/react-native-healthkit.ts',
     '^@react-native-async-storage/async-storage$':

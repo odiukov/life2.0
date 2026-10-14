@@ -1,8 +1,7 @@
 """Integration endpoints for user-provided credentials.
 
 Paths live under `/integrations/{service}/...`. All require auth via
-`Depends(current_user)`. Payloads are encrypted at rest via vault.py
-(VAULT_BACKEND selects storage backend).
+`Depends(current_user)`. Payloads are encrypted at rest via vault.py.
 
 - POST /integrations/ha/{connect,test,disconnect}
 - POST /integrations/yazio/{connect,disconnect}
@@ -58,10 +57,10 @@ async def _validate_via_sync_service(service: str, email: str, password: str) ->
     raise HTTPException(status_code=status, detail=detail)
 
 
-# HMAC key for OAuth state CSRF protection. Reuses SUPABASE_JWT_SECRET when
-# available; falls back to a dev-only fallback string so local tests run
-# without a Supabase project.
-_STATE_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "dev-state-secret-replace-in-prod").encode()
+# HMAC key for integration OAuth state CSRF protection.
+_STATE_SECRET = os.environ.get(
+    "OAUTH_STATE_SECRET", os.environ.get("AUTH_JWT_SECRET", "dev-state-secret-replace-in-prod")
+).encode()
 
 
 def _sign_state(user_id: UUID, nonce: UUID) -> str:

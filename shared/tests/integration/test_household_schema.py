@@ -99,14 +99,14 @@ async def test_ensure_keeps_an_existing_users_row(engines) -> None:
     user = uuid4()
     async with admin.begin() as conn:
         await conn.execute(
-            text("INSERT INTO users (id, name, timezone) VALUES (:u, 'supabase:1234', 'UTC')"),
+            text("INSERT INTO users (id, name, timezone) VALUES (:u, 'provider:1234', 'UTC')"),
             {"u": user},
         )
     await ensure(rw, user, "fallback", "Europe/Lisbon")
     async with rw.begin() as conn:
         await as_user(conn, user)
         row = (await conn.execute(text("SELECT name, timezone FROM households"))).one()
-    assert (row.name, row.timezone) == ("supabase:1234", "UTC")
+    assert (row.name, row.timezone) == ("provider:1234", "UTC")
 
 
 async def test_app_rw_cannot_write_membership_directly(engines) -> None:

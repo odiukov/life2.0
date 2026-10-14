@@ -37,7 +37,7 @@ this foundation, so no empty domain revision is created. `upgrade heads`
 applies every domain head after its core dependency.
 
 This initial revision targets a fresh database after the approved development
-data reset; it does not translate an existing Supabase migration history. On
+data reset; it does not translate an earlier migration history. On
 Compose startup every database consumer waits for the migrate service to finish
 successfully. Services use `app_legacy` until their migration to tenant-aware
 `app_rw` transactions. Runtime `init_db_pool()` never changes the schema.

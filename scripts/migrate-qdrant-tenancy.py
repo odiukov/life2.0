@@ -14,7 +14,7 @@ except ImportError:
 
 OWNER = os.environ.get("OWNER_USER_ID")
 if not OWNER:
-    sys.stderr.write("OWNER_USER_ID env var required (your Supabase auth.users UUID)\n")
+    sys.stderr.write("OWNER_USER_ID env var required (your application user UUID)\n")
     sys.exit(1)
 
 host = os.environ.get("QDRANT_HOST", "localhost")

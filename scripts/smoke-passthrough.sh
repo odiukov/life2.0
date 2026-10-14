@@ -4,7 +4,7 @@
 set -euo pipefail
 
 URL="${ORCHESTRATOR_URL:-http://localhost:8000}/agent/sleep/stream"
-TOKEN="${SUPABASE_TEST_TOKEN:-}"
+TOKEN="${API_TEST_TOKEN:-}"
 AUTH_ARGS=()
 if [[ -n "$TOKEN" ]]; then
   AUTH_ARGS=(-H "Authorization: Bearer $TOKEN")

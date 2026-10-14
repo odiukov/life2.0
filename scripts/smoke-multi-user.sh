@@ -9,8 +9,7 @@
 #     /me returns user_B — cross-tenant reads never bleed
 #   - Deletes the test rows and users at the end
 #
-# Prod flow (Phase B, after Supabase cutover):
-#   - Swap direct psql seeding with Supabase admin signup via REST
+# Production flow: create accounts through direct provider sign in.
 #   - Swap X-User-Id headers with real Bearer JWTs obtained from signInWithPassword
 #
 # Exit 0 on pass, non-zero + explanation on fail.

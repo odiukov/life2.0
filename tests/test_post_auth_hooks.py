@@ -14,7 +14,7 @@ from shared.testing.fakes import FixedClock
 
 
 @pytest.mark.parametrize("path", ["/chat/stream", "/agent/kitchen/stream"])
-@pytest.mark.parametrize("mode", ["dev", "supabase"])
+@pytest.mark.parametrize("mode", ["dev", "oauth"])
 async def test_post_auth_hook_runs_for_legacy_routes(monkeypatch, path, mode):
     from gateway.hooks import HouseholdEnsurer
     from orchestrator.app import auth, main, agent_passthrough
@@ -37,12 +37,14 @@ async def test_post_auth_hook_runs_for_legacy_routes(monkeypatch, path, mode):
 
     monkeypatch.setattr(auth, "AUTH_MODE", mode)
     monkeypatch.setattr(auth, "POST_AUTH_HOOKS", [HouseholdEnsurer(Ensures())])
-    monkeypatch.setattr(auth, "verify_jwt", lambda _: user)
+    from orchestrator.app.direct_auth import issue_access
 
-    async def ensure_user_row(user_id):
-        events.append("user_row")
+    monkeypatch.setenv("AUTH_JWT_SECRET", "x" * 32)
 
-    monkeypatch.setattr(auth, "_ensure_user_row", ensure_user_row)
+    async def active(_user, _sid):
+        return True
+
+    monkeypatch.setattr(auth, "_session_active", active)
     monkeypatch.setattr(agent_passthrough, "get_agent_url", lambda _: "http://kitchen:8009")
 
     async def graph(text, user_id, thread_id, timezone):
@@ -59,7 +61,11 @@ async def test_post_auth_hook_runs_for_legacy_routes(monkeypatch, path, mode):
 
     monkeypatch.setattr(main, "_run_graph_with_routing", graph)
     monkeypatch.setattr(agent_passthrough, "stream_peer_call", peer)
-    headers = {"X-User-Id": str(user)} if mode == "dev" else {"Authorization": "Bearer test"}
+    headers = (
+        {"X-User-Id": str(user)}
+        if mode == "dev"
+        else {"Authorization": "Bearer " + issue_access(user, uuid4(), "x" * 32)}
+    )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=main.app), base_url="http://t"
     ) as client:
@@ -68,7 +74,7 @@ async def test_post_auth_hook_runs_for_legacy_routes(monkeypatch, path, mode):
         )
     assert response.status_code == 200
     assert '"delta": "ok"' in response.text
-    assert events == (["user_row"] if mode == "supabase" else []) + [
+    assert events == [
         "ensure_started",
         "ensure_completed",
         "agent",
