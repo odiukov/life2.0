@@ -45,7 +45,7 @@ async def ensure_test_user() -> _uuid.UUID:
     return TEST_USER_ID
 
 
-MIGRATED_AGENTS = {"nutrition", "body"}
+MIGRATED_AGENTS = {"nutrition", "body", "recovery"}
 
 
 def skills_module_name(agent: str) -> str:

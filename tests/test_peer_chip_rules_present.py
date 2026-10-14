@@ -19,7 +19,6 @@ PEER_TASKS_BY_AGENT = {
     "workout": ["analyze_workout", "get_recommendations"],
     "mood": ["analyze_mood", "get_mood_recommendations"],
     "habits": ["analyze_habit"],
-    "recovery": ["get_readiness", "analyze_recovery_trend", "get_recommendations"],
     "medication": ["analyze_adherence"],
 }
 

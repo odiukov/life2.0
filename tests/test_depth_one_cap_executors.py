@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-PEER_CONSUMING_AGENTS = ["sleep", "workout", "mood", "recovery"]
+PEER_CONSUMING_AGENTS = ["sleep", "workout", "mood"]
 # habits and medication only fan out for analyze_*, but their executor branches
 # are wrapped in if-skill guards already; the helper still applies in principle
 # but covering them adds branch noise without behavior change.

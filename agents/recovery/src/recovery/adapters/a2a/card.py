@@ -1,15 +1,5 @@
-"""Recovery agent skill declarations + per-skill prompt builders."""
-
-from __future__ import annotations
-
-import os
-from typing import Awaitable, Callable
-
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
 from shared.skill_ids import Recovery
-from .prompt import build_recovery_prompt
-
 
 SKILLS: list[AgentSkill] = [
     AgentSkill(
@@ -57,8 +47,7 @@ SKILLS: list[AgentSkill] = [
 ]
 
 
-def build_agent_card() -> AgentCard:
-    url = os.environ.get("RECOVERY_AGENT_URL", "http://agent-recovery:8007/")
+def build_agent_card(url: str) -> AgentCard:
     return AgentCard(
         protocol_version="0.3.0",
         name="recovery-agent",
@@ -76,44 +65,6 @@ def build_agent_card() -> AgentCard:
     )
 
 
-PromptFn = Callable[[str, dict], Awaitable[str]]
-
-
-async def _prompt_readiness(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_recovery_prompt(
-        "get_readiness",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-async def _prompt_trend(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_recovery_prompt(
-        "analyze_recovery_trend",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-async def _prompt_recommendations(message: str, params: dict) -> str:
-    peer = params.get("peer_artifacts")
-    return await build_recovery_prompt(
-        "get_recommendations",
-        {**params, "message": message},
-        peer_artifacts=peer,
-    )
-
-
-SKILL_PROMPTS: dict[str, PromptFn] = {
-    Recovery.READINESS: _prompt_readiness,
-    Recovery.ANALYZE_TREND: _prompt_trend,
-    Recovery.RECOMMENDATIONS: _prompt_recommendations,
-}
-
-
-# Which peer agents this one may consult, and the skill it calls on each.
 PEER_SKILLS: dict[str, str] = {
     "sleep": "analyze_sleep",
     "workout": "analyze_workout",
