@@ -229,15 +229,15 @@ def _compute_tdee(
     TDEE = BMR × multiplier:
       sedentary=1.2, light=1.375, moderate=1.55, active=1.725, very_active=1.9
     """
-    bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + (5 if sex == "male" else -161)
-    multipliers = {
-        "sedentary": 1.2,
-        "light": 1.375,
-        "moderate": 1.55,
-        "active": 1.725,
-        "very_active": 1.9,
-    }
-    return round(bmr * multipliers.get(activity_level, 1.55))
+    from shared.domain.energy import ActivityLevel, Sex, bmr_mifflin_st_jeor, tdee
+
+    bmr = bmr_mifflin_st_jeor(
+        weight_kg=weight_kg,
+        height_cm=height_cm,
+        age=age,
+        sex=Sex.MALE if sex == "male" else Sex.FEMALE,
+    )
+    return tdee(bmr, ActivityLevel.parse(activity_level))
 
 
 def _fmt_duration(seconds: int) -> str:
