@@ -1,0 +1,21 @@
+# kcal: accepted range for the whole message; min_items/max_items: stored item count.
+- {text: "съел омлет из 3 яиц и тост", min_items: 2, kcal: [300, 650]}
+- {text: "на обед борщ и кусок чёрного хлеба", min_items: 2, kcal: [250, 650]}
+- {text: "выпил капучино 300 мл", min_items: 1, kcal: [80, 250]}
+- {text: "банан", min_items: 1, kcal: [70, 150]}
+- {text: "200 г гречки с курицей", min_items: 1, kcal: [250, 600]}
+- {text: "перекусил горстью миндаля", min_items: 1, kcal: [100, 300]}
+- {text: "Had a chicken caesar salad for lunch", min_items: 1, kcal: [300, 800]}
+- {text: "two slices of pepperoni pizza", min_items: 1, kcal: [400, 900]}
+- {text: "овсянка на молоке с бананом и мёдом", min_items: 2, kcal: [300, 650]}
+- {text: "стакан кефира 1%", min_items: 1, kcal: [60, 150]}
+- {text: "съела греческий йогурт 150 г и яблоко", min_items: 2, kcal: [150, 350]}
+- {text: "вечером поел пельмени, штук 20", min_items: 1, kcal: [500, 1200]}
+- {text: "a protein shake with milk", min_items: 1, kcal: [150, 400]}
+- {text: "поужинал в 21:00 стейком и салатом", min_items: 2, kcal: [400, 1100], local_time: "21:00"}
+- {text: "кусок торта Наполеон", min_items: 1, kcal: [250, 600]}
+- {text: "съел шаурму", min_items: 1, kcal: [400, 900]}
+- {text: "выпил 2 литра воды", min_items: 0, kcal: [0, 30]}
+- {text: "привет, как дела?", min_items: 0, max_items: 0, kcal: [0, 0]}
+- {text: "напомни купить молоко", min_items: 0, max_items: 0, kcal: [0, 0]}
+- {text: "I went for a 5 km run", min_items: 0, max_items: 0, kcal: [0, 0]}
