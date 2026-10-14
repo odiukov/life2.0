@@ -361,21 +361,18 @@ provides-extras = ["claude"]
 
 [[package]]
 name = "agent-sleep"
-version = "0.1.0"
-source = { virtual = "agents/sleep" }
+version = "0.2.0"
+source = { editable = "agents/sleep" }
 dependencies = [
     { name = "a2a-sdk" },
-    { name = "asyncpg" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-instrumentation-asyncpg" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-instrumentation-logging" },
     { name = "opentelemetry-sdk" },
-    { name = "qdrant-client" },
     { name = "shared" },
     { name = "sse-starlette" },
     { name = "traceloop-sdk" },
@@ -383,26 +380,30 @@ dependencies = [
     { name = "wrapt" },
 ]
 
+[package.optional-dependencies]
+claude = [
+    { name = "shared", extra = ["claude"] },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "a2a-sdk", specifier = ">=0.3.26,<1.0" },
-    { name = "asyncpg", specifier = ">=0.29" },
     { name = "fastapi", specifier = ">=0.111" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "opentelemetry-api", specifier = ">=1.27" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.27" },
-    { name = "opentelemetry-instrumentation-asyncpg", specifier = ">=0.48b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.48b0" },
     { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.48b0" },
     { name = "opentelemetry-instrumentation-logging", specifier = ">=0.48b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.27" },
-    { name = "qdrant-client", specifier = ">=1.9" },
     { name = "shared", editable = "shared" },
+    { name = "shared", extras = ["claude"], marker = "extra == 'claude'", editable = "shared" },
     { name = "sse-starlette", specifier = ">=3.0" },
     { name = "traceloop-sdk", specifier = ">=0.30" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
     { name = "wrapt", specifier = "<2.0" },
 ]
+provides-extras = ["claude"]
 
 [[package]]
 name = "agent-workout"

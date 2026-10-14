@@ -187,5 +187,16 @@
     "errors": {
       "llm_unavailable": "I can't answer right now — the model is unavailable. Try again in a minute."
     }
+  },
+  "sleep": {
+    "log": {
+      "confirmed": "Logged sleep: {start}–{end}, {hours}.",
+      "quality": " Quality {quality}/5.",
+      "not_understood": "I didn't get how long you slept. Try “slept from 23:30 to 7” or “slept 7 hours”."
+    },
+    "hours": {
+      "one": "{n} hour",
+      "other": "{n} hours"
+    }
   }
 }

@@ -8,10 +8,7 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_NO_CACHE=1 PYTHONUNBUFFERED=1 \
 
 WORKDIR /repo
 COPY . .
-RUN uv sync --frozen --no-dev --package agent-sleep
+RUN uv sync --frozen --no-dev --package agent-sleep --extra claude
 
 ENV PATH="/opt/venv/bin:$PATH"
-WORKDIR /app
-RUN cp -r /repo/agents/sleep/app ./app
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "sleep.serve:app", "--host", "0.0.0.0", "--port", "8001"]
