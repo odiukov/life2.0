@@ -81,6 +81,12 @@ class TelemetrySettings(BaseModel):
     log_format: Literal["json", "console"] = "json"
 
 
+class NotificationSettings(BaseModel):
+    push: Literal["off", "expo"] = "off"
+    expo_access_token: SecretStr | None = None
+    expo_url: str = "https://exp.host/--/api/v2/push/send"
+
+
 class BaseServiceSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_nested_delimiter="__", extra="ignore", case_sensitive=False
@@ -90,6 +96,7 @@ class BaseServiceSettings(BaseSettings):
     database: DatabaseSettings
     llm: LLMSettings = Field(default_factory=LLMSettings)
     telemetry: TelemetrySettings = Field(default_factory=TelemetrySettings)
+    notifications: NotificationSettings = Field(default_factory=NotificationSettings)
     qdrant_url: AnyHttpUrl = AnyHttpUrl("http://localhost:6333")
     default_locale: Literal["ru", "en"] = "ru"
     i18n_locales_dir: Path = Field(default_factory=find_locales_dir)

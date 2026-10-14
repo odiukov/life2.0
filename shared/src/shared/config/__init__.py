@@ -6,6 +6,7 @@ from shared.config.settings import (
     DatabaseSettings,
     LLMRoute,
     LLMSettings,
+    NotificationSettings,
     Provider,
     TelemetrySettings,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "DatabaseSettings",
     "LLMRoute",
     "LLMSettings",
+    "NotificationSettings",
     "Provider",
     "TelemetrySettings",
     "env_names",

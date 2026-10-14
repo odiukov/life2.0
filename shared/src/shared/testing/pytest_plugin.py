@@ -25,7 +25,8 @@ TRUNCATE = (
     "TRUNCATE users, health_logs, tasks, habits, medications, finance_transactions, "
     "finance_category_cache, integrations_credentials, oauth_state, telemetry_consent, "
     "households, household_members, household_invites, household_join_attempts, "
-    "kitchen_batches, kitchen_operation_groups, kitchen_clarifications, kitchen_digest_runs "
+    "kitchen_batches, kitchen_operation_groups, kitchen_clarifications, kitchen_digest_runs, "
+    "notifications, push_tokens "
     "RESTART IDENTITY CASCADE"
 )
 

@@ -234,7 +234,34 @@ RLS_TABLES: tuple[str, ...] = (
     "integrations_credentials",
     "oauth_state",
     "telemetry_consent",
+    "notifications",
+    "push_tokens",
 )
+
+notifications = Table(
+    "notifications",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    _user_fk(),
+    Column("kind", Text, nullable=False),
+    Column("title", Text, nullable=False),
+    Column("body", Text, nullable=False),
+    Column("data", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    Column("read_at", TSTZ),
+)
+Index("notifications_user_created_idx", notifications.c.user_id, notifications.c.created_at)
+
+push_tokens = Table(
+    "push_tokens",
+    metadata,
+    Column("token", Text, primary_key=True),
+    _user_fk(),
+    Column("platform", Text, nullable=False),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    Column("last_seen_at", TSTZ, nullable=False, server_default=NOW),
+)
+Index("push_tokens_user_idx", push_tokens.c.user_id)
 
 CURRENT_HOUSEHOLD = text("current_household_id()")
 
