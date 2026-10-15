@@ -27,3 +27,9 @@ def test_guards_that_must_not_be_edited_away() -> None:
     assert "/habit" in text
     assert "ask_recovery_agent first" in text
     assert "This task is led by sleep" in text
+
+
+def test_runtime_date_uses_the_users_timezone() -> None:
+    now = datetime(2026, 5, 5, 21, 30, tzinfo=UTC)
+    text = system_prompt(now=now, zone=ZoneInfo("Europe/Lisbon"), lead_agent=None)
+    assert "Current date: 2026-05-05 (Europe/Lisbon)" in text

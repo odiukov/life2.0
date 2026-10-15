@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Literal, Protocol
 from uuid import UUID
+from zoneinfo import ZoneInfo
+
+from shared.a2a.proposals import Proposal
+
+from orchestrator.domain.attachments import Upload
+from orchestrator.domain.tasks import task_key
 
 ActionStatus = Literal["pending", "applying", "applied", "rejected", "expired", "failed"]
 
@@ -124,3 +131,106 @@ class PendingActionRepository(Protocol):
         status: Literal["applied", "failed"],
         result_code: str | None,
     ) -> None: ...
+
+
+@dataclass(frozen=True, slots=True)
+class RunContext:
+    user_id: UUID
+    task_id: UUID
+    household_id: UUID | None
+    lead_agent: str | None
+    zone: ZoneInfo
+    locale: str
+    now: datetime
+
+    @property
+    def key(self) -> str:
+        return task_key(self.user_id, self.task_id)
+
+
+@dataclass(frozen=True, slots=True)
+class ToolDone:
+    agent: str
+    consulted: tuple[str, ...] = ()
+    proposal_id: UUID | None = None
+    failed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class FinalText:
+    text: str
+
+
+GraphEvent = ToolDone | FinalText
+
+
+class TaskBusy(Exception):
+    """Another run holds this task."""
+
+
+class InvalidHistory(Exception):
+    """The stored conversation cannot be continued (an interrupted tool call)."""
+
+
+class GraphSession(Protocol):
+    def run(self, text: str) -> AsyncIterator[GraphEvent]: ...
+    async def append(self, user_text: str, assistant_text: str) -> None: ...
+    async def reset(self) -> None: ...
+
+
+class ChatGraph(Protocol):
+    def session(
+        self, ctx: RunContext, last_user_text: str
+    ) -> AbstractAsyncContextManager[GraphSession]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class PeerReply:
+    text: str
+    consulted: tuple[str, ...] = ()
+    data: Mapping[str, Any] | None = None
+    failed: bool = False
+
+
+class PeerUnavailable(Exception):
+    pass
+
+
+class PeerAgents(Protocol):
+    async def ask(
+        self,
+        agent: str,
+        *,
+        user_id: UUID,
+        skill: str,
+        text: str,
+        focus_sources: Sequence[str] | None,
+    ) -> PeerReply: ...
+
+
+class VisionUnavailable(Exception):
+    pass
+
+
+class ImageDescriber(Protocol):
+    async def describe(self, image: Upload, question: str, locale: str) -> str: ...
+
+
+class UnreadableDocument(Exception):
+    pass
+
+
+class DocumentReader(Protocol):
+    def text(self, data: bytes) -> str: ...
+
+
+class SyncUnavailable(Exception):
+    pass
+
+
+class HealthSync(Protocol):
+    async def sync_user(self, user_id: UUID) -> list[Mapping[str, object]]: ...
+
+
+class ProposalRecorder(Protocol):
+    async def record(self, ctx: RunContext, agent: str, proposal: Proposal) -> PendingAction: ...

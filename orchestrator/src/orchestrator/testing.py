@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
+from shared.a2a.proposals import Proposal
 from shared.ports.clock import Clock
 from shared.ports.users import UserSettingsRepository
 from shared.testing.fakes import InMemoryUnitOfWorkFactory, InMemoryUserSettings
@@ -17,8 +18,11 @@ from orchestrator.application.ports import (
     ChatTaskRepository,
     Claim,
     NewMessage,
+    PeerReply,
     PendingAction,
     PendingActionRepository,
+    RunContext,
+    SyncUnavailable,
     TranscriptMessage,
     TranscriptRepository,
 )
@@ -215,3 +219,63 @@ def in_memory_uow(
             UserSettingsRepository: settings or InMemoryUserSettings(),
         }
     )
+
+
+class FakePeerAgents:
+    def __init__(self, replies: dict[str, PeerReply | Exception] | None = None) -> None:
+        self.replies = replies or {}
+        self.calls: list[tuple[str, UUID, str, str, list[str] | None]] = []
+
+    async def ask(
+        self,
+        agent: str,
+        *,
+        user_id: UUID,
+        skill: str,
+        text: str,
+        focus_sources: Sequence[str] | None,
+    ) -> PeerReply:
+        self.calls.append(
+            (agent, user_id, skill, text, list(focus_sources) if focus_sources else None)
+        )
+        reply = self.replies.get(agent, PeerReply(f"{agent} reply"))
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+
+class RecordedProposals:
+    def __init__(self) -> None:
+        self.recorded: list[tuple[str, Proposal]] = []
+        self.actions: list[PendingAction] = []
+
+    async def record(self, ctx: RunContext, agent: str, proposal: Proposal) -> PendingAction:
+        action = PendingAction(
+            uuid4(),
+            ctx.task_id,
+            None,
+            agent,
+            proposal.action,
+            dict(proposal.payload),
+            proposal.summary,
+            "pending",
+            None,
+            ctx.now + timedelta(minutes=5),
+        )
+        self.recorded.append((agent, proposal))
+        self.actions.append(action)
+        return action
+
+
+class FakeHealthSync:
+    def __init__(
+        self, results: list[dict[str, object]] | None = None, *, down: bool = False
+    ) -> None:
+        self.results, self.down = results or [], down
+        self.users: list[UUID] = []
+
+    async def sync_user(self, user_id: UUID) -> list[Mapping[str, object]]:
+        self.users.append(user_id)
+        if self.down:
+            raise SyncUnavailable
+        return list(self.results)
