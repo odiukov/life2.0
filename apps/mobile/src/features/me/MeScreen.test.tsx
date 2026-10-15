@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { MeScreen } from './MeScreen';
 import { feedDay } from './useDayFeed';
 import type { AgentRow } from '../agents/agentStatusRules';
+import { dispatchTilePress } from '../agents/agentTileDispatch';
 import { openTask } from '../task/sheetStore';
 
 const mockSummaryRefetch = jest.fn();
@@ -17,6 +18,9 @@ let mockSummaryError = false;
 let mockFeedError = false;
 let mockNutrition = false;
 let mockRows: AgentRow[] = [];
+jest.mock('../agents/agentTileDispatch', () => ({
+  dispatchTilePress: jest.fn(jest.requireActual('../agents/agentTileDispatch').dispatchTilePress),
+}));
 jest.mock('../task/sheetStore', () => ({ openTask: jest.fn() }));
 const mockUseDayFeed = jest.fn();
 jest.mock('expo-router', () => ({
@@ -79,9 +83,9 @@ jest.mock('../agents/useAgentStatusRows', () => ({
 jest.mock('../more/SettingsSheet', () => ({
   SettingsSheet: ({ visible }: { visible: boolean }) => (visible ? <Text>settings</Text> : null),
 }));
-jest.mock('../home/AgentDetailSheet', () => ({
-  AgentDetailSheet: ({ visible, agentId }: { visible: boolean; agentId: string }) =>
-    visible ? <Text>{`detail:${agentId}`}</Text> : null,
+jest.mock('./AgentPagerSheet', () => ({
+  AgentPagerSheet: ({ start }: { start: string | null }) =>
+    start ? <Text>{`detail:${start}`}</Text> : null,
 }));
 jest.mock('../integrations/IntegrationSheet', () => ({
   IntegrationSheet: ({ integration }: { integration: string | null }) =>
@@ -162,7 +166,11 @@ test('nutrition without a profile preserves the alert, profile sheet, and saved 
 test('setup chips keep integration dispatch and task-prefill actions', () => {
   mockRows = [
     { id: 'sleep', status: 'needs_setup', cta: { kind: 'integrations', panel: 'garmin' } },
-    { id: 'mood', status: 'no_data', cta: { kind: 'chat-prefill', tag: 'mood', text: 'Log mood' } },
+    {
+      id: 'mood',
+      status: 'needs_setup',
+      cta: { kind: 'chat-prefill', tag: 'mood', text: 'Log mood' },
+    },
   ] as AgentRow[];
   mount();
   fireEvent.press(screen.getByTestId('chip-sleep'));
@@ -175,4 +183,22 @@ test('header settings control has a localized label and opens settings', () => {
   mount();
   fireEvent.press(screen.getByLabelText('Open Settings'));
   expect(screen.getByText('settings')).toBeTruthy();
+});
+
+test('all chip opens the grid', () => {
+  mount();
+  fireEvent.press(screen.getByTestId('chip-all'));
+  expect(screen.getByText('detail:all')).toBeTruthy();
+});
+
+test('body row goes through tile dispatch', () => {
+  mockRows = [
+    { id: 'body', status: 'needs_setup', cta: { kind: 'integrations', panel: 'apple-health' } },
+  ] as AgentRow[];
+  mount();
+  fireEvent.press(screen.getByTestId('chip-body'));
+  expect(dispatchTilePress).toHaveBeenCalledWith(
+    mockRows[0],
+    expect.objectContaining({ openDetail: expect.any(Function) }),
+  );
 });

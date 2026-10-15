@@ -22,7 +22,7 @@ const ctx = () => ({
 });
 
 describe('dispatchTilePress', () => {
-  it('opens AgentDetailSheet when cta is null', () => {
+  it('opens agent detail when cta is null', () => {
     const c = ctx();
     dispatchTilePress(makeRow({ cta: null }), c);
     expect(c.openDetail).toHaveBeenCalledWith('mood');

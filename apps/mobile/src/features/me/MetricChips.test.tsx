@@ -22,7 +22,9 @@ const summary = {
 
 test('rings and agent chips; unavailable is a dash; taps report the agent', () => {
   const onAgent = jest.fn();
-  render(<MetricChips summary={summary as never} rows={new Map()} onAgent={onAgent} />);
+  render(
+    <MetricChips summary={summary as never} rows={new Map()} onAgent={onAgent} onAll={jest.fn()} />,
+  );
   expect(screen.getByText('82%')).toBeTruthy();
   expect(screen.getByText('7h 40m')).toBeTruthy();
   expect(screen.getByTestId('chip-mood')).toHaveTextContent(/—/);
@@ -46,9 +48,24 @@ test('optional rings render dashes; setup chips show plus unless unavailable', (
       summary={{ agents: [], unavailable: ['mood'] }}
       rows={rows as never}
       onAgent={jest.fn()}
+      onAll={jest.fn()}
     />,
   );
   expect(screen.getByTestId('chip-sleep')).toHaveTextContent(/＋/);
   expect(screen.getByTestId('chip-mood')).toHaveTextContent(/—/);
   expect(screen.getByTestId('ring-ready')).toHaveTextContent(/—/);
+});
+
+test('last chip opens all agents', () => {
+  const onAll = jest.fn();
+  render(
+    <MetricChips
+      summary={{ agents: [], unavailable: [] }}
+      rows={new Map()}
+      onAgent={jest.fn()}
+      onAll={onAll}
+    />,
+  );
+  fireEvent.press(screen.getByTestId('chip-all'));
+  expect(onAll).toHaveBeenCalledTimes(1);
 });

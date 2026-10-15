@@ -11,10 +11,12 @@ export function MetricChips({
   summary,
   rows,
   onAgent,
+  onAll,
 }: {
   summary: HomeSummary;
   rows: ReadonlyMap<AgentId, AgentRow>;
   onAgent: (agent: AgentId) => void;
+  onAll: () => void;
 }) {
   const { colors } = useTheme();
   const t = useT(appLocale());
@@ -95,6 +97,9 @@ export function MetricChips({
           </Pressable>
         );
       })}
+      <Pressable testID="chip-all" accessibilityRole="button" onPress={onAll}>
+        <Text style={{ color: colors.fg2 }}>{t('me.all')}</Text>
+      </Pressable>
     </ScrollView>
   );
 }

@@ -654,6 +654,11 @@
       "meal": "Lunch: 640 kcal, protein 32 g",
       "insight": "Deep sleep 1 h 50 min — best this week",
       "sleep": "Slept 7 h 40 min · deep 1 h 50 min"
-    }
+    },
+    "prev_agent": "Previous agent",
+    "next_agent": "Next agent",
+    "connect": "connect",
+    "log": "log",
+    "upload": "upload"
   }
 }

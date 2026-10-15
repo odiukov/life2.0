@@ -23,7 +23,7 @@ import { useAgentDetail, type AgentDetail } from './useAgentDetail';
 /**
  * Content body of the agent detail view — hero header, per-agent body, and
  * quick actions. No outer scroll wrapper, no back button, no container
- * padding. Designed to be embedded inside a bottom sheet (AgentDetailSheet)
+ * padding. Designed to be embedded inside a agent pager sheet
  */
 export function AgentDetailContent({
   agentId,

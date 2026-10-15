@@ -9,7 +9,8 @@ import { badgeText } from '../inbox/badge';
 import { useAgentStatusRows } from '../agents/useAgentStatusRows';
 import { dispatchTilePress } from '../agents/agentTileDispatch';
 import { SettingsSheet } from '../more/SettingsSheet';
-import { AgentDetailSheet } from '../home/AgentDetailSheet';
+import { AgentPagerSheet, type PagerStart } from './AgentPagerSheet';
+import { DETAIL_AGENTS } from './agentOrder';
 import { IntegrationSheet } from '../integrations/IntegrationSheet';
 import type { IntegrationId } from '../integrations/store';
 import { BodyProfileAlert } from '../home/BodyProfileAlert';
@@ -35,7 +36,7 @@ export function MeScreen() {
   const [settingsPanel, setSettingsPanel] = useState<'integrations' | null>(null);
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const [openAgent, setOpenAgent] = useState<AgentId | null>(null);
+  const [pager, setPager] = useState<PagerStart | null>(null);
 
   const [profileOpen, setProfileOpen] = useState(false);
   const { refetch: refetchSummary } = summary;
@@ -62,14 +63,15 @@ export function MeScreen() {
   const showAgent = useCallback(
     (id: AgentId) => {
       const row = rowsByAgent.get(id);
-      if (!row) {
-        setOpenAgent(id);
+      if (DETAIL_AGENTS.has(id) && row?.status !== 'needs_setup') {
+        setPager(id);
         return;
       }
+      if (!row) return;
       dispatchTilePress(row, {
         router,
         openIntegration: (panel: IntegrationId) => setActiveIntegration(panel),
-        openDetail: (detailId: AgentId) => setOpenAgent(detailId),
+        openDetail: (detailId: AgentId) => setPager(detailId),
         openIntegrationsList: () => setSettingsPanel('integrations'),
       });
     },
@@ -105,7 +107,12 @@ export function MeScreen() {
           onSettings={() => setSettingsOpen(true)}
         />
         {summary.data && (
-          <MetricChips summary={summary.data} rows={rowsByAgent} onAgent={showAgent} />
+          <MetricChips
+            summary={summary.data}
+            rows={rowsByAgent}
+            onAgent={showAgent}
+            onAll={() => setPager('all')}
+          />
         )}
         <NeedsAttention
           alerts={summary.data?.alerts ?? []}
@@ -139,10 +146,12 @@ export function MeScreen() {
           setSettingsPanel(null);
         }}
       />
-      <AgentDetailSheet
-        visible={openAgent !== null}
-        agentId={openAgent}
-        onClose={() => setOpenAgent(null)}
+      <AgentPagerSheet
+        start={pager}
+        summary={summary.data}
+        rows={rowsByAgent}
+        onPickOther={showAgent}
+        onClose={() => setPager(null)}
       />
       <IntegrationSheet
         integration={activeIntegration}
