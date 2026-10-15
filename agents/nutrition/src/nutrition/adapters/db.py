@@ -7,12 +7,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from shared.adapters.db.profile import SqlBodyProfiles
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.adapters.db.users import SqlUserSettings
 from shared.domain.energy import BodyProfile
 from shared.ports.users import UserSettingsRepository
 from shared.schema.tables import health_logs, users
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
@@ -195,33 +196,7 @@ class SqlProfileRepository:
     async def update_body_profile(
         self, user_id: UUID, changes: Mapping[str, object]
     ) -> BodyProfile:
-        row = (
-            await self._conn.execute(
-                select(users.c.preferences).where(users.c.id == user_id).with_for_update()
-            )
-        ).one_or_none()
-        prefs: dict[str, Any] = (
-            dict(row.preferences)
-            if row is not None and isinstance(row.preferences, Mapping)
-            else {}
-        )
-        raw_body = prefs.get("body_profile")
-        body = dict(raw_body) if isinstance(raw_body, Mapping) else {}
-        for key, value in changes.items():
-            if value is None:
-                body.pop(key, None)
-            else:
-                body[key] = value
-        prefs["body_profile"] = body
-        if row is None:
-            await self._conn.execute(
-                insert(users).values(id=user_id, name=f"user:{str(user_id)[:8]}", preferences=prefs)
-            )
-        else:
-            await self._conn.execute(
-                update(users).where(users.c.id == user_id).values(preferences=prefs)
-            )
-        return BodyProfile.from_mapping(body)
+        return BodyProfile.from_mapping(await SqlBodyProfiles(self._conn).update(user_id, changes))
 
 
 class SqlBodyMetricsRepository:

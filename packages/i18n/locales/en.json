@@ -316,5 +316,17 @@
       "HassMediaUnpause": "Resume: {target}?",
       "generic": "Run “{tool}” ({target})?"
     }
+  },
+  "body": {
+    "import": {
+      "written": {
+        "one": "Imported {count} measurement.",
+        "other": "Imported {count} measurements."
+      },
+      "unchanged": "This report is already saved.",
+      "weight": "Weight: {value} kg",
+      "fat": "fat: {value}%",
+      "bmi": "BMI: {value}"
+    }
   }
 }

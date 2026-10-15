@@ -514,3 +514,21 @@ class InMemoryHouseholdCredentials:
 
     async def household_id(self) -> UUID | None:
         return self._household()
+
+
+class InMemoryBodyProfiles:
+    def __init__(self) -> None:
+        self.rows: dict[UUID, dict[str, object]] = {}
+
+    async def get(self, user_id: UUID) -> dict[str, object]:
+        return dict(self.rows.get(user_id, {}))
+
+    async def update(self, user_id: UUID, changes: Mapping[str, object]) -> dict[str, object]:
+        body = dict(self.rows.get(user_id, {}))
+        for key, value in changes.items():
+            if value is None:
+                body.pop(key, None)
+            else:
+                body[key] = value
+        self.rows[user_id] = body
+        return dict(body)

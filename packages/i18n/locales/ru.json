@@ -321,5 +321,19 @@
       "HassMediaUnpause": "Продолжить: {target}?",
       "generic": "Выполнить «{tool}» ({target})?"
     }
+  },
+  "body": {
+    "import": {
+      "written": {
+        "one": "Импортировал {count} измерение.",
+        "few": "Импортировал {count} измерения.",
+        "many": "Импортировал {count} измерений.",
+        "other": "Импортировал {count} измерения."
+      },
+      "unchanged": "Этот отчёт уже сохранён.",
+      "weight": "Вес: {value} кг",
+      "fat": "жир: {value}%",
+      "bmi": "ИМТ: {value}"
+    }
   }
 }

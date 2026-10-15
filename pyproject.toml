@@ -215,7 +215,7 @@ forbidden_modules = ["body.application", "body.adapters", "sqlalchemy", "a2a", "
 name = "Body application depends on ports, not adapters"
 type = "forbidden"
 source_modules = ["body.application"]
-forbidden_modules = ["body.adapters", "shared.adapters", "shared.schema", "sqlalchemy", "httpx"]
+forbidden_modules = ["body.adapters", "shared.adapters", "shared.schema", "sqlalchemy", "httpx", "pdfplumber", "pymupdf", "langchain_core"]
 
 [[tool.importlinter.contracts]]
 name = "Only the body composition root wires adapters"

@@ -1,0 +1,16 @@
+ViHealth
+Body composition report
+Name Gender Age Height
+Oleksandr Male 35 180 cm
+Measuring time
+12 Oct 2026, 09:06:31
+BMI 25.1
+Body fat rate 18.2 %
+Body composition
+Weight 81.4(60.0–81.2) 100% High
+Body fat 14.8(9.6–16.0) 18.2% Standard
+Muscle 63.1(49.4–60.4) 77.5% Excellent
+Other indicators
+Visceral fat grade 8
+Basal metabolic rate 1780 kcal
+Body age 33

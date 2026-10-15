@@ -8,17 +8,24 @@ from a2a.types import AgentCard
 from shared.a2a.executor import SkillExecutor, SkillHandler
 from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
+from shared.adapters.chat_model.factory import LangChainChatModelFactory
+from shared.adapters.db.profile import SqlBodyProfiles
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
+from shared.ports.profile import BodyProfileRepository
 from shared.ports.vector_memory import VectorMemory
 from shared.skill_ids import Body
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from body.adapters.a2a.card import PEER_SKILLS, build_agent_card
+from body.adapters.pdf import PdfplumberReader
+from body.adapters.vision import ChatModelVision
 from body.application.data import BodyData
+from body.application.import_vihealth import ImportViHealth
+from body.application.ports import ReportReader, ReportVision
 from body.settings import BodySettings
 
 AGENT = "body"
@@ -58,9 +65,13 @@ def build_runtime(
     peers: PeerClient | None = None,
     memory: VectorMemory | None = None,
     clock: Clock | None = None,
+    reader: ReportReader | None = None,
+    vision: ReportVision | None = None,
 ) -> BodyRuntime:
     base = build_agent_base(settings, llm=llm, peers=peers, memory=memory, clock=clock)
-    uow = SqlUnitOfWorkFactory(base.engine, base_repositories())
+    uow = SqlUnitOfWorkFactory(
+        base.engine, {**base_repositories(), BodyProfileRepository: SqlBodyProfiles}
+    )
 
     def analysis(mode: str) -> AnalysisSkill:
         return AnalysisSkill(
@@ -77,6 +88,13 @@ def build_runtime(
         )
 
     handlers: dict[str, SkillHandler] = {
+        Body.IMPORT_VIHEALTH: ImportViHealth(
+            reader=reader or PdfplumberReader(),
+            vision=vision or ChatModelVision(LangChainChatModelFactory(settings)),
+            uow=uow,
+            translator=base.translator,
+            default_locale=base.default_locale,
+        ),
         Body.GET_LATEST: analysis(Body.GET_LATEST),
         Body.ANALYZE_TREND: analysis(Body.ANALYZE_TREND),
     }
@@ -84,6 +102,7 @@ def build_runtime(
         executor=SkillExecutor(
             agent=AGENT,
             handlers=handlers,
+            routable=[Body.GET_LATEST, Body.ANALYZE_TREND],
             peers=list(PEER_SKILLS),
             llm=base.llm,
             task_records=base.task_records,

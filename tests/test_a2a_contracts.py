@@ -44,9 +44,6 @@ def test_agent_card_skill_ids(agent_name, class_name):
 
     cls = getattr(ids_mod, class_name)
     expected = _expected_ids_from_class(cls)
-    if agent_name == "body":
-        # Task 6 advertises this import skill after implementing its handler.
-        expected -= {ids_mod.Body.IMPORT_VIHEALTH}
     declared = {s.id for s in skills_mod.SKILLS}
 
     assert expected <= declared, (
@@ -95,13 +92,13 @@ def _literal_args(tool_obj) -> set[str]:
 @pytest.mark.parametrize("tool_name,agent_name", list(_TOOL_TO_AGENT.items()))
 def test_orchestrator_tool_literal_matches_skills(tool_name, agent_name):
     """Each ask_<peer>_agent's Literal[...] for `skill` matches the peer's
-    declared SKILLS.
+    declared text-routable SKILLS. Structured attachment skills use A2ASkillClient.
     """
     from orchestrator.app import health_agent
 
     skills_mod = importlib.import_module(skills_module_name(agent_name))
 
     tool = getattr(health_agent, tool_name)
-    declared = {s.id for s in skills_mod.SKILLS}
+    declared = {s.id for s in skills_mod.SKILLS if "structured" not in s.tags}
     allowed = _literal_args(tool)
     assert allowed == declared, f"{tool_name}: Literal={allowed} != SKILLS({agent_name})={declared}"

@@ -140,3 +140,15 @@ def test_anthropic_clients_use_outer_retry_policy(auth: str) -> None:
     assert model._async_client.max_retries == 0
     assert model._client.timeout == 12
     assert model._async_client.timeout == 12
+
+
+def test_vision_route_defaults_and_accepts_an_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM__DEFAULT", "ollama:default-model")
+    factory = LangChainChatModelFactory(settings())
+    assert factory.chat_model(LLMTask.VISION) is factory.chat_model(LLMTask.FAST)
+    monkeypatch.setenv("LLM__TASKS__VISION", "ollama:vision-model")
+    routed = LangChainChatModelFactory(settings())
+    vision = routed.chat_model(LLMTask.VISION)
+    assert isinstance(vision, ChatOllama)
+    assert vision.model == "vision-model"
+    assert vision is not routed.chat_model(LLMTask.FAST)

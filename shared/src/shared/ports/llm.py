@@ -11,6 +11,7 @@ SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
 class LLMTask(StrEnum):
+    VISION = "vision"
     FAST = "fast"
     SMART = "smart"
     MOOD_COACH = "mood_coach"

@@ -20,6 +20,13 @@ SKILLS: list[AgentSkill] = [
         tags=["body", "analysis"],
         examples=["проанализируй историю веса", "how has my body composition changed"],
     ),
+    AgentSkill(
+        id=Body.IMPORT_VIHEALTH,
+        name="Import ViHealth Report",
+        description="Import a ViHealth body composition PDF.",
+        tags=["body", "import", "structured"],
+        input_modes=["application/pdf"],
+    ),
 ]
 
 
