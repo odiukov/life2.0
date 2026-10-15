@@ -292,5 +292,17 @@
       "empty": "The PDF has no transactions (skipped while reading: {skipped})."
     },
     "ask": { "empty": "No transactions yet — send a Payoneer statement PDF in the chat." }
+  },
+  "calendar": {
+    "proposal": {
+      "create": "Create “{title}” — {when}?",
+      "update": "Change “{title}” ({when}): {changes}?",
+      "delete": "Delete “{title}” — {when}?",
+      "rename": "rename to “{title}”",
+      "description": "new description",
+      "location": "new location",
+      "all_day": "{day}, all day"
+    },
+    "title_stopwords": "delete remove event calendar please the a an"
   }
 }

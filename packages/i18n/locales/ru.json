@@ -297,5 +297,17 @@
       "empty": "В PDF нет транзакций (пропущено при чтении: {skipped})."
     },
     "ask": { "empty": "Транзакций пока нет — пришли PDF-выписку Payoneer в чат." }
+  },
+  "calendar": {
+    "proposal": {
+      "create": "Создать «{title}» — {when}?",
+      "update": "Изменить «{title}» ({when}): {changes}?",
+      "delete": "Удалить «{title}» — {when}?",
+      "rename": "переименовать в «{title}»",
+      "description": "новое описание",
+      "location": "новое место",
+      "all_day": "{day}, весь день"
+    },
+    "title_stopwords": "удали удалить убери событие ивент встречу встреча календарь календаре пожалуйста"
   }
 }
