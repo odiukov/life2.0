@@ -1,4 +1,4 @@
-"""Integration tests for orchestrator.app.finance_queries (pure SQL)."""
+"""Integration tests for legacy_orchestrator.app.finance_queries (pure SQL)."""
 
 from __future__ import annotations
 
@@ -120,7 +120,7 @@ async def test_income_for_month_sums_per_currency():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     await _seed()
-    from orchestrator.app.finance_queries import income_for_month
+    from legacy_orchestrator.app.finance_queries import income_for_month
 
     result = await income_for_month(_TEST_USER_ID, "2026-04")
     assert result["USD"] == Decimal("1000.00")
@@ -130,7 +130,7 @@ async def test_income_for_month_sums_per_currency():
 async def test_income_for_month_empty_on_no_data():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_queries import income_for_month
+    from legacy_orchestrator.app.finance_queries import income_for_month
 
     result = await income_for_month(_TEST_USER_ID, "2026-03")
     assert result == {}
@@ -140,7 +140,7 @@ async def test_spending_by_category_ignores_incomes_and_null():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     await _seed()
-    from orchestrator.app.finance_queries import spending_by_category
+    from legacy_orchestrator.app.finance_queries import spending_by_category
 
     result = await spending_by_category(_TEST_USER_ID, "2026-04")
     cats = {name for name, _c, _amt in result}
@@ -154,7 +154,7 @@ async def test_current_balance_per_currency():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     await _seed()
-    from orchestrator.app.finance_queries import current_balance
+    from legacy_orchestrator.app.finance_queries import current_balance
 
     result = await current_balance(_TEST_USER_ID)
     assert result["USD"] == Decimal("920.00")  # 1000 − 50 − 30
@@ -165,7 +165,7 @@ async def test_runway_computes_days_from_avg_burn():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
     await _seed()
-    from orchestrator.app.finance_queries import runway
+    from legacy_orchestrator.app.finance_queries import runway
 
     result = await runway(_TEST_USER_ID, avg_window_days=365)  # wide window so seeded rows count
     usd = result.get("USD")
@@ -195,7 +195,7 @@ async def test_runway_days_none_when_no_spending():
         ],
     )
     await set_transaction_categories(_TEST_USER_ID, {"QRY_IN_ONLY": "income"})
-    from orchestrator.app.finance_queries import runway
+    from legacy_orchestrator.app.finance_queries import runway
 
     result = await runway(_TEST_USER_ID, avg_window_days=30)
     assert result["USD"]["days"] is None

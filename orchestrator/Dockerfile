@@ -12,6 +12,6 @@ RUN uv sync --frozen --no-dev --package orchestrator
 
 ENV PATH="/opt/venv/bin:$PATH"
 WORKDIR /app
-RUN cp -r /repo/orchestrator/app ./app
+RUN cp -r /repo/legacy_orchestrator/app ./app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

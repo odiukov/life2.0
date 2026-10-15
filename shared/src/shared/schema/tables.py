@@ -227,7 +227,9 @@ finance_category_cache = Table(
 telemetry_consent = Table(
     "telemetry_consent",
     metadata,
-    Column("user_id", Text, primary_key=True),
+    Column(
+        "user_id", UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    ),
     Column("bodies_ok", Boolean, nullable=False, server_default=text("false")),
     Column("updated_at", TSTZ, nullable=False, server_default=NOW),
 )
@@ -281,6 +283,9 @@ RLS_TABLES: tuple[str, ...] = (
     "telemetry_consent",
     "notifications",
     "push_tokens",
+    "chat_tasks",
+    "chat_messages",
+    "pending_actions",
 )
 
 notifications = Table(
@@ -516,3 +521,148 @@ household_credentials = Table(
     PrimaryKeyConstraint("household_id", "service", name="household_credentials_pkey"),
     CheckConstraint("service IN ('ha')", name="household_credentials_service_check"),
 )
+
+
+CHAT_AGENTS = (
+    "sleep",
+    "workout",
+    "nutrition",
+    "body",
+    "mood",
+    "habits",
+    "recovery",
+    "medication",
+    "kitchen",
+    "finance",
+    "calendar",
+    "home",
+)
+
+chat_tasks = Table(
+    "chat_tasks",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    _user_fk(),
+    Column("household_id", UUID(as_uuid=True), ForeignKey("households.id", ondelete="SET NULL")),
+    Column("lead_agent", Text),
+    Column("title", Text),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    Column("updated_at", TSTZ, nullable=False, server_default=NOW),
+    CheckConstraint(
+        f"lead_agent IN ({', '.join(repr(a) for a in CHAT_AGENTS)})",
+        name="chat_tasks_lead_agent_check",
+    ),
+    CheckConstraint("char_length(title) <= 120", name="chat_tasks_title_check"),
+)
+Index("chat_tasks_user_updated_idx", chat_tasks.c.user_id, chat_tasks.c.updated_at.desc())
+
+chat_messages = Table(
+    "chat_messages",
+    metadata,
+    Column(
+        "task_id",
+        UUID(as_uuid=True),
+        ForeignKey("chat_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("seq", Integer, nullable=False),
+    _user_fk(),
+    Column("role", Text, nullable=False),
+    Column("text", Text, nullable=False, server_default=text("''")),
+    Column("agent", Text),
+    Column("consulted", ARRAY(Text), nullable=False, server_default=text("'{}'::text[]")),
+    Column("attachments", JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+    Column("action", JSONB),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    PrimaryKeyConstraint("task_id", "seq", name="chat_messages_pkey"),
+    CheckConstraint("role IN ('user', 'assistant')", name="chat_messages_role_check"),
+)
+
+pending_actions = Table(
+    "pending_actions",
+    metadata,
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=NEW_UUID),
+    _user_fk(),
+    Column("household_id", UUID(as_uuid=True), ForeignKey("households.id", ondelete="SET NULL")),
+    Column(
+        "task_id",
+        UUID(as_uuid=True),
+        ForeignKey("chat_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("agent", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("payload", JSONB, nullable=False),
+    Column("summary", Text, nullable=False),
+    Column("status", Text, nullable=False, server_default=text("'pending'")),
+    Column("result_code", Text),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    Column("expires_at", TSTZ, nullable=False),
+    Column("decided_at", TSTZ),
+    CheckConstraint("agent IN ('calendar', 'home')", name="pending_actions_agent_check"),
+    CheckConstraint(
+        "status IN ('pending', 'applying', 'applied', 'rejected', 'expired', 'failed')",
+        name="pending_actions_status_check",
+    ),
+)
+Index(
+    "pending_actions_one_pending_per_task",
+    pending_actions.c.task_id,
+    unique=True,
+    postgresql_where=text("status = 'pending'"),
+)
+
+# LangGraph's AsyncPostgresSaver schema (langgraph-checkpoint-postgres 3.1.3, migrations 0–9).
+CHECKPOINT_SCHEMA_VERSION = 9
+checkpoint_migrations = Table(
+    "checkpoint_migrations", metadata, Column("v", Integer, primary_key=True)
+)
+checkpoints = Table(
+    "checkpoints",
+    metadata,
+    Column("thread_id", Text, nullable=False),
+    Column("checkpoint_ns", Text, nullable=False, server_default=text("''")),
+    Column("checkpoint_id", Text, nullable=False),
+    Column("parent_checkpoint_id", Text),
+    Column("type", Text),
+    Column("checkpoint", JSONB, nullable=False),
+    Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    PrimaryKeyConstraint("thread_id", "checkpoint_ns", "checkpoint_id", name="checkpoints_pkey"),
+)
+Index("checkpoints_thread_id_idx", checkpoints.c.thread_id)
+checkpoint_blobs = Table(
+    "checkpoint_blobs",
+    metadata,
+    Column("thread_id", Text, nullable=False),
+    Column("checkpoint_ns", Text, nullable=False, server_default=text("''")),
+    Column("channel", Text, nullable=False),
+    Column("version", Text, nullable=False),
+    Column("type", Text, nullable=False),
+    Column("blob", LargeBinary),
+    PrimaryKeyConstraint(
+        "thread_id", "checkpoint_ns", "channel", "version", name="checkpoint_blobs_pkey"
+    ),
+)
+Index("checkpoint_blobs_thread_id_idx", checkpoint_blobs.c.thread_id)
+checkpoint_writes = Table(
+    "checkpoint_writes",
+    metadata,
+    Column("thread_id", Text, nullable=False),
+    Column("checkpoint_ns", Text, nullable=False, server_default=text("''")),
+    Column("checkpoint_id", Text, nullable=False),
+    Column("task_id", Text, nullable=False),
+    Column("idx", Integer, nullable=False),
+    Column("channel", Text, nullable=False),
+    Column("type", Text),
+    Column("blob", LargeBinary, nullable=False),
+    Column("task_path", Text, nullable=False, server_default=text("''")),
+    PrimaryKeyConstraint(
+        "thread_id",
+        "checkpoint_ns",
+        "checkpoint_id",
+        "task_id",
+        "idx",
+        name="checkpoint_writes_pkey",
+    ),
+)
+Index("checkpoint_writes_thread_id_idx", checkpoint_writes.c.thread_id)

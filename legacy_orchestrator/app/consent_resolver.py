@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import time
-from typing import Tuple
+from uuid import UUID
 
 from shared.db import get_pool
 
-_CACHE: dict[str, Tuple[bool, float]] = {}
+_CACHE: dict[UUID, tuple[bool, float]] = {}
 _TTL_SECONDS = 300
 
 
-async def is_consented(user_id: str) -> bool:
+async def is_consented(user_id: UUID) -> bool:
     """Return True iff user has opted in to body-capture. Cache TTL: 5 min."""
     now = time.time()
     hit = _CACHE.get(user_id)

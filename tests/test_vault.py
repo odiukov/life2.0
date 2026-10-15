@@ -1,4 +1,4 @@
-"""Round-trip test for orchestrator.app.vault (dev backend against local postgres)."""
+"""Round-trip test for legacy_orchestrator.app.vault (dev backend against local postgres)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from uuid import UUID
 
 
 import shared.db as _sdb
-from orchestrator.app import vault
+from legacy_orchestrator.app import vault
 
 pytestmark = pytest.mark.integration
 

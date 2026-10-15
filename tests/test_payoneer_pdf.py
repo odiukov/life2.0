@@ -15,7 +15,7 @@ from decimal import Decimal
 
 import pytest
 
-from orchestrator.app.payoneer_pdf import (
+from legacy_orchestrator.app.payoneer_pdf import (
     PayoneerPdfFormatError,
     parse_payoneer_pdf,
     _parse_text,

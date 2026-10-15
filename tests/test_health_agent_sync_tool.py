@@ -10,7 +10,7 @@ USER = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"
 
 
 async def test_sync_tool_posts_the_user_and_summarises():
-    from orchestrator.app.health_agent import _sync_health_data_for
+    from legacy_orchestrator.app.health_agent import _sync_health_data_for
 
     response = MagicMock()
     response.raise_for_status = MagicMock()
@@ -36,7 +36,7 @@ async def test_sync_tool_posts_the_user_and_summarises():
 
 
 async def test_sync_tool_failure_is_generic():
-    from orchestrator.app.health_agent import _sync_health_data_for
+    from legacy_orchestrator.app.health_agent import _sync_health_data_for
 
     client = AsyncMock()
     client.__aenter__ = AsyncMock(return_value=client)
@@ -47,7 +47,7 @@ async def test_sync_tool_failure_is_generic():
 
 
 async def test_sync_tool_uses_injected_user_state():
-    from orchestrator.app.health_agent import sync_health_data
+    from legacy_orchestrator.app.health_agent import sync_health_data
 
     client = AsyncMock()
     client.__aenter__ = AsyncMock(return_value=client)
@@ -62,7 +62,7 @@ async def test_sync_tool_uses_injected_user_state():
 
 
 async def test_sync_tool_rejects_missing_user_before_contacting_service():
-    from orchestrator.app.health_agent import sync_health_data
+    from legacy_orchestrator.app.health_agent import sync_health_data
 
     with patch("httpx.AsyncClient") as client:
         assert (

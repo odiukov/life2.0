@@ -23,7 +23,7 @@ def _state() -> dict:
 
 
 async def test_query_calendar_events_uses_per_user_calendar_context():
-    from orchestrator.app.health_agent import query_calendar_events
+    from legacy_orchestrator.app.health_agent import query_calendar_events
 
     events = [
         {
@@ -35,7 +35,7 @@ async def test_query_calendar_events_uses_per_user_calendar_context():
         }
     ]
     with patch(
-        "orchestrator.app.calendar_context.fetch_calendar_events",
+        "legacy_orchestrator.app.calendar_context.fetch_calendar_events",
         new=AsyncMock(return_value=events),
     ) as fetch:
         result = await query_calendar_events.ainvoke(
@@ -52,7 +52,7 @@ async def test_query_calendar_events_uses_per_user_calendar_context():
 
 
 async def test_query_calendar_events_returns_actionable_message_without_user_id():
-    from orchestrator.app.health_agent import query_calendar_events
+    from legacy_orchestrator.app.health_agent import query_calendar_events
 
     result = await query_calendar_events.ainvoke(
         {
@@ -67,7 +67,7 @@ async def test_query_calendar_events_returns_actionable_message_without_user_id(
 async def test_calendar_prompt_includes_runtime_date_for_relative_queries():
     from datetime import datetime
     from zoneinfo import ZoneInfo
-    from orchestrator.app.health_agent import _build_system_prompt
+    from legacy_orchestrator.app.health_agent import _build_system_prompt
 
     prompt = _build_system_prompt(datetime(2026, 5, 5, 9, 30, tzinfo=ZoneInfo("Europe/Kyiv")))
 
@@ -79,7 +79,7 @@ async def test_calendar_prompt_includes_runtime_date_for_relative_queries():
 async def test_calendar_prompt_uses_user_timezone_not_kyiv():
     from datetime import datetime
     from zoneinfo import ZoneInfo
-    from orchestrator.app.health_agent import _build_system_prompt
+    from legacy_orchestrator.app.health_agent import _build_system_prompt
 
     prompt = _build_system_prompt(
         datetime(2026, 5, 5, 23, 30, tzinfo=ZoneInfo("Europe/Lisbon")),
@@ -91,10 +91,10 @@ async def test_calendar_prompt_uses_user_timezone_not_kyiv():
 
 
 async def test_query_calendar_events_passes_user_timezone_to_calendar_context():
-    from orchestrator.app.health_agent import query_calendar_events
+    from legacy_orchestrator.app.health_agent import query_calendar_events
 
     with patch(
-        "orchestrator.app.calendar_context.fetch_calendar_events",
+        "legacy_orchestrator.app.calendar_context.fetch_calendar_events",
         new=AsyncMock(return_value=[]),
     ) as fetch:
         await query_calendar_events.ainvoke(
@@ -110,7 +110,7 @@ async def test_query_calendar_events_passes_user_timezone_to_calendar_context():
 
 
 async def test_create_calendar_event_calls_api_with_user_from_state():
-    from orchestrator.app.health_agent import create_calendar_event
+    from legacy_orchestrator.app.health_agent import create_calendar_event
 
     create = AsyncMock(
         return_value={
@@ -119,7 +119,7 @@ async def test_create_calendar_event_calls_api_with_user_from_state():
             "htmlLink": "https://calendar.google.com/event?eid=evt-1",
         }
     )
-    with patch("orchestrator.app.google_calendar_api.create_event", new=create):
+    with patch("legacy_orchestrator.app.google_calendar_api.create_event", new=create):
         result = await create_calendar_event.ainvoke(
             {
                 "summary": "Dentist",
@@ -140,11 +140,11 @@ async def test_create_calendar_event_calls_api_with_user_from_state():
 
 
 async def test_create_calendar_event_asks_to_reconnect_when_not_connected():
-    from orchestrator.app.health_agent import create_calendar_event
-    from orchestrator.app.google_calendar_api import CalendarNotConnected
+    from legacy_orchestrator.app.health_agent import create_calendar_event
+    from legacy_orchestrator.app.google_calendar_api import CalendarNotConnected
 
     with patch(
-        "orchestrator.app.google_calendar_api.create_event",
+        "legacy_orchestrator.app.google_calendar_api.create_event",
         new=AsyncMock(side_effect=CalendarNotConnected("no creds")),
     ):
         result = await create_calendar_event.ainvoke(
@@ -160,11 +160,11 @@ async def test_create_calendar_event_asks_to_reconnect_when_not_connected():
 
 
 async def test_create_calendar_event_reports_google_error_status():
-    from orchestrator.app.health_agent import create_calendar_event
-    from orchestrator.app.google_calendar_api import CalendarApiError
+    from legacy_orchestrator.app.health_agent import create_calendar_event
+    from legacy_orchestrator.app.google_calendar_api import CalendarApiError
 
     with patch(
-        "orchestrator.app.google_calendar_api.create_event",
+        "legacy_orchestrator.app.google_calendar_api.create_event",
         new=AsyncMock(side_effect=CalendarApiError(400, "bad start time")),
     ):
         result = await create_calendar_event.ainvoke(
@@ -180,10 +180,10 @@ async def test_create_calendar_event_reports_google_error_status():
 
 
 async def test_update_calendar_event_calls_api_with_patch():
-    from orchestrator.app.health_agent import update_calendar_event
+    from legacy_orchestrator.app.health_agent import update_calendar_event
 
     patch_event = AsyncMock(return_value={"id": "evt-1", "summary": "Dentist moved"})
-    with patch("orchestrator.app.google_calendar_api.patch_event", new=patch_event):
+    with patch("legacy_orchestrator.app.google_calendar_api.patch_event", new=patch_event):
         result = await update_calendar_event.ainvoke(
             {
                 "event_id": "evt-1",
@@ -197,10 +197,10 @@ async def test_update_calendar_event_calls_api_with_patch():
 
 
 async def test_delete_calendar_event_calls_api_with_event_id():
-    from orchestrator.app.health_agent import delete_calendar_event
+    from legacy_orchestrator.app.health_agent import delete_calendar_event
 
     delete = AsyncMock(return_value=None)
-    with patch("orchestrator.app.google_calendar_api.delete_event", new=delete):
+    with patch("legacy_orchestrator.app.google_calendar_api.delete_event", new=delete):
         result = await delete_calendar_event.ainvoke(
             {
                 "event_id": "evt-1",
@@ -213,7 +213,7 @@ async def test_delete_calendar_event_calls_api_with_event_id():
 
 
 async def test_delete_calendar_event_by_title_resolves_unique_event_id():
-    from orchestrator.app.health_agent import delete_calendar_event_by_title
+    from legacy_orchestrator.app.health_agent import delete_calendar_event_by_title
 
     delete = AsyncMock(return_value=None)
     events = [
@@ -227,10 +227,10 @@ async def test_delete_calendar_event_by_title_resolves_unique_event_id():
     ]
     with (
         patch(
-            "orchestrator.app.calendar_context.fetch_calendar_events",
+            "legacy_orchestrator.app.calendar_context.fetch_calendar_events",
             new=AsyncMock(return_value=events),
         ),
-        patch("orchestrator.app.google_calendar_api.delete_event", new=delete),
+        patch("legacy_orchestrator.app.google_calendar_api.delete_event", new=delete),
     ):
         result = await delete_calendar_event_by_title.ainvoke(
             {
@@ -245,7 +245,7 @@ async def test_delete_calendar_event_by_title_resolves_unique_event_id():
 
 
 async def test_delete_calendar_event_by_title_tolerates_extra_words_in_query():
-    from orchestrator.app.health_agent import delete_calendar_event_by_title
+    from legacy_orchestrator.app.health_agent import delete_calendar_event_by_title
 
     delete = AsyncMock(return_value=None)
     events = [
@@ -259,10 +259,10 @@ async def test_delete_calendar_event_by_title_tolerates_extra_words_in_query():
     ]
     with (
         patch(
-            "orchestrator.app.calendar_context.fetch_calendar_events",
+            "legacy_orchestrator.app.calendar_context.fetch_calendar_events",
             new=AsyncMock(return_value=events),
         ),
-        patch("orchestrator.app.google_calendar_api.delete_event", new=delete),
+        patch("legacy_orchestrator.app.google_calendar_api.delete_event", new=delete),
     ):
         result = await delete_calendar_event_by_title.ainvoke(
             {
@@ -277,7 +277,7 @@ async def test_delete_calendar_event_by_title_tolerates_extra_words_in_query():
 
 
 async def test_delete_calendar_event_by_title_refuses_ambiguous_matches():
-    from orchestrator.app.health_agent import delete_calendar_event_by_title
+    from legacy_orchestrator.app.health_agent import delete_calendar_event_by_title
 
     delete = AsyncMock(return_value=None)
     events = [
@@ -286,10 +286,10 @@ async def test_delete_calendar_event_by_title_refuses_ambiguous_matches():
     ]
     with (
         patch(
-            "orchestrator.app.calendar_context.fetch_calendar_events",
+            "legacy_orchestrator.app.calendar_context.fetch_calendar_events",
             new=AsyncMock(return_value=events),
         ),
-        patch("orchestrator.app.google_calendar_api.delete_event", new=delete),
+        patch("legacy_orchestrator.app.google_calendar_api.delete_event", new=delete),
     ):
         result = await delete_calendar_event_by_title.ainvoke(
             {

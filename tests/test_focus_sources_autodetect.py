@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage  # noqa: E402
 
-from orchestrator.app.health_agent import (  # noqa: E402
+from legacy_orchestrator.app.health_agent import (  # noqa: E402
     _autodetect_focus_sources,
     _merge_focus_sources,
 )

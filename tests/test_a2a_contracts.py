@@ -4,7 +4,7 @@ These tests assert that the three sources of truth for skill IDs do not
 drift apart:
 - `shared.skill_ids` — constants
 - `agents.<name>.app.skills.SKILLS` + `SKILL_PROMPTS`
-- `orchestrator.app.health_agent.ask_<name>_agent` Literal signatures
+- `legacy_orchestrator.app.health_agent.ask_<name>_agent` Literal signatures
 
 Adding a new skill must touch all three; these tests will catch a missed
 spot at CI time."""
@@ -94,7 +94,7 @@ def test_orchestrator_tool_literal_matches_skills(tool_name, agent_name):
     """Each ask_<peer>_agent's Literal[...] for `skill` matches the peer's
     declared text-routable SKILLS. Structured attachment skills use A2ASkillClient.
     """
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     skills_mod = importlib.import_module(skills_module_name(agent_name))
 

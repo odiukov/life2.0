@@ -44,4 +44,6 @@ def role_statements(database: str, passwords: RolePasswords) -> list[str]:
         "GRANT USAGE ON SCHEMA public TO app_rw, app_legacy",
         # The LangGraph checkpointer creates its own tables at runtime (setup()).
         "GRANT CREATE ON SCHEMA public TO app_legacy",
+        # Transfer runtime checkpoint objects before owner-managed migrations.
+        "REASSIGN OWNED BY app_legacy TO app_owner",
     ]

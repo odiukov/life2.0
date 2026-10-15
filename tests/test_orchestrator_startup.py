@@ -6,7 +6,7 @@ import pytest
 
 
 async def test_vault_startup_configuration_error_is_sanitized(monkeypatch):
-    from orchestrator.app import main, vault
+    from legacy_orchestrator.app import main, vault
 
     monkeypatch.setenv("SECRETS__KEY", "synthetic-private-orchestrator-key")
     monkeypatch.setattr(vault, "_box", None)

@@ -83,61 +83,58 @@ async def test_rw_reads_tables_without_rls(engines) -> None:
         assert (await conn.execute(text("SELECT count(*) FROM tasks"))).scalar_one() == 0
 
 
-@pytest.mark.parametrize("user", [None, "tenant-a", "tenant-b"])
-async def test_consent_reads_are_tenant_scoped(engines, user):
+@pytest.mark.parametrize("identity", [None, "a", "b"])
+async def test_consent_reads_are_tenant_scoped(engines, identity):
     admin, rw, _ = engines
+    a, b = await _seed(admin)
+    user = {"a": a, "b": b, None: None}[identity]
     async with admin.begin() as conn:
         await conn.execute(
-            text(
-                "INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES ('tenant-a', true), ('tenant-b', false)"
-            )
+            text("INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES (:a,true),(:b,false)"),
+            {"a": a, "b": b},
         )
     async with rw.begin() as conn:
         if user is not None:
-            await conn.execute(text("SELECT set_config('app.user_id', :uid, true)"), {"uid": user})
+            await conn.execute(
+                text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user)}
+            )
         ids = (await conn.execute(text("SELECT user_id FROM telemetry_consent"))).scalars().all()
     assert ids == ([] if user is None else [user])
 
 
-@pytest.mark.parametrize("user", [None, "tenant-a"])
-async def test_consent_cannot_insert_another_tenants_row(engines, user):
-    _, rw, _ = engines
+@pytest.mark.parametrize("has_tenant", [False, True])
+async def test_consent_cannot_insert_another_tenants_row(engines, has_tenant):
+    admin, rw, _ = engines
+    a, b = await _seed(admin)
     with pytest.raises(DBAPIError, match="row-level security"):
         await _insert_as(
             rw,
-            user,
-            text("INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES ('tenant-b', true)"),
-            {},
+            str(a) if has_tenant else None,
+            text("INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES (:b, true)"),
+            {"b": b},
         )
 
 
 async def test_consent_cannot_update_another_tenants_row(engines):
     admin, rw, _ = engines
+    a, b = await _seed(admin)
     async with admin.begin() as conn:
         await conn.execute(
-            text(
-                "INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES ('tenant-a', false), ('tenant-b', false)"
-            )
+            text("INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES (:a,false),(:b,false)"),
+            {"a": a, "b": b},
         )
     async with rw.begin() as conn:
-        await conn.execute(text("SELECT set_config('app.user_id', 'tenant-a', true)"))
+        await conn.execute(text("SELECT set_config('app.user_id', :a, true)"), {"a": str(a)})
         result = await conn.execute(
-            text("UPDATE telemetry_consent SET bodies_ok = true WHERE user_id = 'tenant-b'")
+            text("UPDATE telemetry_consent SET bodies_ok = true WHERE user_id = :b"), {"b": b}
         )
         assert result.rowcount == 0
         await conn.execute(
-            text("UPDATE telemetry_consent SET bodies_ok = true WHERE user_id = 'tenant-a'")
+            text("UPDATE telemetry_consent SET bodies_ok = true WHERE user_id = :a"), {"a": a}
         )
     async with admin.connect() as conn:
-        rows = (
-            await conn.execute(
-                text(
-                    "SELECT user_id, bodies_ok FROM telemetry_consent WHERE user_id LIKE 'tenant-%' ORDER BY user_id"
-                )
-            )
-        ).all()
-    assert rows == [("tenant-a", True), ("tenant-b", False)]
-    # The same pooled connection has no tenant after its transaction ends.
+        rows = (await conn.execute(text("SELECT user_id, bodies_ok FROM telemetry_consent"))).all()
+    assert set(rows) == {(a, True), (b, False)}
     async with rw.begin() as conn:
         assert (
             await conn.execute(text("SELECT count(*) FROM telemetry_consent"))

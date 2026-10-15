@@ -54,7 +54,7 @@ def _make_client(task: Task):
 
 
 def test_extract_consulted_peers_returns_list():
-    from orchestrator.app.health_agent import _extract_consulted_peers_from_task
+    from legacy_orchestrator.app.health_agent import _extract_consulted_peers_from_task
 
     out = _extract_consulted_peers_from_task(_task("hello", ["nutrition", "workout"]))
     assert out == ["nutrition", "workout"]
@@ -62,20 +62,20 @@ def test_extract_consulted_peers_returns_list():
 
 def test_extract_consulted_peers_returns_none_when_artifact_absent():
     """Older agents (no consulted_peers artifact) → None, not []."""
-    from orchestrator.app.health_agent import _extract_consulted_peers_from_task
+    from legacy_orchestrator.app.health_agent import _extract_consulted_peers_from_task
 
     assert _extract_consulted_peers_from_task(_task("hi", None)) is None
 
 
 def test_extract_consulted_peers_empty_list_round_trip():
-    from orchestrator.app.health_agent import _extract_consulted_peers_from_task
+    from legacy_orchestrator.app.health_agent import _extract_consulted_peers_from_task
 
     assert _extract_consulted_peers_from_task(_task("hi", [])) == []
 
 
 @pytest.mark.asyncio
 async def test_call_agent_with_artifact_returns_consulted_peers():
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     client = _make_client(_task("ok", ["nutrition", "workout"]))
     with (
@@ -94,7 +94,7 @@ async def test_call_agent_with_artifact_returns_consulted_peers():
 
 @pytest.mark.asyncio
 async def test_call_agent_with_artifact_returns_none_when_artifact_absent():
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     client = _make_client(_task("ok", None))
     with (

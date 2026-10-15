@@ -314,10 +314,12 @@ async def test_registry_matches_household_tables_and_every_household_column(engi
             await conn.execute(text("SELECT table_name, move_on_join FROM household_tables"))
         ).all()
     assert {r.table_name: r.move_on_join for r in rows} == HOUSEHOLD_TABLES
+    # These user-owned records retain household context; joining must not transfer them.
+    user_scoped_context = {"chat_tasks", "pending_actions"}
     scoped = {
         name
         for name, table in metadata.tables.items()
-        if "household_id" in table.c and name not in MEMBERSHIP_TABLES
+        if "household_id" in table.c and name not in MEMBERSHIP_TABLES | user_scoped_context
     }
     assert scoped == set(HOUSEHOLD_TABLES)
 

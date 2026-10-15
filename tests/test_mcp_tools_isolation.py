@@ -37,7 +37,7 @@ def _two_servers() -> dict[str, dict]:
 @pytest.mark.asyncio
 async def test_one_server_failure_does_not_block_others(monkeypatch):
     """If server A raises while opening a session, server B's tools still load."""
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)
@@ -71,7 +71,7 @@ async def test_one_server_failure_does_not_block_others(monkeypatch):
 @pytest.mark.asyncio
 async def test_all_servers_fail_returns_empty_list(monkeypatch):
     """If every server fails, the loader still returns [] — no exception leaks."""
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)
@@ -95,7 +95,7 @@ async def test_all_servers_fail_returns_empty_list(monkeypatch):
 @pytest.mark.asyncio
 async def test_load_tools_failure_isolated_per_server(monkeypatch):
     """If _adapter_load_tools raises for one server, others still load."""
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._MCP_TOOLS.clear()
     monkeypatch.setattr(mcp_tools, "_servers_from_env", _two_servers)

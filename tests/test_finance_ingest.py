@@ -1,4 +1,4 @@
-"""Tests for orchestrator.app.finance_ingest.
+"""Tests for legacy_orchestrator.app.finance_ingest.
 
 `ingest_rows` and `categorize_new` hit the DB (integration, skipped without
 POSTGRES_DSN). `build_upload_summary` is pure and runs unconditionally.
@@ -27,7 +27,7 @@ def _has_db() -> bool:
 
 
 def test_build_upload_summary_happy_path():
-    from orchestrator.app.finance_ingest import build_upload_summary
+    from legacy_orchestrator.app.finance_ingest import build_upload_summary
 
     s = build_upload_summary(
         inserted=12,
@@ -47,7 +47,7 @@ def test_build_upload_summary_happy_path():
 
 
 def test_build_upload_summary_zero_new():
-    from orchestrator.app.finance_ingest import build_upload_summary
+    from legacy_orchestrator.app.finance_ingest import build_upload_summary
 
     s = build_upload_summary(
         inserted=0,
@@ -141,14 +141,14 @@ def _fake_llm(payload: dict):
 async def test_categorize_new_uses_cache_hit():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_ingest import categorize_new
+    from legacy_orchestrator.app.finance_ingest import categorize_new
     from shared.db import upsert_category_cache
 
     await _seed_row("INGEST_1", "UBER TRIP 2026-04-01")
     await upsert_category_cache(_TEST_USER_ID, {"uber-trip": "transport"})
 
     fake = _fake_llm({})
-    with patch("orchestrator.app.finance_ingest._get_llm", return_value=fake):
+    with patch("legacy_orchestrator.app.finance_ingest._get_llm", return_value=fake):
         await categorize_new(_TEST_USER_ID, ["INGEST_1"])
 
     # LLM should NOT have been invoked because cache hit.
@@ -172,13 +172,13 @@ async def test_categorize_new_uses_cache_hit():
 async def test_categorize_new_invokes_llm_on_miss():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_ingest import categorize_new, _desc_key
+    from legacy_orchestrator.app.finance_ingest import categorize_new, _desc_key
 
     await _seed_row("INGEST_2", "SPOTIFY MONTHLY")
     key = _desc_key("SPOTIFY MONTHLY")
 
     fake = _fake_llm({key: "subscriptions"})
-    with patch("orchestrator.app.finance_ingest._get_llm", return_value=fake):
+    with patch("legacy_orchestrator.app.finance_ingest._get_llm", return_value=fake):
         await categorize_new(_TEST_USER_ID, ["INGEST_2"])
 
     fake.ainvoke.assert_awaited()
@@ -207,13 +207,13 @@ async def test_categorize_new_invokes_llm_on_miss():
 async def test_categorize_new_llm_failure_leaves_null():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_ingest import categorize_new
+    from legacy_orchestrator.app.finance_ingest import categorize_new
 
     await _seed_row("INGEST_3", "MYSTERY PAYMENT")
 
     broken = MagicMock()
     broken.ainvoke = AsyncMock(side_effect=RuntimeError("LLM boom"))
-    with patch("orchestrator.app.finance_ingest._get_llm", return_value=broken):
+    with patch("legacy_orchestrator.app.finance_ingest._get_llm", return_value=broken):
         await categorize_new(_TEST_USER_ID, ["INGEST_3"])  # must not raise
 
     import asyncpg
@@ -234,13 +234,13 @@ async def test_categorize_new_llm_failure_leaves_null():
 async def test_categorize_new_invalid_json_leaves_null():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_ingest import categorize_new
+    from legacy_orchestrator.app.finance_ingest import categorize_new
 
     await _seed_row("INGEST_4", "WEIRD MERCHANT")
 
     bad = MagicMock()
     bad.ainvoke = AsyncMock(return_value=MagicMock(content="NOT JSON <<<"))
-    with patch("orchestrator.app.finance_ingest._get_llm", return_value=bad):
+    with patch("legacy_orchestrator.app.finance_ingest._get_llm", return_value=bad):
         await categorize_new(_TEST_USER_ID, ["INGEST_4"])  # must not raise
 
     import asyncpg
@@ -264,7 +264,7 @@ async def test_categorize_new_invalid_json_leaves_null():
 async def test_ingest_rows_returns_inserted_and_uncategorized():
     if not _has_db():
         pytest.skip("POSTGRES_DSN not set")
-    from orchestrator.app.finance_ingest import ingest_rows
+    from legacy_orchestrator.app.finance_ingest import ingest_rows
 
     rows = [
         {

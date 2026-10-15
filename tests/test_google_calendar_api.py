@@ -31,7 +31,7 @@ def _transport(handler):
 
 def _with_token(token: str | None = "tok-123"):
     return patch(
-        "orchestrator.app.google_calendar.get_fresh_access_token",
+        "legacy_orchestrator.app.google_calendar.get_fresh_access_token",
         new=AsyncMock(return_value=token),
     )
 
@@ -44,7 +44,7 @@ async def test_list_events_sends_window_and_bearer_token():
         seen["auth"] = request.headers.get("Authorization")
         return httpx.Response(200, json={"items": [{"id": "evt-1"}]})
 
-    from orchestrator.app.google_calendar_api import list_events
+    from legacy_orchestrator.app.google_calendar_api import list_events
 
     with _with_token(), _transport(handler):
         items = await list_events(
@@ -67,7 +67,7 @@ async def test_list_events_returns_empty_when_google_omits_items():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={})
 
-    from orchestrator.app.google_calendar_api import list_events
+    from legacy_orchestrator.app.google_calendar_api import list_events
 
     with _with_token(), _transport(handler):
         assert await list_events(USER, time_min="a", time_max="b") == []
@@ -81,7 +81,7 @@ async def test_create_event_wraps_start_and_end_in_datetime_objects():
         seen["body"] = json.loads(request.content)
         return httpx.Response(200, json={"id": "evt-1", "summary": "Dentist"})
 
-    from orchestrator.app.google_calendar_api import create_event
+    from legacy_orchestrator.app.google_calendar_api import create_event
 
     with _with_token(), _transport(handler):
         result = await create_event(
@@ -107,7 +107,7 @@ async def test_patch_event_uses_patch_verb_and_event_path():
         seen["path"] = request.url.path
         return httpx.Response(200, json={"id": "evt-1"})
 
-    from orchestrator.app.google_calendar_api import patch_event
+    from legacy_orchestrator.app.google_calendar_api import patch_event
 
     with _with_token(), _transport(handler):
         await patch_event(USER, event_id="evt-1", patch={"summary": "moved"})
@@ -120,7 +120,7 @@ async def test_delete_event_tolerates_204_no_content():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(204)
 
-    from orchestrator.app.google_calendar_api import delete_event
+    from legacy_orchestrator.app.google_calendar_api import delete_event
 
     with _with_token(), _transport(handler):
         assert await delete_event(USER, event_id="evt-1") is None
@@ -133,7 +133,7 @@ async def test_event_id_is_url_encoded():
         seen["raw_path"] = request.url.raw_path.decode()
         return httpx.Response(204)
 
-    from orchestrator.app.google_calendar_api import delete_event
+    from legacy_orchestrator.app.google_calendar_api import delete_event
 
     with _with_token(), _transport(handler):
         await delete_event(USER, event_id="evt/with slash")
@@ -145,7 +145,7 @@ async def test_non_2xx_raises_calendar_api_error_with_status():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(400, text="bad start time")
 
-    from orchestrator.app.google_calendar_api import CalendarApiError, create_event
+    from legacy_orchestrator.app.google_calendar_api import CalendarApiError, create_event
 
     with _with_token(), _transport(handler):
         with pytest.raises(CalendarApiError) as exc:
@@ -162,7 +162,7 @@ async def test_missing_token_raises_calendar_not_connected_before_any_request():
         called["n"] += 1
         return httpx.Response(200, json={})
 
-    from orchestrator.app.google_calendar_api import CalendarNotConnected, list_events
+    from legacy_orchestrator.app.google_calendar_api import CalendarNotConnected, list_events
 
     with _with_token(None), _transport(handler):
         with pytest.raises(CalendarNotConnected):

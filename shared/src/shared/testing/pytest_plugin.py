@@ -27,7 +27,8 @@ TRUNCATE = (
     "finance_category_cache, integration_sync_state, integrations_credentials, oauth_state, telemetry_consent, "
     "households, household_credentials, household_members, household_invites, household_join_attempts, "
     "kitchen_batches, kitchen_operation_groups, kitchen_clarifications, kitchen_digest_runs, "
-    "notifications, push_tokens, auth_flows, auth_tickets, auth_identities, auth_sessions "
+    "notifications, push_tokens, auth_flows, auth_tickets, auth_identities, auth_sessions, "
+    "chat_tasks, chat_messages, pending_actions, checkpoints, checkpoint_blobs, checkpoint_writes "
     "RESTART IDENTITY CASCADE"
 )
 
@@ -61,9 +62,6 @@ async def _truncate(admin_url: str) -> None:
     try:
         async with engine.begin() as conn:
             await conn.execute(text(TRUNCATE))
-            await conn.execute(
-                text("INSERT INTO telemetry_consent (user_id, bodies_ok) VALUES ('owner', true)")
-            )
     finally:
         await engine.dispose()
 

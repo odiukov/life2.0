@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from langgraph.checkpoint.memory import MemorySaver
 
-from orchestrator.app.health_agent import create_health_agent
+from legacy_orchestrator.app.health_agent import create_health_agent
 
 
 @pytest.mark.asyncio

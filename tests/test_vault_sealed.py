@@ -12,7 +12,7 @@ KEY = base64.b64encode(bytes(range(32))).decode()
 
 @pytest.fixture(autouse=True)
 async def _close_pool_and_reset_box():
-    from orchestrator.app import vault
+    from legacy_orchestrator.app import vault
     from shared.db import close_db_pool
 
     yield
@@ -22,7 +22,7 @@ async def _close_pool_and_reset_box():
 
 async def test_put_seals_and_get_reseals_legacy_rows(monkeypatch):
     monkeypatch.setenv("SECRETS__KEY", KEY)
-    from orchestrator.app import vault
+    from legacy_orchestrator.app import vault
     from shared.db import get_pool
 
     vault._reset_box_for_tests()
@@ -56,7 +56,7 @@ async def test_put_seals_and_get_reseals_legacy_rows(monkeypatch):
 
 
 def test_ensure_ready_needs_the_key(monkeypatch):
-    from orchestrator.app import vault
+    from legacy_orchestrator.app import vault
 
     monkeypatch.delenv("SECRETS__KEY", raising=False)
     vault._reset_box_for_tests()
@@ -72,7 +72,7 @@ async def test_legacy_resealing_preserves_concurrent_reconnect(monkeypatch):
     import asyncio
     from contextlib import asynccontextmanager
 
-    from orchestrator.app import vault
+    from legacy_orchestrator.app import vault
     from shared.db import get_pool
 
     monkeypatch.setenv("SECRETS__KEY", KEY)

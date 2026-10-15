@@ -4,7 +4,7 @@ import pytest
 
 
 def test_kitchen_tool_exposes_only_conversational_skills():
-    from orchestrator.app.health_agent import ask_kitchen_agent
+    from legacy_orchestrator.app.health_agent import ask_kitchen_agent
 
     fn = (
         ask_kitchen_agent.coroutine
@@ -17,7 +17,7 @@ def test_kitchen_tool_exposes_only_conversational_skills():
 
 
 async def test_kitchen_tool_calls_the_kitchen_peer(monkeypatch):
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     seen = {}
 
@@ -43,14 +43,14 @@ async def test_kitchen_tool_calls_the_kitchen_peer(monkeypatch):
 
 
 def test_kitchen_tool_is_registered_and_prompt_mentions_it():
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     assert "ask_kitchen_agent" in health_agent._SYSTEM_PROMPT
 
 
 @pytest.mark.parametrize("skill", ["kitchen.update_inventory", "kitchen.query"])
 async def test_kitchen_reply_question_is_preserved_and_call_is_observable(monkeypatch, skill):
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
 
     reply = "Какое молоко?\n1. Первое\n2. Второе"
 
@@ -73,7 +73,7 @@ async def test_kitchen_reply_question_is_preserved_and_call_is_observable(monkey
 
 
 async def test_kitchen_tool_is_registered_with_react_agent(monkeypatch):
-    from orchestrator.app import health_agent, mcp_tools
+    from legacy_orchestrator.app import health_agent, mcp_tools
     import langgraph.prebuilt
 
     async def no_mcp():

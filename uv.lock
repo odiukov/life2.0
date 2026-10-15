@@ -3005,8 +3005,8 @@ wheels = [
 
 [[package]]
 name = "orchestrator"
-version = "0.1.0"
-source = { virtual = "orchestrator" }
+version = "0.2.0"
+source = { editable = "orchestrator" }
 dependencies = [
     { name = "a2a-sdk" },
     { name = "asyncpg" },
@@ -3028,10 +3028,16 @@ dependencies = [
     { name = "psycopg", extra = ["binary", "pool"] },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pymupdf" },
+    { name = "python-multipart" },
     { name = "shared" },
     { name = "traceloop-sdk" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "wrapt" },
+]
+
+[package.optional-dependencies]
+claude = [
+    { name = "shared", extra = ["claude"] },
 ]
 
 [package.metadata]
@@ -3043,8 +3049,8 @@ requires-dist = [
     { name = "gateway", editable = "gateway" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "langchain-mcp-adapters", specifier = ">=0.1,<1" },
-    { name = "langgraph", specifier = ">=0.2" },
-    { name = "langgraph-checkpoint-postgres", specifier = ">=2" },
+    { name = "langgraph", specifier = ">=1.2" },
+    { name = "langgraph-checkpoint-postgres", specifier = "==3.1.3" },
     { name = "opentelemetry-api", specifier = ">=1.27" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.27" },
     { name = "opentelemetry-instrumentation-asyncpg", specifier = ">=0.48b0" },
@@ -3056,11 +3062,14 @@ requires-dist = [
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "pymupdf", specifier = ">=1.24" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "shared", editable = "shared" },
+    { name = "shared", extras = ["claude"], marker = "extra == 'claude'", editable = "shared" },
     { name = "traceloop-sdk", specifier = ">=0.30" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
     { name = "wrapt", specifier = "<2.0" },
 ]
+provides-extras = ["claude"]
 
 [[package]]
 name = "orjson"

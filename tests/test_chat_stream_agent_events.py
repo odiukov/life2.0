@@ -18,8 +18,8 @@ def _parse_sse(body: str) -> list[dict]:
 
 def test_chat_stream_includes_routed_and_consulted(monkeypatch):
     """When the routing iterator yields a primary peer + consulted peers, both events are emitted."""
-    from orchestrator.app import main as omain
-    from orchestrator.app.auth import current_user
+    from legacy_orchestrator.app import main as omain
+    from legacy_orchestrator.app.auth import current_user
     from uuid import UUID
 
     async def _fake_run_graph_iter(_text, _user_id, _thread_id, _user_timezone=None):
@@ -48,8 +48,8 @@ def test_chat_stream_includes_routed_and_consulted(monkeypatch):
 
 def test_chat_stream_main_when_no_peer_called(monkeypatch):
     """Synthesis-only response → primary='main', no AgentConsulted event."""
-    from orchestrator.app import main as omain
-    from orchestrator.app.auth import current_user
+    from legacy_orchestrator.app import main as omain
+    from legacy_orchestrator.app.auth import current_user
     from uuid import UUID
 
     async def _fake_run_graph_iter(_text, _user_id, _thread_id, _user_timezone=None):
@@ -85,7 +85,7 @@ def test_run_graph_with_routing_accumulates_parallel_tool_updates(monkeypatch):
 
     from langchain_core.messages import AIMessage, ToolMessage
 
-    from orchestrator.app import main as omain
+    from legacy_orchestrator.app import main as omain
 
     def _done(name: str, idx: int) -> dict:
         return {
@@ -141,8 +141,8 @@ def test_run_graph_with_routing_accumulates_parallel_tool_updates(monkeypatch):
 
 
 def test_chat_stream_passes_user_timezone_to_graph(monkeypatch):
-    from orchestrator.app import main as omain
-    from orchestrator.app.auth import current_user
+    from legacy_orchestrator.app import main as omain
+    from legacy_orchestrator.app.auth import current_user
     from uuid import UUID
 
     captured = {}

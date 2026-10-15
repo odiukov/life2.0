@@ -1,4 +1,4 @@
-"""Contract tests for orchestrator.app.mcp_tools.get_user_mcp_tools."""
+"""Contract tests for legacy_orchestrator.app.mcp_tools.get_user_mcp_tools."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ USER = UUID("dddddddd-dddd-dddd-dddd-dddddddddddd")
 
 @pytest.mark.asyncio
 async def test_empty_when_nothing_connected(monkeypatch):
-    from orchestrator.app import mcp_tools, vault
+    from legacy_orchestrator.app import mcp_tools, vault
 
     mcp_tools._USER_MCP_CACHE.clear()
     monkeypatch.setattr(vault, "get", AsyncMock(return_value=None))
@@ -24,7 +24,7 @@ async def test_empty_when_nothing_connected(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cached_on_second_call(monkeypatch):
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._USER_MCP_CACHE.clear()
     calls = {"n": 0}
@@ -43,7 +43,7 @@ async def test_cached_on_second_call(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_invalidate_forces_rebuild(monkeypatch):
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._USER_MCP_CACHE.clear()
     calls = {"n": 0}
@@ -62,7 +62,7 @@ async def test_invalidate_forces_rebuild(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cache_evicts_when_full(monkeypatch):
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._USER_MCP_CACHE.clear()
     monkeypatch.setattr(mcp_tools, "_USER_MCP_MAX_ENTRIES", 3)
@@ -81,7 +81,7 @@ async def test_cache_evicts_when_full(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_user_mcp_tools_keep_session_open_until_invalidation(monkeypatch):
-    from orchestrator.app import mcp_tools, vault
+    from legacy_orchestrator.app import mcp_tools, vault
 
     mcp_tools._USER_MCP_CACHE.clear()
     await mcp_tools.close_mcp_sessions()

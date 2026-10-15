@@ -93,9 +93,9 @@ say "8. briefing contains 📅 line (if today has events)"
 docker compose exec -T orchestrator python -c "
 import asyncio, sys
 sys.path.insert(0, '/shared')
-from orchestrator.app.mcp_tools import load_mcp_tools
-from orchestrator.app.db import get_yesterday_metrics
-from orchestrator.app.briefing import format_message
+from legacy_orchestrator.app.mcp_tools import load_mcp_tools
+from legacy_orchestrator.app.db import get_yesterday_metrics
+from legacy_orchestrator.app.briefing import format_message
 
 async def main():
     await load_mcp_tools()  # populate _MCP_TOOLS cache in this subprocess

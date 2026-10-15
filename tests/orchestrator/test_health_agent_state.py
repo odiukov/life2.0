@@ -17,7 +17,7 @@ class _FakeRunnableConfig(dict):
 
 @pytest.mark.asyncio
 @patch(
-    "orchestrator.app.health_agent._call_agent_with_artifact",
+    "legacy_orchestrator.app.health_agent._call_agent_with_artifact",
     new=AsyncMock(
         return_value=(
             "Logged: 30 min run",
@@ -27,7 +27,7 @@ class _FakeRunnableConfig(dict):
     ),
 )
 async def test_ask_workout_log_returns_done_with_log_entry():
-    from orchestrator.app.health_agent import ask_workout_agent
+    from legacy_orchestrator.app.health_agent import ask_workout_agent
 
     state = {"messages": [], "toolCalls": []}
     cmd = await ask_workout_agent.ainvoke(
@@ -61,11 +61,11 @@ async def test_ask_workout_log_returns_done_with_log_entry():
 
 @pytest.mark.asyncio
 @patch(
-    "orchestrator.app.health_agent._call_agent_with_artifact",
+    "legacy_orchestrator.app.health_agent._call_agent_with_artifact",
     new=AsyncMock(return_value=("analysis text", None, None)),
 )
 async def test_ask_sleep_analyze_does_not_set_last_logged_entry():
-    from orchestrator.app.health_agent import ask_sleep_agent
+    from legacy_orchestrator.app.health_agent import ask_sleep_agent
 
     state = {"messages": [], "toolCalls": []}
     cmd = await ask_sleep_agent.ainvoke(
@@ -86,11 +86,11 @@ async def test_ask_sleep_analyze_does_not_set_last_logged_entry():
 
 @pytest.mark.asyncio
 @patch(
-    "orchestrator.app.health_agent._call_agent_with_artifact",
+    "legacy_orchestrator.app.health_agent._call_agent_with_artifact",
     side_effect=RuntimeError("boom"),
 )
 async def test_tool_exception_sets_error_status(_call_mock):
-    from orchestrator.app.health_agent import ask_nutrition_agent
+    from legacy_orchestrator.app.health_agent import ask_nutrition_agent
 
     state = {"messages": [], "toolCalls": []}
     cmd = await ask_nutrition_agent.ainvoke(

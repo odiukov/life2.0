@@ -16,7 +16,7 @@ from a2a.types import (
     TextPart,
 )
 
-from orchestrator.app.health_agent import ask_sleep_agent
+from legacy_orchestrator.app.health_agent import ask_sleep_agent
 
 
 def _make_task(text: str) -> Task:
@@ -66,9 +66,9 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
         return fake
 
     with (
-        patch("orchestrator.app.health_agent.get_client", side_effect=fake_get_client),
+        patch("legacy_orchestrator.app.health_agent.get_client", side_effect=fake_get_client),
         patch(
-            "orchestrator.app.health_agent._resolve_url",
+            "legacy_orchestrator.app.health_agent._resolve_url",
             return_value="http://sleep-agent:8080",
         ),
     ):
@@ -89,13 +89,13 @@ async def test_ask_sleep_agent_returns_artifact_and_passes_skill():
 
 @pytest.mark.asyncio
 async def test_ask_sleep_agent_returns_unavailable_when_url_missing():
-    with patch("orchestrator.app.health_agent._resolve_url", return_value=None):
+    with patch("legacy_orchestrator.app.health_agent._resolve_url", return_value=None):
         cmd = await ask_sleep_agent.ainvoke(_tool_call({"message": "hi", "skill": "analyze_sleep"}))
     assert "unavailable" in cmd.update["messages"][0].content.lower()
 
 
 def test_health_agent_exposes_ask_body_agent():
-    from orchestrator.app.health_agent import ask_body_agent
+    from legacy_orchestrator.app.health_agent import ask_body_agent
 
     assert ask_body_agent is not None
     assert ask_body_agent.name == "ask_body_agent"
@@ -110,8 +110,8 @@ def test_every_peer_in_agent_from_tool_has_tool():
     """Contract test: every peer registered in _AGENT_FROM_TOOL must have a
     matching @tool function in peer_tools, otherwise LangGraph cannot route
     to it."""
-    from orchestrator.app.main import _AGENT_FROM_TOOL
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app.main import _AGENT_FROM_TOOL
+    from legacy_orchestrator.app import health_agent
 
     tool_names = {
         getattr(t, "name", None)
@@ -136,7 +136,7 @@ def test_every_peer_in_agent_from_tool_has_tool():
 def test_medication_tool_accepts_all_skill_ids():
     """The Literal in ask_medication_agent must list every skill ID
     declared in the medication card, excluding structured dashboard skills."""
-    from orchestrator.app import health_agent
+    from legacy_orchestrator.app import health_agent
     from medication.adapters.a2a.card import SKILLS
     import typing
 

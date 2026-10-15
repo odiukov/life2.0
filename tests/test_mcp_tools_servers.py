@@ -14,7 +14,7 @@ import pytest
     ],
 )
 def test_legacy_home_environment_is_ignored(monkeypatch, values):
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     for key in ("HA_BASE_URL", "HA_TOKEN"):
         monkeypatch.delenv(key, raising=False)

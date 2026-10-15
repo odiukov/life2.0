@@ -6,7 +6,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_call_agent_with_artifact_includes_focus_sources_when_provided():
     """The A2A Message metadata must carry focus_sources end-to-end."""
-    from orchestrator.app.health_agent import _call_agent_with_artifact
+    from legacy_orchestrator.app.health_agent import _call_agent_with_artifact
 
     captured: dict = {}
 
@@ -23,8 +23,11 @@ async def test_call_agent_with_artifact_includes_focus_sources_when_provided():
     fake_client = FakeClient()
 
     with (
-        patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"),
-        patch("orchestrator.app.health_agent.get_client", new=AsyncMock(return_value=fake_client)),
+        patch("legacy_orchestrator.app.health_agent._resolve_url", return_value="http://x"),
+        patch(
+            "legacy_orchestrator.app.health_agent.get_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
     ):
         await _call_agent_with_artifact(
             agent="workout",
@@ -42,7 +45,7 @@ async def test_call_agent_with_artifact_includes_focus_sources_when_provided():
 @pytest.mark.asyncio
 async def test_call_agent_with_artifact_omits_focus_sources_when_none():
     """No focus_sources → key absent from metadata (avoids spurious empty list)."""
-    from orchestrator.app.health_agent import _call_agent_with_artifact
+    from legacy_orchestrator.app.health_agent import _call_agent_with_artifact
 
     captured: dict = {}
 
@@ -58,8 +61,11 @@ async def test_call_agent_with_artifact_omits_focus_sources_when_none():
 
     fake_client = FakeClient()
     with (
-        patch("orchestrator.app.health_agent._resolve_url", return_value="http://x"),
-        patch("orchestrator.app.health_agent.get_client", new=AsyncMock(return_value=fake_client)),
+        patch("legacy_orchestrator.app.health_agent._resolve_url", return_value="http://x"),
+        patch(
+            "legacy_orchestrator.app.health_agent.get_client",
+            new=AsyncMock(return_value=fake_client),
+        ),
     ):
         await _call_agent_with_artifact(
             agent="workout",

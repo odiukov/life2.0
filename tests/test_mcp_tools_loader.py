@@ -9,7 +9,7 @@ async def test_load_mcp_tools_returns_empty_when_no_servers_configured(monkeypat
     """With no MCP_*_URL env vars set, loader returns []."""
     monkeypatch.delenv("HA_BASE_URL", raising=False)
     monkeypatch.delenv("HA_TOKEN", raising=False)
-    from orchestrator.app.mcp_tools import load_mcp_tools, _MCP_TOOLS
+    from legacy_orchestrator.app.mcp_tools import load_mcp_tools, _MCP_TOOLS
 
     _MCP_TOOLS.clear()
     tools = await load_mcp_tools()
@@ -21,7 +21,7 @@ async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
     """With explicit server configuration, loader opens a session and feeds it to
     _adapter_load_tools."""
     monkeypatch.setattr(
-        "orchestrator.app.mcp_tools._servers_from_env",
+        "legacy_orchestrator.app.mcp_tools._servers_from_env",
         lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
     )
 
@@ -47,10 +47,10 @@ async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
         return [fake_tool]
 
     with (
-        patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
-        patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
+        patch("legacy_orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
+        patch("legacy_orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
     ):
-        from orchestrator.app import mcp_tools
+        from legacy_orchestrator.app import mcp_tools
 
         mcp_tools._MCP_TOOLS.clear()
         await mcp_tools.close_mcp_sessions()
@@ -69,7 +69,7 @@ async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
 async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
     """If MultiServerMCPClient raises (e.g. server down), loader returns []."""
     monkeypatch.setattr(
-        "orchestrator.app.mcp_tools._servers_from_env",
+        "legacy_orchestrator.app.mcp_tools._servers_from_env",
         lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
     )
 
@@ -80,8 +80,8 @@ async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
         async def get_tools(self):
             raise RuntimeError("server unreachable")
 
-    with patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient):
-        from orchestrator.app import mcp_tools
+    with patch("legacy_orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient):
+        from legacy_orchestrator.app import mcp_tools
 
         mcp_tools._MCP_TOOLS.clear()
         tools = await mcp_tools.load_mcp_tools()
@@ -93,7 +93,7 @@ async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
 async def test_load_mcp_tools_caches_by_name(monkeypatch):
     """After a successful load, tools are indexed by `.name` in the module cache."""
     monkeypatch.setattr(
-        "orchestrator.app.mcp_tools._servers_from_env",
+        "legacy_orchestrator.app.mcp_tools._servers_from_env",
         lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
     )
 
@@ -119,10 +119,10 @@ async def test_load_mcp_tools_caches_by_name(monkeypatch):
         return [FakeTool("HassTurnOn"), FakeTool("GetLiveContext")]
 
     with (
-        patch("orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
-        patch("orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
+        patch("legacy_orchestrator.app.mcp_tools.MultiServerMCPClient", FakeClient),
+        patch("legacy_orchestrator.app.mcp_tools._adapter_load_tools", new=fake_load),
     ):
-        from orchestrator.app import mcp_tools
+        from legacy_orchestrator.app import mcp_tools
 
         mcp_tools._MCP_TOOLS.clear()
         await mcp_tools.close_mcp_sessions()
@@ -136,7 +136,7 @@ async def test_load_mcp_tools_caches_by_name(monkeypatch):
 
 
 def test_get_mcp_tool_returns_none_for_unknown_name():
-    from orchestrator.app import mcp_tools
+    from legacy_orchestrator.app import mcp_tools
 
     mcp_tools._MCP_TOOLS.clear()
     assert mcp_tools.get_mcp_tool("nonexistent-tool") is None

@@ -5,7 +5,7 @@ import re
 
 def _get_system_prompt():
     """Extract _SYSTEM_PROMPT from source to avoid import issues."""
-    with open("orchestrator/app/health_agent.py", "r") as f:
+    with open("legacy_orchestrator/app/health_agent.py", "r") as f:
         content = f.read()
     # Match the full _SYSTEM_PROMPT tuple definition
     match = re.search(r"_SYSTEM_PROMPT = \(([\s\S]*?)\)\s*\n\s*\ndef ", content)

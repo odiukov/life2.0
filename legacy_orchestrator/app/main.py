@@ -231,11 +231,10 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
         try:
             from .consent_resolver import is_consented
 
-            _user_for_consent = _os.environ.get("LANGFUSE_DEFAULT_USER_ID", "owner")
-            _bodies_ok = await is_consented(_user_for_consent)
+            _bodies_ok = await is_consented(user_id)
         except Exception as _e:
             _logging.getLogger(__name__).warning(
-                "consent lookup failed, defaulting to bodies_ok=False: %s", _e
+                "consent_lookup_failed error_type=%s", type(_e).__name__
             )
             _bodies_ok = False  # fail-closed for privacy
 

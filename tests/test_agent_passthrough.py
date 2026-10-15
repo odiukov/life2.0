@@ -10,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from orchestrator.app.agent_passthrough import router as passthrough_router
+from legacy_orchestrator.app.agent_passthrough import router as passthrough_router
 
 
 def _parse_sse(body: str) -> list[dict]:
@@ -25,7 +25,7 @@ def _parse_sse(body: str) -> list[dict]:
 @pytest.fixture
 def app(monkeypatch):
     """Build a minimal FastAPI app with auth dependency stubbed."""
-    from orchestrator.app.auth import current_user
+    from legacy_orchestrator.app.auth import current_user
 
     app = FastAPI()
     app.include_router(passthrough_router)
@@ -34,7 +34,7 @@ def app(monkeypatch):
 
 
 def test_unknown_agent_returns_404(app, monkeypatch):
-    from orchestrator.app import agent_passthrough as ap
+    from legacy_orchestrator.app import agent_passthrough as ap
 
     monkeypatch.setattr(ap, "get_agent_url", lambda _name: None)
     client = TestClient(app)
@@ -45,7 +45,7 @@ def test_unknown_agent_returns_404(app, monkeypatch):
 
 
 def test_happy_path_emits_routed_text_consulted_finished(app, monkeypatch):
-    from orchestrator.app import agent_passthrough as ap
+    from legacy_orchestrator.app import agent_passthrough as ap
 
     monkeypatch.setattr(ap, "get_agent_url", lambda _n: "http://sleep:8001")
 
@@ -76,7 +76,7 @@ def test_happy_path_emits_routed_text_consulted_finished(app, monkeypatch):
 
 
 def test_peer_error_emits_error_text_and_finishes(app, monkeypatch):
-    from orchestrator.app import agent_passthrough as ap
+    from legacy_orchestrator.app import agent_passthrough as ap
 
     monkeypatch.setattr(ap, "get_agent_url", lambda _n: "http://sleep:8001")
 
@@ -104,7 +104,7 @@ def test_peer_error_emits_error_text_and_finishes(app, monkeypatch):
 @pytest.mark.asyncio
 async def test_stream_peer_call_extracts_analysis_and_consulted_peers(monkeypatch):
     """stream_peer_call yields normalized events from real A2A artifacts."""
-    from orchestrator.app import agent_passthrough as ap
+    from legacy_orchestrator.app import agent_passthrough as ap
     from a2a.types import (
         Artifact,
         DataPart,

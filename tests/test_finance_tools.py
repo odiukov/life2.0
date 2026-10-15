@@ -22,15 +22,15 @@ def _state() -> dict:
 
 
 async def test_query_finance_summary_formats_per_currency():
-    from orchestrator.app.health_agent import query_finance_summary
+    from legacy_orchestrator.app.health_agent import query_finance_summary
 
     with (
         patch(
-            "orchestrator.app.finance_queries.income_for_month",
+            "legacy_orchestrator.app.finance_queries.income_for_month",
             new=AsyncMock(return_value={"USD": Decimal("2500.00")}),
         ) as income,
         patch(
-            "orchestrator.app.finance_queries.spending_by_category",
+            "legacy_orchestrator.app.finance_queries.spending_by_category",
             new=AsyncMock(return_value=[("food", "USD", Decimal("340.00"))]),
         ) as spending,
     ):
@@ -48,10 +48,10 @@ async def test_query_finance_summary_formats_per_currency():
 
 
 async def test_query_finance_categories_lists_top():
-    from orchestrator.app.health_agent import query_finance_categories
+    from legacy_orchestrator.app.health_agent import query_finance_categories
 
     with patch(
-        "orchestrator.app.finance_queries.spending_by_category",
+        "legacy_orchestrator.app.finance_queries.spending_by_category",
         new=AsyncMock(
             return_value=[
                 ("software", "USD", Decimal("420")),
@@ -71,10 +71,10 @@ async def test_query_finance_categories_lists_top():
 
 
 async def test_query_finance_runway_mentions_days():
-    from orchestrator.app.health_agent import query_finance_runway
+    from legacy_orchestrator.app.health_agent import query_finance_runway
 
     with patch(
-        "orchestrator.app.finance_queries.runway",
+        "legacy_orchestrator.app.finance_queries.runway",
         new=AsyncMock(
             return_value={
                 "USD": {

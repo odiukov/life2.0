@@ -1,5 +1,5 @@
 import pytest
-from orchestrator.app.file_router import _classify_text
+from legacy_orchestrator.app.file_router import _classify_text
 
 
 def test_classify_vihealth_body_fat_rate():
@@ -23,7 +23,7 @@ def test_classify_unknown():
 
 
 from datetime import datetime, timezone
-from orchestrator.app.file_router import _map_body_rows, _vihealth_summary
+from legacy_orchestrator.app.file_router import _map_body_rows, _vihealth_summary
 
 
 def test_map_body_rows_single_measurement():
@@ -95,7 +95,7 @@ def test_classify_payoneer_single_keyword_is_unknown():
 
 @pytest.mark.asyncio
 async def test_insert_body_rows_empty_list_returns_zero():
-    from orchestrator.app.db import insert_body_rows
+    from legacy_orchestrator.app.db import insert_body_rows
 
     written, unchanged = await insert_body_rows([], None)
     assert written == 0
