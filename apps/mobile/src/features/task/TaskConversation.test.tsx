@@ -385,3 +385,31 @@ test('Android source chooser exposes three sources and cancellable dismissal', a
     Object.defineProperty(Platform, 'OS', { configurable: true, value: original });
   }
 });
+
+test('E2E completion marker requires the latest nonempty assistant reply after streaming', () => {
+  const reply = {
+    kind: 'assistant' as const,
+    id: 'a1',
+    text: 'Added milk',
+    streaming: false,
+    completed: true,
+  };
+  const { rerender } = render(<TaskConversation chat={chat({ messages: [reply] })} />);
+  expect(screen.getByTestId('task-assistant-complete').props.accessibilityLabel).toBe('Added milk');
+  const update = (messages: TaskChat['messages'], phase: TaskChat['phase'] = 'idle') =>
+    rerender(
+      <ThemeProvider>
+        <TaskConversation chat={chat({ messages, phase })} />
+      </ThemeProvider>,
+    );
+  update([{ ...reply, streaming: true }], 'streaming');
+  expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
+  update([{ ...reply, completed: undefined }]);
+  expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
+  update([{ ...reply, completed: false }]);
+  expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
+  update([{ ...reply, text: '   ' }]);
+  expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
+  update([reply, { kind: 'user', id: 'u2', text: 'Next request', attachments: [] }]);
+  expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
+});

@@ -87,6 +87,7 @@ export function MeHeader({
       </Pressable>
       <Pressable
         accessibilityRole="button"
+        testID="me-settings"
         accessibilityLabel={t('voice.open_settings')}
         onPress={() => onSettings()}
         style={[styles.settingsBtn, { backgroundColor: colors.bg2, borderColor: colors.border }]}

@@ -1,0 +1,26 @@
+appId: app.lifeagents.mobile
+name: Task accepts a grocery request and ends after a completed reply
+---
+- launchApp
+- runFlow: shared/dismiss-dev-overlays.yaml
+# English simulator locale, matching the other flows; Russian is user input.
+- tapOn:
+    id: 'task-button'
+- assertVisible:
+    id: 'task-sheet'
+- tapOn:
+    id: 'ask-input'
+- inputText: 'Купил молоко 2 л'
+- tapOn:
+    id: 'ask-send'
+# This selector exists only for nonempty assistant text after streaming ends.
+# Matching milk text alone would incorrectly pass on the user bubble.
+- extendedWaitUntil:
+    visible:
+      id: 'task-assistant-complete'
+    timeout: 60000
+- tapOn:
+    id: 'task-close'
+- tapOn: 'End'
+- assertNotVisible:
+    id: 'task-sheet'

@@ -1,23 +1,24 @@
 appId: app.lifeagents.mobile
-name: Chat streams an answer from the orchestrator
+name: Task streams a completed assistant answer
 ---
 - launchApp
 - runFlow: shared/dismiss-dev-overlays.yaml
 - tapOn:
-    text: "Chat, tab.*"
-- assertVisible: "Agent status.*"
-- tapOn: ".*Ask anything.*"
-- inputText: "How did I sleep this week?"
-# Enter inserts a newline in the composer; the send button is the round control
-# at the trailing edge of the input.
+    id: 'task-button'
+- assertVisible:
+    id: 'task-sheet'
 - tapOn:
-    point: 90%, 55%
-- hideKeyboard
-# The orchestrator consults the sleep agent before answering, so allow for a
-# full round trip through the LLM provider.
+    id: 'ask-input'
+- inputText: 'How did I sleep this week?'
+- tapOn:
+    id: 'ask-send'
 - extendedWaitUntil:
-    visible: ".*How did I sleep this week\\?.*"
-    timeout: 20000
-- waitForAnimationToEnd:
+    visible:
+      id: 'task-assistant-complete'
     timeout: 60000
-- takeScreenshot: screenshots/chat
+- takeScreenshot: screenshots/task-answer
+- tapOn:
+    id: 'task-close'
+- tapOn: 'End'
+- assertNotVisible:
+    id: 'task-sheet'

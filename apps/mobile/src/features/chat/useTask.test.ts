@@ -27,6 +27,7 @@ test('the first message opens a task lazily, stores its id and streams the reply
     consulted: ['nutrition'],
     text: 'Спал 7 ч.',
     streaming: false,
+    completed: true,
   });
   expect(result.current.phase).toBe('idle');
 });
@@ -779,5 +780,38 @@ test.each(['background', 'unmount'] as const)(
     });
     expect(api.close.mock.calls).toEqual([['a']]);
     expect(await loadPendingDeletes()).toEqual(['b']);
+  },
+);
+
+test.each(['missing-finished', 'run-error', 'http-error'] as const)(
+  'partial output does not become completed on %s',
+  async (failure) => {
+    const events = [{ type: 'text' as const, delta: 'Partial reply' }];
+    const ending =
+      failure === 'run-error'
+        ? [
+            { type: 'error' as const, code: 'run_error', message: '' },
+            { type: 'finished' as const },
+          ]
+        : failure === 'http-error'
+          ? [
+              { type: 'http_error' as const, status: 0, code: 'network' },
+              { type: 'finished' as const },
+            ]
+          : [];
+    const api = fakeApi({
+      post: jest.fn(() => ({ events: gen(...events, ...ending), abort: jest.fn() })),
+    });
+    const { result } = renderHook(() => useTask(api));
+    let sent = true;
+    await act(async () => {
+      sent = await result.current.send({ text: 'Hello' });
+    });
+    expect(sent).toBe(false);
+    expect(result.current.messages.find((m) => m.kind === 'assistant')).toMatchObject({
+      text: 'Partial reply',
+      streaming: false,
+      completed: false,
+    });
   },
 );

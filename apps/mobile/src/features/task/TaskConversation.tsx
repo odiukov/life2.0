@@ -334,7 +334,27 @@ export function TaskConversation({
                 )}
             </View>
           ) : (
-            <View style={{ gap: spacing.s1, alignItems: 'flex-start' }}>
+            <View
+              testID={
+                item.completed &&
+                !item.streaming &&
+                item.text.trim() &&
+                chat.phase === 'idle' &&
+                item.id === chat.messages.at(-1)?.id
+                  ? 'task-assistant-complete'
+                  : undefined
+              }
+              accessibilityLabel={
+                item.completed &&
+                !item.streaming &&
+                item.text.trim() &&
+                chat.phase === 'idle' &&
+                item.id === chat.messages.at(-1)?.id
+                  ? item.text
+                  : undefined
+              }
+              style={{ gap: spacing.s1, alignItems: 'flex-start' }}
+            >
               {item.agent && <AgentHeader primary={item.agent} consulted={item.consulted ?? []} />}
               {(item.text || item.streaming) && (
                 <Bubble

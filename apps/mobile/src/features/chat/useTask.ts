@@ -31,6 +31,7 @@ export type ChatMessage =
       agent?: AgentId;
       consulted?: AgentId[];
       streaming: boolean;
+      completed?: boolean;
       action?: ActionState;
     }
   | { kind: 'error'; id: string; code: string; message: string };
@@ -293,7 +294,7 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
         );
       } finally {
         stream.current = null;
-        patch(() => ({ streaming: false }));
+        patch(() => ({ streaming: false, completed: completed && !failed }));
         setMessages((all) =>
           all.filter((m) => !(m.id === aid && m.kind === 'assistant' && !m.text && !m.action)),
         );
