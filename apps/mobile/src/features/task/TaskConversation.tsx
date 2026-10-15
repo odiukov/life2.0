@@ -198,14 +198,12 @@ export function TaskConversation({
             (i) => resolve(sources[i] ?? null),
           );
         } else {
-          Alert.alert(t('task.attach.title'), undefined, [
-            ...labels.map((label, i) => ({ text: label, onPress: () => resolve(sources[i]!) })),
-            {
-              text: t('task.attach.cancel'),
-              style: 'cancel' as const,
-              onPress: () => resolve(null),
-            },
-          ]);
+          Alert.alert(
+            t('task.attach.title'),
+            undefined,
+            labels.map((label, i) => ({ text: label, onPress: () => resolve(sources[i]!) })),
+            { cancelable: true, onDismiss: () => resolve(null) },
+          );
         }
       }),
     [t],

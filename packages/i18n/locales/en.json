@@ -594,6 +594,9 @@
     "lead_remove": "Remove lead agent",
     "retry": "⟳ Retry",
     "no_household": "Join or create a home first — see the House tab.",
-    "voice_note": "🎙 {duration}"
+    "voice_note": "🎙 {duration}",
+    "command": {
+      "kitchen": "Fridge, freezer and pantry"
+    }
   }
 }

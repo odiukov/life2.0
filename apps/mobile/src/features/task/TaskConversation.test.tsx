@@ -347,3 +347,41 @@ test('no household error explains how to join a home', () => {
   );
   expect(screen.getByText(/Join or create a home first — see the House tab\./)).toBeTruthy();
 });
+
+import { Alert, Platform } from 'react-native';
+test('Android source chooser exposes three sources and cancellable dismissal', async () => {
+  const original = Platform.OS;
+  Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  const picker = ImagePicker.launchImageLibraryAsync as jest.Mock;
+  const before = picker.mock.calls.length;
+  try {
+    render(<TaskConversation chat={chat()} />);
+    await act(async () => fireEvent.press(screen.getByTestId('ask-attach')));
+    const [title, , buttons, options] = alert.mock.calls[0]!;
+    expect(title).toBe('Attach');
+    expect(buttons?.map((b) => b.text)).toEqual(['Camera', 'Photo library', 'File (PDF)']);
+    expect(options?.cancelable).toBe(true);
+    expect(options?.onDismiss).toEqual(expect.any(Function));
+    await act(async () => options?.onDismiss?.());
+    expect(picker.mock.calls.length).toBe(before);
+    expect(screen.queryByText('a.jpg')).toBeNull();
+    picker.mockResolvedValueOnce({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///android.jpg',
+          fileName: 'android.jpg',
+          mimeType: 'image/jpeg',
+          fileSize: 1,
+        },
+      ],
+    });
+    await act(async () => fireEvent.press(screen.getByTestId('ask-attach')));
+    await act(async () => alert.mock.calls[1]?.[2]?.[1]?.onPress?.());
+    expect(await screen.findByText('android.jpg')).toBeTruthy();
+  } finally {
+    alert.mockRestore();
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: original });
+  }
+});

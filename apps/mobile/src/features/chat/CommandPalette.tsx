@@ -1,6 +1,8 @@
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { AgentMark, useTheme } from '@life-agents/ui';
+import { useT } from '@life-agents/i18n';
+import { appLocale } from '@/lib/locale';
 import type { ChatCommand } from './commands';
 
 export function CommandPalette({
@@ -10,6 +12,7 @@ export function CommandPalette({
   items: readonly ChatCommand[];
   onSelect: (c: ChatCommand) => void;
 }) {
+  const t = useT(appLocale());
   const { colors, radius, spacing, typography } = useTheme();
   if (items.length === 0) return null;
   return (
@@ -43,7 +46,9 @@ export function CommandPalette({
             <AgentMark agent={item.agent} size={20} color={colors.accentHi} />
             <View style={{ flex: 1 }}>
               <Text style={[typography.bodyEm, { color: colors.fg1 }]}>{item.name}</Text>
-              <Text style={[typography.caption, { color: colors.fg2 }]}>{item.hint}</Text>
+              <Text style={[typography.caption, { color: colors.fg2 }]}>
+                {item.hintKey ? t(item.hintKey) : item.hint}
+              </Text>
             </View>
           </Pressable>
         )}

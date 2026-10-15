@@ -5,7 +5,8 @@ import type { IntegrationId } from '../integrations/store';
 export type ChatCommand = {
   name: string;
   agent: AgentId;
-  hint: string;
+  hint?: string;
+  hintKey?: string;
   requires?: IntegrationId;
 };
 
@@ -19,7 +20,7 @@ export const COMMANDS: readonly ChatCommand[] = [
   { name: '/habits', agent: 'habits', hint: 'List active habits' },
   { name: '/med', agent: 'medication', hint: 'Log medication taken' },
   { name: '/recovery', agent: 'recovery', hint: "Get today's recovery readiness" },
-  { name: '/kitchen', agent: 'kitchen', hint: 'Fridge, freezer and pantry' },
+  { name: '/kitchen', agent: 'kitchen', hintKey: 'task.command.kitchen' },
 
   // Integration-gated
   {
