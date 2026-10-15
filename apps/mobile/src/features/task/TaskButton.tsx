@@ -22,7 +22,8 @@ import { VoiceHold } from './VoiceHold';
 import { CANCEL_DX, classifyPress, HOLD_MS } from './classifyPress';
 import { openTask, type Point } from './sheetStore';
 
-export const BUTTON_SIZE = 64;
+import { BUTTON_SIZE } from './dimensions';
+export { BUTTON_SIZE } from './dimensions';
 const PRESS_SPRING = { damping: 14, stiffness: 420, mass: 0.6 } as const;
 const BREATH_MS = 1500;
 

@@ -581,7 +581,8 @@
       "type": "Only JPEG, PNG, WebP photos and PDF files.",
       "image_too_big": "A photo can be up to 10 MB.",
       "pdf_too_big": "A PDF can be up to 20 MB.",
-      "total_too_big": "Files can be up to 25 MB together."
+      "total_too_big": "Files can be up to 25 MB together.",
+      "metadata_unavailable": "Could not check file size. Retry or choose the file again."
     },
     "chip": {
       "nutrition": "🍽 Food",
@@ -659,6 +660,7 @@
     "next_agent": "Next agent",
     "connect": "connect",
     "log": "log",
-    "upload": "upload"
+    "upload": "upload",
+    "close_details": "Close details"
   }
 }

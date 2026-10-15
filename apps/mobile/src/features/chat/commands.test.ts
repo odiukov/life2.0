@@ -1,4 +1,4 @@
-import { matchCommands } from './commands';
+import { COMMANDS, matchCommands } from './commands';
 
 test('empty string matches nothing', () => {
   expect(matchCommands('')).toHaveLength(0);
@@ -57,3 +57,12 @@ test('/new is gone and /kitchen exists', () => {
 
 test('exact lead commands parse after composer trimming', () =>
   expect(splitLeadingTag('/sleep')).toEqual({ tag: 'sleep', text: '' }));
+
+test.each(
+  COMMANDS.flatMap((command) => [
+    [command.name, command.agent, ''],
+    [`${command.name} typed tail`, command.agent, 'typed tail'],
+  ]),
+)('declared command %s resolves through the catalog', (input, tag, text) => {
+  expect(splitLeadingTag(input)).toEqual({ tag, text });
+});

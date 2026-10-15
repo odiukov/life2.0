@@ -18,7 +18,8 @@ import { TaskBusyError, TasksApiError } from '@/features/chat/tasksApi';
 import { useTask } from '@/features/chat/useTask';
 import { useTaskSheet, type OpenRequest } from './sheetStore';
 import { TaskConversation, type Seed, type VoiceNote } from './TaskConversation';
-import { BUTTON_SIZE } from './TaskButton';
+import { AttachmentMetadataUnavailable, resolveAttachmentSizes } from './attachments';
+import { BUTTON_SIZE } from './dimensions';
 
 const { width: W, height: H } = Dimensions.get('window');
 const SHEET_TOP = Math.round(H * 0.08); // the sheet covers 92 % of the screen
@@ -32,6 +33,10 @@ export function TaskSheet() {
   const visible = useTaskSheet((s) => s.visible);
   const origin = useTaskSheet((s) => s.origin);
   const pending = useTaskSheet((s) => s.pending);
+  // Capture voice/send intent on the opening render, before request effects run.
+  const suppressFocus = useRef(false);
+  if (!visible) suppressFocus.current = false;
+  else if (pending?.voice || pending?.send) suppressFocus.current = true;
   const chat = useTask();
   const chatRef = useRef(chat);
   chatRef.current = chat;
@@ -101,6 +106,8 @@ export function TaskSheet() {
     async (req: OpenRequest, version: number) => {
       const c = chatRef.current;
       try {
+        const files = req.attachments ? await resolveAttachmentSizes(req.attachments) : undefined;
+        if (closing.current || version !== epoch.current) return false;
         if (req.lead) await c.setLead(req.lead);
         if (closing.current || version !== epoch.current) return false;
         if (req.voice) {
@@ -116,15 +123,17 @@ export function TaskSheet() {
           setSeed((s) => ({
             key: (s?.key ?? 0) + 1,
             text: req.prefill,
-            attachments: req.attachments,
+            attachments: files,
           }));
         }
         return true;
       } catch (e) {
         flash(
-          e instanceof TasksApiError && e.code === 'no_household'
-            ? t('task.no_household')
-            : t('chat.client.generic'),
+          e instanceof AttachmentMetadataUnavailable
+            ? t('task.attach.metadata_unavailable')
+            : e instanceof TasksApiError && e.code === 'no_household'
+              ? t('task.no_household')
+              : t('chat.client.generic'),
         );
         return false;
       }
@@ -307,7 +316,12 @@ export function TaskSheet() {
             voiceNotes={voiceNotes}
             onClose={requestClose}
             keyboardOffset={SHEET_TOP}
-            autoFocus={visible && voiceNotes.length === 0 && chat.messages.length === 0}
+            autoFocus={
+              visible &&
+              !suppressFocus.current &&
+              voiceNotes.length === 0 &&
+              chat.messages.length === 0
+            }
           />
         )}
         {notice && (

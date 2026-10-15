@@ -413,3 +413,155 @@ test('E2E completion marker requires the latest nonempty assistant reply after s
   update([reply, { kind: 'user', id: 'u2', text: 'Next request', attachments: [] }]);
   expect(screen.queryByTestId('task-assistant-complete')).toBeNull();
 });
+
+import { COMMANDS } from '../chat/commands';
+test.each(
+  COMMANDS.flatMap((c) => [
+    [c.name, c.agent, ''],
+    [`${c.name} typed tail`, c.agent, 'typed tail'],
+  ]),
+)('typed command %s awaits lead before sending once', async (draft, agent, tail) => {
+  let resolveLead!: () => void;
+  const c = chat({
+    setLead: jest.fn(
+      () =>
+        new Promise<void>((r) => {
+          resolveLead = r;
+        }),
+    ),
+  });
+  render(<TaskConversation chat={c} />);
+  fireEvent.changeText(screen.getByTestId('ask-input'), draft);
+  fireEvent.press(screen.getByTestId('ask-send'));
+  expect(c.setLead).toHaveBeenCalledWith(agent);
+  expect(c.send).not.toHaveBeenCalled();
+  await act(async () => resolveLead());
+  if (tail) {
+    expect(c.send).toHaveBeenCalledTimes(1);
+    expect(c.send).toHaveBeenCalledWith({ text: tail, tag: agent, attachments: [] });
+  } else expect(c.send).not.toHaveBeenCalled();
+  expect(screen.queryByDisplayValue(draft)).toBeNull();
+});
+test.each(['submit', 'palette'])('%s retains command tail if lead update fails', async (path) => {
+  const c = chat({ setLead: jest.fn().mockRejectedValue(new Error('offline')) });
+  render(<TaskConversation chat={c} />);
+  fireEvent.changeText(screen.getByTestId('ask-input'), '/nutrition typed tail');
+  await act(async () =>
+    fireEvent.press(
+      path === 'submit' ? screen.getByTestId('ask-send') : screen.getByText('/nutrition'),
+    ),
+  );
+  expect(screen.getByDisplayValue('/nutrition typed tail')).toBeTruthy();
+  expect(c.send).not.toHaveBeenCalled();
+  expect(screen.getByText(/No connection/)).toBeTruthy();
+});
+test('palette preserves a typed tail and awaits the lead', async () => {
+  let resolveLead!: () => void;
+  const c = chat({
+    setLead: jest.fn(
+      () =>
+        new Promise<void>((r) => {
+          resolveLead = r;
+        }),
+    ),
+  });
+  render(<TaskConversation chat={c} />);
+  fireEvent.changeText(screen.getByTestId('ask-input'), '/nut typed tail');
+  fireEvent.press(screen.getByText('/nutrition'));
+  expect(c.send).not.toHaveBeenCalled();
+  await act(async () => resolveLead());
+  expect(c.send).toHaveBeenCalledTimes(1);
+  expect(c.send).toHaveBeenCalledWith({ text: 'typed tail', tag: 'nutrition', attachments: [] });
+  expect(screen.queryByDisplayValue('/nut typed tail')).toBeNull();
+});
+
+import { TextInput } from 'react-native';
+test.each(['intent', 'send'] as const)('pending focus cancels on %s', async (cause) => {
+  jest.useFakeTimers();
+  const focus = jest.spyOn(TextInput.prototype, 'focus').mockClear();
+  try {
+    const c = chat();
+    const view = render(<TaskConversation chat={c} autoFocus />);
+    if (cause === 'intent')
+      view.rerender(
+        <ThemeProvider>
+          <TaskConversation chat={c} autoFocus={false} />
+        </ThemeProvider>,
+      );
+    else {
+      fireEvent.changeText(screen.getByTestId('ask-input'), 'quick send');
+      await act(async () => fireEvent.press(screen.getByTestId('ask-send')));
+    }
+    act(() => jest.advanceTimersByTime(300));
+    expect(focus).not.toHaveBeenCalled();
+  } finally {
+    focus.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ExpoLinking from 'expo-linking';
+import { shareAttachment } from './share';
+test.each([
+  [[20_000_001], 'A PDF can be up to 20 MB.'],
+  [[13_000_000, 13_000_000], 'Files can be up to 25 MB together.'],
+] as const)('share-to-composer rejects actual sizes %s atomically', async (sizes, error) => {
+  const shared = sizes.map((size, i) => {
+    jest.spyOn(ExpoLinking, 'parse').mockReturnValueOnce({
+      queryParams: { shareFileURL: `file:///shared/${i}.pdf`, shareFileName: `${i}.pdf` },
+    } as never);
+    (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({
+      exists: true,
+      isDirectory: false,
+      size,
+    });
+    return shareAttachment('lifeagents://share')!;
+  });
+  const c = chat();
+  render(<TaskConversation chat={c} seed={{ key: 1, attachments: shared }} />);
+  expect(await screen.findByText(error)).toBeTruthy();
+  expect(screen.queryByText('0.pdf')).toBeNull();
+  expect(c.send).not.toHaveBeenCalled();
+});
+test('unavailable shared metadata shows a localized recoverable retry', async () => {
+  (FileSystem.getInfoAsync as jest.Mock)
+    .mockResolvedValueOnce({ exists: false })
+    .mockResolvedValueOnce({ exists: true, isDirectory: false, size: 10 });
+  jest.spyOn(ExpoLinking, 'parse').mockReturnValueOnce({
+    queryParams: { shareFileURL: 'file:///retry.pdf', shareFileName: 'retry.pdf' },
+  } as never);
+  const c = chat();
+  render(
+    <TaskConversation
+      chat={c}
+      seed={{ key: 1, attachments: [shareAttachment('lifeagents://share')!] }}
+    />,
+  );
+  expect(
+    await screen.findByText('Could not check file size. Retry or choose the file again.'),
+  ).toBeTruthy();
+  expect(screen.queryByText('retry.pdf')).toBeNull();
+  await act(async () => fireEvent.press(screen.getByText('⟳ Retry')));
+  expect(await screen.findByText('retry.pdf')).toBeTruthy();
+  await act(async () => fireEvent.press(screen.getByTestId('ask-send')));
+  expect(c.send).toHaveBeenCalledWith({
+    text: '',
+    attachments: [
+      { uri: 'file:///retry.pdf', name: 'retry.pdf', mime: 'application/pdf', size: 10 },
+    ],
+  });
+});
+
+test('unknown slash input stays ordinary text while gated palette commands remain hidden', async () => {
+  const c = chat();
+  render(<TaskConversation chat={c} />);
+  fireEvent.changeText(screen.getByTestId('ask-input'), '/unknown typed tail');
+  await act(async () => fireEvent.press(screen.getByTestId('ask-send')));
+  expect(c.setLead).not.toHaveBeenCalled();
+  expect(c.send).toHaveBeenCalledWith({ text: '/unknown typed tail', attachments: [] });
+  fireEvent.changeText(screen.getByTestId('ask-input'), '/');
+  expect(screen.queryByText('/ha')).toBeNull();
+  expect(screen.queryByText('/finance')).toBeNull();
+  expect(screen.queryByText('/calendar')).toBeNull();
+});

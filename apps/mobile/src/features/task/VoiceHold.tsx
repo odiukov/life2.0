@@ -13,7 +13,7 @@ import Animated, {
 import { useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
-import { BUTTON_SIZE } from './TaskButton';
+import { BUTTON_SIZE } from './dimensions';
 
 const BARS = [0.5, 0.8, 1, 0.7, 0.9, 0.6, 0.75];
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;

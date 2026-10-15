@@ -133,3 +133,26 @@ test('voice failure shows notice without opening sheet', () => {
   expect(screen.getByText('No audio')).toBeTruthy();
   expect(useTaskSheet.getState().visible).toBe(false);
 });
+
+// This test file loads TaskButton first, as the tab bar does on a fresh module graph.
+import { VoiceHold } from './VoiceHold';
+import { StyleSheet, View } from 'react-native';
+test('TaskButton-first initialization leaves hold geometry finite and 64-point based', () => {
+  const result = render(
+    <ThemeProvider>
+      <VoiceHold seconds={1} level={0.5} armed={false} transcribing={false} />
+    </ThemeProvider>,
+  );
+  const styles = result
+    .UNSAFE_getAllByType(View)
+    .map((view) => StyleSheet.flatten(view.props.style));
+  const rings = styles.filter((style) => style?.position === 'absolute' && 'width' in style);
+  expect(rings.length).toBeGreaterThanOrEqual(3);
+  for (const style of rings) {
+    expect(style.width).toBe(64);
+    expect(style.height).toBe(64);
+    if ('borderRadius' in style) expect(style.borderRadius).toBe(32);
+    if ('bottom' in style) expect(Number.isFinite(style.bottom)).toBe(true);
+  }
+  expect(StyleSheet.flatten(screen.getByTestId('voice-hold').props.style).bottom).toBe(88);
+});

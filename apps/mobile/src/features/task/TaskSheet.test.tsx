@@ -380,3 +380,112 @@ test('a busy close during delayed restore exposes a working restore retry for th
     expect(mockApi.post).toHaveBeenCalledWith('saved', { text: 'continue', attachments: [] }),
   );
 });
+
+import { TextInput } from 'react-native';
+test.each(['voice', 'tap'] as const)(
+  '%s opening derives focus before delayed task creation and streaming',
+  async (intent) => {
+    jest.useFakeTimers();
+    const focus = jest.spyOn(TextInput.prototype, 'focus').mockClear();
+    let create!: (task: { id: string; leadAgent: null }) => void;
+    let finish!: () => void;
+    const stream = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    mockApi = fakeTasksApi({
+      open: jest.fn(
+        () =>
+          new Promise((resolve) => {
+            create = resolve;
+          }),
+      ),
+      post: jest.fn(() => ({
+        events: (async function* () {
+          await stream;
+          yield { type: 'finished' as const };
+        })(),
+        abort: jest.fn(),
+      })),
+    });
+    try {
+      render(
+        <ThemeProvider>
+          <TaskSheet />
+        </ThemeProvider>,
+      );
+      await act(async () =>
+        openTask(intent === 'voice' ? { voice: { text: 'spoken', seconds: 2 } } : undefined),
+      );
+      await act(async () => jest.advanceTimersByTime(300));
+      if (intent === 'voice') {
+        expect(mockApi.open).toHaveBeenCalledTimes(1);
+        expect(focus).not.toHaveBeenCalled();
+        await act(async () => create({ id: 'delayed', leadAgent: null }));
+        await act(async () => jest.advanceTimersByTime(300));
+        expect(mockApi.post).toHaveBeenCalledTimes(1);
+        expect(focus).not.toHaveBeenCalled();
+        await act(async () => finish());
+        await act(async () => jest.advanceTimersByTime(300));
+        expect(focus).not.toHaveBeenCalled();
+      } else expect(focus).toHaveBeenCalledTimes(1);
+    } finally {
+      focus.mockRestore();
+      jest.useRealTimers();
+    }
+  },
+);
+
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Linking from 'expo-linking';
+import { shareAttachment } from './share';
+test('shared metadata failure keeps the request queued for retry before composer acceptance', async () => {
+  jest.spyOn(Linking, 'parse').mockReturnValueOnce({
+    queryParams: {
+      shareFileURL: 'file:///shared.pdf',
+      shareFileName: 'shared.pdf',
+    },
+  } as never);
+  (FileSystem.getInfoAsync as jest.Mock)
+    .mockResolvedValueOnce({ exists: false })
+    .mockResolvedValueOnce({ exists: true, isDirectory: false, size: 10 });
+  render(
+    <ThemeProvider>
+      <TaskSheet />
+    </ThemeProvider>,
+  );
+  act(() => openTask({ attachments: [shareAttachment('lifeagents://share')!] }));
+  expect(
+    await screen.findByText('Could not check file size. Retry or choose the file again.'),
+  ).toBeTruthy();
+  expect(useTaskSheet.getState().pending?.attachments).toHaveLength(1);
+  expect(screen.queryByText('shared.pdf')).toBeNull();
+  fireEvent.press(screen.getByText('Retry'));
+  expect(await screen.findByText('shared.pdf')).toBeTruthy();
+  await waitFor(() => expect(useTaskSheet.getState().pending).toBeNull());
+  expect(mockApi.post).not.toHaveBeenCalled();
+});
+test.each(['voice', 'hidden'] as const)(
+  'tap focus is canceled when intent becomes %s before the timer',
+  async (intent) => {
+    jest.useFakeTimers();
+    const focus = jest.spyOn(TextInput.prototype, 'focus').mockClear();
+    try {
+      render(
+        <ThemeProvider>
+          <TaskSheet />
+        </ThemeProvider>,
+      );
+      await act(async () => openTask());
+      await act(async () =>
+        intent === 'voice'
+          ? openTask({ voice: { text: 'spoken', seconds: 2 } })
+          : useTaskSheet.getState().hide(),
+      );
+      await act(async () => jest.advanceTimersByTime(300));
+      expect(focus).not.toHaveBeenCalled();
+    } finally {
+      focus.mockRestore();
+      jest.useRealTimers();
+    }
+  },
+);

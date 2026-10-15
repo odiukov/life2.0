@@ -4,7 +4,7 @@ import { ThemeProvider } from '@life-agents/ui';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { MeScreen } from './MeScreen';
 import { feedDay } from './useDayFeed';
-import type { AgentRow } from '../agents/agentStatusRules';
+import { computeAgentStatus, type AgentRow } from '../agents/agentStatusRules';
 import { dispatchTilePress } from '../agents/agentTileDispatch';
 import { openTask } from '../task/sheetStore';
 
@@ -17,6 +17,7 @@ let mockFocus: (() => void) | undefined;
 let mockSummaryError = false;
 let mockFeedError = false;
 let mockNutrition = false;
+let mockBodyFeed = false;
 let mockRows: AgentRow[] = [];
 jest.mock('../agents/agentTileDispatch', () => ({
   dispatchTilePress: jest.fn(jest.requireActual('../agents/agentTileDispatch').dispatchTilePress),
@@ -57,7 +58,7 @@ jest.mock('./useDayFeed', () => ({
             date: day,
             items: [
               {
-                agent: 'sleep',
+                agent: mockBodyFeed ? 'body' : 'sleep',
                 id: 's1',
                 at: `${day}T08:00:00Z`,
                 kind: 'event',
@@ -105,6 +106,7 @@ beforeEach(() => {
   mockSummaryError = false;
   mockFeedError = false;
   mockNutrition = false;
+  mockBodyFeed = false;
   mockRows = [];
 });
 function mount() {
@@ -201,4 +203,80 @@ test('body row goes through tile dispatch', () => {
     mockRows[0],
     expect.objectContaining({ openDetail: expect.any(Function) }),
   );
+});
+
+jest.mock('../home/AgentDetailContent', () => ({
+  AgentDetailContent: ({
+    agentId,
+    onAction,
+  }: {
+    agentId: string;
+    onAction: (text: string) => void;
+  }) => (
+    <Pressable onPress={() => onAction('existing action')}>
+      <Text>{`standalone:${agentId}`}</Text>
+    </Pressable>
+  ),
+}));
+test.each(['body', 'home'] as const)(
+  'real ready %s status dispatch opens usable separate details',
+  (id) => {
+    const status = computeAgentStatus(id, {
+      integrations: new Set(['ha']),
+      peerOnline: new Map(),
+      meProfile: null,
+      summary: {
+        agents: [
+          {
+            agent: 'body',
+            label: 'Body',
+            metric: '70 kg',
+            detail: null,
+            tint: 'neutral',
+            progress: null,
+          },
+        ],
+        unavailable: [],
+      },
+    });
+    expect(status).toEqual({ status: 'ready', hint: null, cta: null });
+    mockRows = [{ id, description: '', ...status }];
+    mount();
+    fireEvent.press(screen.getByTestId(`chip-${id}`));
+    expect(screen.getByText(`standalone:${id}`)).toBeTruthy();
+    expect(screen.queryByText(`detail:${id}`)).toBeNull();
+    fireEvent.press(screen.getByText(`standalone:${id}`));
+    expect(openTask).toHaveBeenCalledWith({ lead: id, send: 'existing action' });
+  },
+);
+test('a Body feed entry opens the separate usable Body destination', () => {
+  mockBodyFeed = true;
+  mockRows = [
+    {
+      id: 'body',
+      description: '',
+      ...computeAgentStatus('body', {
+        integrations: new Set(),
+        peerOnline: new Map(),
+        meProfile: null,
+        summary: {
+          agents: [
+            {
+              agent: 'body',
+              label: 'Body',
+              metric: '70 kg',
+              detail: null,
+              tint: 'neutral',
+              progress: null,
+            },
+          ],
+          unavailable: [],
+        },
+      }),
+    },
+  ];
+  mount();
+  fireEvent.press(screen.getByText('Slept well'));
+  expect(screen.getByText('standalone:body')).toBeTruthy();
+  expect(screen.queryByText('detail:all')).toBeNull();
 });

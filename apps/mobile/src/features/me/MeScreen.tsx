@@ -10,6 +10,7 @@ import { useAgentStatusRows } from '../agents/useAgentStatusRows';
 import { dispatchTilePress } from '../agents/agentTileDispatch';
 import { SettingsSheet } from '../more/SettingsSheet';
 import { AgentPagerSheet, type PagerStart } from './AgentPagerSheet';
+import { StandaloneAgentSheet } from './StandaloneAgentSheet';
 import { DETAIL_AGENTS } from './agentOrder';
 import { IntegrationSheet } from '../integrations/IntegrationSheet';
 import type { IntegrationId } from '../integrations/store';
@@ -38,6 +39,7 @@ export function MeScreen() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [pager, setPager] = useState<PagerStart | null>(null);
 
+  const [standalone, setStandalone] = useState<'body' | 'home' | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const { refetch: refetchSummary } = summary;
   const { refetch: refetchFeed } = feed;
@@ -71,7 +73,10 @@ export function MeScreen() {
       dispatchTilePress(row, {
         router,
         openIntegration: (panel: IntegrationId) => setActiveIntegration(panel),
-        openDetail: (detailId: AgentId) => setPager(detailId),
+        openDetail: (detailId: AgentId) => {
+          if (detailId === 'body' || detailId === 'home') setStandalone(detailId);
+          else setPager(detailId);
+        },
         openIntegrationsList: () => setSettingsPanel('integrations'),
       });
     },
@@ -146,6 +151,7 @@ export function MeScreen() {
           setSettingsPanel(null);
         }}
       />
+      <StandaloneAgentSheet agent={standalone} onClose={() => setStandalone(null)} />
       <AgentPagerSheet
         start={pager}
         summary={summary.data}

@@ -17,6 +17,7 @@ const config: Config = {
   moduleNameMapper: {
     '^expo-linear-gradient$': '<rootDir>/src/__mocks__/expo-linear-gradient.tsx',
     '^expo-haptics$': '<rootDir>/src/__mocks__/expo-haptics.ts',
+    '^expo-file-system/legacy$': '<rootDir>/src/__mocks__/expo-file-system.ts',
     '^expo-image-picker$': '<rootDir>/src/__mocks__/expo-image-picker.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@life-agents/ui$': '<rootDir>/../../packages/ui/src/index.ts',

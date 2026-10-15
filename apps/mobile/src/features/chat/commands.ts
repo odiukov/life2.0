@@ -53,5 +53,8 @@ export function matchCommands(
 /** Promote a leading agent name while preserving unknown slash commands. */
 export function splitLeadingTag(text: string): { tag?: AgentId; text: string } {
   const match = /^\/([a-z]+)(?:\s(.*))?$/s.exec(text);
-  return match && isAgentId(match[1]) ? { tag: match[1], text: match[2] ?? '' } : { text };
+  if (!match) return { text };
+  const agent = COMMANDS.find((c) => c.name === `/${match[1]}`)?.agent;
+  const tag = agent ?? (isAgentId(match[1]) ? match[1] : undefined);
+  return tag ? { tag, text: match[2] ?? '' } : { text };
 }

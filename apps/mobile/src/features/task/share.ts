@@ -17,5 +17,5 @@ export function shareAttachment(url: string): OutgoingAttachment | null {
   const name = queryParams?.shareFileName;
   if (typeof uri !== 'string' || typeof name !== 'string' || !uri || !name) return null;
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  return { uri, name, mime: MIME[ext] ?? 'application/octet-stream', size: 0 };
+  return { uri, name, mime: MIME[ext] ?? 'application/octet-stream', size: NaN };
 }

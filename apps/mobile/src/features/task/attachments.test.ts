@@ -78,8 +78,13 @@ test('missing picker metadata never turns an unknown format into JPEG', async ()
     canceled: false,
     assets: [{ uri: 'file:///unknown.blob' }],
   });
+  (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({
+    exists: true,
+    isDirectory: false,
+    size: 10,
+  });
   const got = await pickAttachments('gallery', 4);
-  expect(got[0]?.size).toBe(0);
+  expect(got[0]?.size).toBe(10);
   expect(validateAttachments(got)).toEqual({ ok: false, reason: 'type' });
 });
 test('picker excess is returned for full validation rather than silently truncated', async () => {
@@ -103,4 +108,20 @@ test('file picker does not relabel an unsupported result as PDF', async () => {
     ok: false,
     reason: 'type',
   });
+});
+
+import * as FileSystem from 'expo-file-system/legacy';
+test('omitted document picker size is resolved from the actual local file', async () => {
+  (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValueOnce({
+    canceled: false,
+    assets: [{ uri: 'file:///large.pdf', name: 'large.pdf' }],
+  });
+  (FileSystem.getInfoAsync as jest.Mock).mockResolvedValueOnce({
+    exists: true,
+    isDirectory: false,
+    size: 20_000_001,
+  });
+  const files = await pickAttachments('file', 4);
+  expect(files[0]?.size).toBe(20_000_001);
+  expect(validateAttachments(files)).toEqual({ ok: false, reason: 'pdf_too_big' });
 });

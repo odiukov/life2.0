@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import type { OutgoingAttachment } from '@/features/chat/tasksApi';
@@ -16,7 +17,8 @@ export type AttachmentProblem =
   | 'type'
   | 'image_too_big'
   | 'pdf_too_big'
-  | 'total_too_big';
+  | 'total_too_big'
+  | 'metadata_unavailable';
 export type Source = 'camera' | 'gallery' | 'file';
 export class CameraDenied extends Error {}
 
@@ -34,7 +36,8 @@ export function validateAttachments(
     } else {
       return { ok: false, reason: 'type' };
     }
-    if (!Number.isFinite(a.size) || a.size < 0) return { ok: false, reason: 'total_too_big' };
+    if (!Number.isFinite(a.size) || a.size < 0)
+      return { ok: false, reason: 'metadata_unavailable' };
     total += a.size;
   }
   return total > LIMITS.totalBytes ? { ok: false, reason: 'total_too_big' } : { ok: true };
@@ -59,16 +62,16 @@ export async function pickAttachments(source: Source, room: number): Promise<Out
     const asset = result.assets?.[0];
     return result.canceled || !asset
       ? []
-      : [
+      : resolveAttachmentSizes([
           {
             uri: asset.uri,
             name: asset.name,
             mime:
               asset.mimeType?.toLowerCase() ??
               (/\.pdf$/i.test(asset.name) ? PDF : 'application/octet-stream'),
-            size: asset.size ?? 0,
+            size: asset.size ?? NaN,
           },
-        ];
+        ]);
   }
   if (source === 'camera') {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -84,10 +87,34 @@ export async function pickAttachments(source: Source, room: number): Promise<Out
           selectionLimit: room,
         });
   if (result.canceled || !result.assets) return [];
-  return result.assets.map((a) => ({
-    uri: a.uri,
-    name: a.fileName ?? `photo-${Date.now()}-${counter++}.jpg`,
-    mime: imageMime(a.mimeType, a.uri),
-    size: a.fileSize ?? 0,
-  }));
+  return resolveAttachmentSizes(
+    result.assets.map((a) => ({
+      uri: a.uri,
+      name: a.fileName ?? `photo-${Date.now()}-${counter++}.jpg`,
+      mime: imageMime(a.mimeType, a.uri),
+      size: a.fileSize ?? NaN,
+    })),
+  );
+}
+
+export class AttachmentMetadataUnavailable extends Error {}
+
+/** Missing picker/share sizes remain unresolved until local metadata verifies them. */
+export async function resolveAttachmentSizes(
+  files: readonly OutgoingAttachment[],
+): Promise<OutgoingAttachment[]> {
+  return Promise.all(
+    files.map(async (file) => {
+      if (Number.isFinite(file.size) && file.size >= 0) return file;
+      try {
+        const info = await FileSystem.getInfoAsync(file.uri);
+        if (!info.exists || info.isDirectory || !Number.isFinite(info.size) || info.size < 0) {
+          throw new AttachmentMetadataUnavailable();
+        }
+        return { ...file, size: info.size };
+      } catch {
+        throw new AttachmentMetadataUnavailable();
+      }
+    }),
+  );
 }

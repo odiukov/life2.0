@@ -35,6 +35,8 @@ import { parseAgentTags } from '@/features/chat/parseAgentTags';
 import { useConnectedIntegrations } from '../integrations/store';
 import { useVoiceInput } from '../voice/useVoiceInput';
 import {
+  AttachmentMetadataUnavailable,
+  resolveAttachmentSizes,
   CameraDenied,
   LIMITS,
   pickAttachments,
@@ -78,6 +80,11 @@ export function TaskConversation({
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const askBarRef = useRef<AskBarHandle>(null);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelFocus = useCallback(() => {
+    if (focusTimer.current) clearTimeout(focusTimer.current);
+    focusTimer.current = null;
+  }, []);
   const listRef = useRef<FlatList>(null);
   const attachmentsRef = useRef(attachments);
   attachmentsRef.current = attachments;
@@ -94,24 +101,49 @@ export function TaskConversation({
     [],
   );
 
+  const [metadataRetry, setMetadataRetry] = useState(0);
+  const [metadataFailed, setMetadataFailed] = useState(false);
   useEffect(() => {
     if (!seed) return;
-    if (seed.attachments?.length) {
-      const merged = [...attachmentsRef.current, ...seed.attachments];
-      const check = validateAttachments(merged);
-      if (!check.ok) {
-        notify(t(`task.attach.${check.reason}`));
-        return;
+    let canceled = false;
+    setMetadataFailed(false);
+    const accept = (files: OutgoingAttachment[] = []) => {
+      if (canceled) return;
+      if (files.length) {
+        const merged = [...attachmentsRef.current, ...files];
+        const check = validateAttachments(merged);
+        if (!check.ok) {
+          notify(t(`task.attach.${check.reason}`));
+          return;
+        }
+        setAttachments(merged);
       }
-      setAttachments(merged);
-    }
-    if (seed.text !== undefined) setText(seed.text);
-    if (autoFocus || seed.text !== undefined) setTimeout(() => askBarRef.current?.focus(), 250);
-  }, [seed?.key]);
+      if (seed.text !== undefined) setText(seed.text);
+    };
+    if (seed.attachments?.some((file) => !Number.isFinite(file.size) || file.size < 0)) {
+      void resolveAttachmentSizes(seed.attachments)
+        .then(accept)
+        .catch(() => {
+          if (canceled) return;
+          setMetadataFailed(true);
+          notify(t('task.attach.metadata_unavailable'));
+        });
+    } else accept(seed.attachments);
+    return () => {
+      canceled = true;
+    };
+  }, [seed?.key, metadataRetry]);
 
   useEffect(() => {
-    if (autoFocus) setTimeout(() => askBarRef.current?.focus(), 250);
-  }, [autoFocus]);
+    cancelFocus();
+    if (chat.phase === 'idle' && (autoFocus || (autoFocus !== false && seed?.text !== undefined))) {
+      focusTimer.current = setTimeout(() => {
+        focusTimer.current = null;
+        askBarRef.current?.focus();
+      }, 250);
+    }
+    return cancelFocus;
+  }, [autoFocus, seed?.key, chat.phase, cancelFocus]);
 
   const retryInput = useRef<{
     text: string;
@@ -129,6 +161,7 @@ export function TaskConversation({
       }
       const outgoing = { ...input, attachments: files };
       retryInput.current = outgoing;
+      cancelFocus();
       Keyboard.dismiss();
       try {
         const sent = await chat.send(outgoing);
@@ -152,7 +185,7 @@ export function TaskConversation({
         return false;
       }
     },
-    [chat, notify, t],
+    [chat, notify, t, cancelFocus],
   );
   const changeLead = (lead: AgentId | null) => {
     void chat.setLead(lead).catch(() => notify(t('chat.client.network')));
@@ -167,20 +200,24 @@ export function TaskConversation({
 
   const handleSubmit = useCallback(
     async (next: { tag?: AgentId; text: string }) => {
+      cancelFocus();
       const parsed = next.tag ? next : splitLeadingTag(next.text);
-      if (parsed.tag && !parsed.text.trim() && attachmentsRef.current.length === 0) {
+      if (parsed.tag) {
         const draft = textRef.current;
         try {
           await chat.setLead(parsed.tag);
-          setText((current) => (current === draft ? '' : current));
+          if (!parsed.text.trim() && attachmentsRef.current.length === 0) {
+            setText((current) => (current === draft ? '' : current));
+            return;
+          }
         } catch {
           notify(t('chat.client.network'));
+          return;
         }
-        return;
       }
-      await submit(parsed.tag ? { text: parsed.text, tag: parsed.tag } : { text: parsed.text });
+      return submit(parsed.tag ? { text: parsed.text, tag: parsed.tag } : { text: parsed.text });
     },
-    [chat, notify, submit, t],
+    [chat, notify, submit, t, cancelFocus],
   );
 
   const chooseSource = useCallback(
@@ -230,6 +267,8 @@ export function TaskConversation({
           { text: t('task.attach.cancel'), style: 'cancel' },
           { text: t('voice.open_settings'), onPress: () => void Linking.openSettings() },
         ]);
+      } else if (e instanceof AttachmentMetadataUnavailable) {
+        notify(t('task.attach.metadata_unavailable'));
       } else notify(t('chat.client.network'));
     }
   }, [chooseSource, notify, t]);
@@ -410,8 +449,13 @@ export function TaskConversation({
         <CommandPalette
           items={commandMatches}
           onSelect={(c) => {
-            changeLead(c.agent);
-            setText('');
+            const draft = textRef.current;
+            const tail = draft.replace(/^\/[^\s]*(?:\s+)?/, '');
+            void handleSubmit({ tag: c.agent, text: tail }).then((sent) => {
+              if (sent) {
+                setText((current) => (current === draft ? '' : current));
+              }
+            });
           }}
         />
       )}
@@ -436,6 +480,11 @@ export function TaskConversation({
             <Text>{t('task.retry')}</Text>
           </Pressable>
         )}
+      {metadataFailed && (
+        <Pressable onPress={() => setMetadataRetry((attempt) => attempt + 1)}>
+          <Text>{t('task.retry')}</Text>
+        </Pressable>
+      )}
       {notice && (
         <Text style={{ color: colors.fg3, textAlign: 'center', marginBottom: 4 }}>{notice}</Text>
       )}
