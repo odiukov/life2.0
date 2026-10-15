@@ -132,3 +132,14 @@ def test_title_matching_accepts_injected_stopwords() -> None:
     assert title_matches(
         "удали встреча проекта", "Встреча проекта", frozenset({"удали", "встреча"})
     )
+
+
+def test_normalizer_preserves_blank_title_and_all_day_interval() -> None:
+    event = normalize(
+        {"id": "trip", "start": {"date": "2026-10-13"}, "end": {"date": "2026-10-15"}}, KYIV
+    )
+    assert event is not None
+    assert event.summary == ""
+    assert event.day == date(2026, 10, 13)
+    assert event.end_day == date(2026, 10, 15)
+    assert "Untitled" in event_line(event, KYIV)

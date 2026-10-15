@@ -8,6 +8,7 @@ from typing import Any
 
 from shared.dashboard import DashboardContext, empty_card, history_points
 from shared.ports.health_logs import HealthLogRepository
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 from habits.application.ports import HabitRepository
@@ -56,7 +57,7 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     if not habits:
         return out
     rows = await tx.repo(HealthLogRepository).recent(
-        ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=WINDOW_DAYS)
+        ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=WINDOW_DAYS), agent="habits"
     )
     by_day: dict[tuple[str, date], list[Mapping[str, Any]]] = {}
     for r in rows:
@@ -94,7 +95,9 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     return out
 
 
-def insight(metrics: Mapping[str, Any]) -> str:
+def insight(
+    metrics: Mapping[str, Any], *, translator: Translator | None = None, locale: str = "en"
+) -> str:
     streak, rate, missed = (
         metrics.get("streak", 0),
         metrics.get("completion_7d", 0.0),
@@ -102,23 +105,51 @@ def insight(metrics: Mapping[str, Any]) -> str:
     )
     parts = []
     if streak >= 3:
-        parts.append(f"{streak}-day streak.")
+        parts.append(
+            translator.t("feed.habits.insight.streak", locale, days=streak)
+            if translator is not None
+            else f"{streak}-day streak."
+        )
     if missed:
-        parts.append(f"Missed: {', '.join(missed[:2])}{' and more' if len(missed) > 2 else ''}.")
+        if translator is not None:
+            more = translator.t("feed.habits.insight.more", locale) if len(missed) > 2 else ""
+            parts.append(
+                translator.t(
+                    "feed.habits.insight.missed", locale, names=", ".join(missed[:2]), more=more
+                )
+            )
+        else:
+            parts.append(
+                f"Missed: {', '.join(missed[:2])}{' and more' if len(missed) > 2 else ''}."
+            )
     elif rate >= 0.8:
-        parts.append(f"{int(rate * 100)}% completion this week.")
+        parts.append(
+            translator.t("feed.habits.insight.rate", locale, percent=int(rate * 100))
+            if translator is not None
+            else f"{int(rate * 100)}% completion this week."
+        )
     return " ".join(parts)
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     logs = tx.repo(HealthLogRepository)
-    month = await logs.recent(ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=32))
+    month = await logs.recent(
+        ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=32), agent="habits"
+    )
     done_days = {ctx.local_date(r.recorded_at) for r in month if r.data.get("completed")}
     history = history_points(
         ctx.last_days(30), dict.fromkeys(done_days, 1.0), lambda v: "✅" if v else "⬜"
     )
     habits = await tx.repo(HabitRepository).active()
-    week = await logs.recent(ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=7))
+    week = await logs.recent(
+        ctx.user_id, types=["habit"], since=ctx.now - timedelta(days=7), agent="habits"
+    )
     completed_days = {ctx.local_date(r.recorded_at) for r in week if r.data.get("completed")}
     streak, cursor = 0, ctx.today
     for _ in range(60):
@@ -138,4 +169,9 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
         "active_count": len(habits),
         "missed_names": [h.name for h in habits if str(h.id) not in done_yesterday][:3],
     }
-    return {"agent": "habits", "insight": insight(metrics), "metrics": metrics, "history": history}
+    return {
+        "agent": "habits",
+        "insight": insight(metrics, translator=translator, locale=locale),
+        "metrics": metrics,
+        "history": history,
+    }

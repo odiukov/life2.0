@@ -511,6 +511,52 @@
     "body": {
       "weight": "Weight {kg} kg",
       "fat": "{text} · fat {pct}%"
+    },
+    "nutrition": {
+      "meal": "{meal}: {kcal} kcal, protein {protein} g",
+      "type": {
+        "breakfast": "Breakfast",
+        "lunch": "Lunch",
+        "dinner": "Dinner",
+        "snack": "Snack",
+        "other": "Meal"
+      },
+      "insight": {
+        "below": "Protein below goal by {grams}g today.",
+        "track": "On track {count} of {days} days."
+      }
+    },
+    "habits": {
+      "check": "✓ {name}",
+      "value": "✓ {name} · {value} {unit}",
+      "insight": {
+        "streak": "{days}-day streak.",
+        "missed": "Missed: {names}{more}.",
+        "more": " and more",
+        "rate": "{percent}% completion this week."
+      }
+    },
+    "medication": {
+      "taken": "Took {name}",
+      "dose": "Took {name} · {dose}",
+      "insight": {
+        "full": "Full adherence this week. Keep it up.",
+        "missed": "Missed {days} day(s) this week: {names}{more}.",
+        "more": " and more",
+        "rate": "{percent}% adherence this week."
+      }
+    },
+    "calendar": {
+      "event": "{time} {title}",
+      "all_day": "All day: {title}",
+      "untitled": "Untitled event"
+    },
+    "recovery": {
+      "insight": {
+        "recovered": "3 of 4 metrics above baseline. Ready to train.",
+        "depleted": "3 of 4 metrics below baseline. Prioritize rest today.",
+        "neutral": "Recovery metrics near baseline. Moderate training ok."
+      }
     }
   }
 }

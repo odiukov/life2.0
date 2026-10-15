@@ -7,6 +7,7 @@ from typing import Any
 
 from shared.dashboard import DashboardContext, empty_card, history_points
 from shared.ports.health_logs import HealthLogRepository
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 from medication.application.ports import MedicationRepository
@@ -16,7 +17,7 @@ TAKEN = "medication_taken"
 
 async def _week(tx: UnitOfWork, ctx: DashboardContext):  # type: ignore[no-untyped-def]
     rows = await tx.repo(HealthLogRepository).recent(
-        ctx.user_id, types=[TAKEN], since=ctx.now - timedelta(days=7)
+        ctx.user_id, types=[TAKEN], since=ctx.now - timedelta(days=7), agent="medication"
     )
     return [
         r for r in rows if r.recorded_at > ctx.now - timedelta(days=7)
@@ -47,20 +48,47 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     return out
 
 
-def insight(history: list[dict[str, object]], metrics: dict[str, Any]) -> str:
+def insight(
+    history: list[dict[str, object]],
+    metrics: dict[str, Any],
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> str:
     missed, adherence = metrics.get("missed_names") or [], metrics.get("adherence_7d", 1.0)
     if not missed and adherence >= 0.95:
+        if translator is not None:
+            return translator.t("feed.medication.insight.full", locale)
         return "Full adherence this week. Keep it up."
     if missed:
         names = ", ".join(missed[:3]) + (" and more" if len(missed) > 3 else "")
         n = sum(1 for h in history if h["value"] == 0)
+        if translator is not None:
+            more = translator.t("feed.medication.insight.more", locale) if len(missed) > 3 else ""
+            return translator.t(
+                "feed.medication.insight.missed",
+                locale,
+                days=n,
+                names=", ".join(missed[:3]),
+                more=more,
+            )
         return f"Missed {n} day(s) this week: {names}."
+    if translator is not None:
+        return translator.t("feed.medication.insight.rate", locale, percent=int(adherence * 100))
     return f"{int(adherence * 100)}% adherence this week."
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     logs = tx.repo(HealthLogRepository)
-    month = await logs.recent(ctx.user_id, types=[TAKEN], since=ctx.now - timedelta(days=32))
+    month = await logs.recent(
+        ctx.user_id, types=[TAKEN], since=ctx.now - timedelta(days=32), agent="medication"
+    )
     taken_days = {ctx.local_date(r.recorded_at) for r in month}
     history = history_points(
         ctx.last_days(30), dict.fromkeys(taken_days, 1.0), lambda v: "✅" if v else "⬜"
@@ -83,7 +111,7 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     }
     return {
         "agent": "medication",
-        "insight": insight(history, metrics),
+        "insight": insight(history, metrics, translator=translator, locale=locale),
         "metrics": metrics,
         "history": history,
     }

@@ -10,7 +10,7 @@ from nutrition.composition import build_runtime
 from nutrition.settings import NutritionSettings
 from nutrition.testing import FakeSync
 from shared.a2a.executor import SkillExecutor, SkillResult
-from shared.skill_ids import Dashboard, Nutrition
+from shared.skill_ids import Dashboard, Feed, Nutrition
 from shared.testing.fakes import FakeLLM, FakePeerClient, FixedClock, InMemoryVectorMemory
 
 EXPECTED_IDS = {
@@ -19,7 +19,7 @@ EXPECTED_IDS = {
 
 
 def test_card_declares_exactly_the_shared_skill_ids() -> None:
-    assert {s.id for s in SKILLS} == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL}
+    assert {s.id for s in SKILLS} == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}
 
 
 def test_card_identity_is_unchanged() -> None:
@@ -46,7 +46,11 @@ def test_every_card_skill_has_a_handler() -> None:
         peers=FakePeerClient(),
         sync=FakeSync(),
     )
-    assert set(runtime.executor.skill_ids) == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL}
+    assert set(runtime.executor.skill_ids) == EXPECTED_IDS | {
+        Dashboard.CARD,
+        Dashboard.DETAIL,
+        Feed.EVENTS,
+    }
 
 
 # Recorded from the legacy executor before its deletion. Only generated UUIDs
@@ -63,9 +67,10 @@ def test_complete_card_and_peer_mapping_match_the_recorded_legacy_contract() -> 
     assert {s["id"] for s in card["skills"] if "structured" in s["tags"]} == {
         Dashboard.CARD,
         Dashboard.DETAIL,
+        Feed.EVENTS,
     }
     card["skills"] = [
-        s for s in card["skills"] if s["id"] not in {Dashboard.CARD, Dashboard.DETAIL}
+        s for s in card["skills"] if s["id"] not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}
     ]
     assert card == LEGACY["card"]
     assert LEGACY["peers"] == PEER_SKILLS
@@ -154,3 +159,7 @@ async def test_failed_skill_preserves_recorded_legacy_failure_event_shape(skill:
         events.append(event)
     assert events == LEGACY_FAILURES[skill]
     records.record.assert_not_awaited()
+
+
+def test_card_declares_feed_skill() -> None:
+    assert Feed.EVENTS in {s.id for s in SKILLS}

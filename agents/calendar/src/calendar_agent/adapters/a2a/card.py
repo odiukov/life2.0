@@ -1,9 +1,10 @@
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Calendar, Dashboard
+from shared.skill_ids import Calendar, Dashboard, Feed
 
 SKILLS = [
     AgentSkill(id=skill, name=name, description=description, tags=["structured"])
     for skill, name, description in (
+        (Feed.EVENTS, "Day Feed", "Structured events of a local day."),
         (Dashboard.CARD, "Dashboard Card", "Structured dashboard card."),
         (Dashboard.DETAIL, "Dashboard Detail", "Structured dashboard detail."),
         (Calendar.CONNECT, "Connect Calendar", "Exchange a PKCE code and store Google tokens."),

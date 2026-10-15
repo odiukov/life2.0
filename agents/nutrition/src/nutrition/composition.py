@@ -18,23 +18,25 @@ from shared.adapters.llm.build import build_llm_provider
 from shared.adapters.peers import A2APeerClient
 from shared.adapters.vector import QdrantVectorMemory
 from shared.dashboard import DashboardSkill
+from shared.feed import FeedSkill
 from shared.observability.logging import configure_logging
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.profile import BodyProfileRepository
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Dashboard, Nutrition
+from shared.skill_ids import Dashboard, Feed, Nutrition
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nutrition.adapters.a2a.card import build_agent_card
-from nutrition.adapters.db import nutrition_uow
+from nutrition.adapters.db import SqlMealRepository, nutrition_uow
 from nutrition.adapters.sync import HttpNutritionSync
 from nutrition.application.analyze import AnalyzeNutrition
 from nutrition.application.dashboard import card, detail
+from nutrition.application.feed import collect as feed_collect
 from nutrition.application.log_meal import LogMeal
 from nutrition.application.peers import PEER_SKILLS
-from nutrition.application.ports import NutritionSync
+from nutrition.application.ports import MealRepository, NutritionSync
 from nutrition.application.prompts import AnalysisMode
 from nutrition.application.set_body_profile import SetBodyProfile
 from nutrition.settings import NutritionSettings
@@ -102,6 +104,21 @@ def build_runtime(
         engine, {**base_repositories(), BodyProfileRepository: SqlBodyProfiles}
     )
     routable = tuple(handlers)
+    feed_uow = SqlUnitOfWorkFactory(
+        engine,
+        {
+            **base_repositories(),
+            BodyProfileRepository: SqlBodyProfiles,
+            MealRepository: SqlMealRepository,
+        },
+    )
+    handlers[Feed.EVENTS] = FeedSkill(
+        uow=feed_uow,
+        clock=clock,
+        translator=translator,
+        default_locale=locale,
+        collect=feed_collect,
+    )
     handlers[Dashboard.CARD] = DashboardSkill(
         uow=dashboard_uow, clock=clock, build=card, name=Dashboard.CARD
     )

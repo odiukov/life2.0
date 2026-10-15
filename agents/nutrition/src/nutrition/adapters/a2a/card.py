@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Dashboard, Nutrition
+from shared.skill_ids import Dashboard, Feed, Nutrition
 
 from nutrition.application.peers import PEER_SKILLS
 
 __all__ = ["PEER_SKILLS", "SKILLS", "build_agent_card"]
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Feed.EVENTS,
+        name="Day Feed",
+        description="Structured events of a local day.",
+        tags=["feed", "structured"],
+    ),
     AgentSkill(
         id=Dashboard.CARD,
         name="Dashboard Card",

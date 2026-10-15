@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
@@ -32,6 +33,7 @@ class Event:
     end: datetime | None
     day: date | None  # all-day events only
     etag: str | None
+    end_day: date | None = None  # Exclusive end for multi-day all-day events.
 
 
 def _parse(value: object, zone: ZoneInfo) -> datetime | None:
@@ -45,7 +47,7 @@ def _parse(value: object, zone: ZoneInfo) -> datetime | None:
 
 
 def normalize(resource: Mapping[str, object], zone: ZoneInfo) -> Event | None:
-    summary = str(resource.get("summary") or resource.get("title") or "Untitled")
+    summary = str(resource.get("summary") or resource.get("title") or "")
     start_raw, end_raw = resource.get("start"), resource.get("end")
     event_id = resource.get("id")
     etag = resource.get("etag")
@@ -56,7 +58,11 @@ def normalize(resource: Mapping[str, object], zone: ZoneInfo) -> Event | None:
             day = date.fromisoformat(str(start_raw["date"]))
         except ValueError:
             return None
-        return Event(ident, summary, True, None, None, day, tag)
+        end_day = None
+        if isinstance(end_raw, Mapping) and "date" in end_raw:
+            with suppress(ValueError):
+                end_day = date.fromisoformat(str(end_raw["date"]))
+        return Event(ident, summary, True, None, None, day, tag, end_day)
     start_value = start_raw.get("dateTime") if isinstance(start_raw, Mapping) else start_raw
     end_value = end_raw.get("dateTime") if isinstance(end_raw, Mapping) else end_raw
     start, end = _parse(start_value, zone), _parse(end_value, zone)
@@ -149,11 +155,12 @@ def title_matches(query: str, summary: str, stopwords: frozenset[str] = frozense
 
 
 def event_line(e: Event, zone: ZoneInfo) -> str:
+    title = e.summary or "Untitled"
     suffix = f" (event_id: {e.id})" if e.id else ""
     if e.all_day or e.start is None or e.end is None:
-        return f"• all day: {e.summary}{suffix}"
+        return f"• all day: {title}{suffix}"
     start, end = e.start.astimezone(zone), e.end.astimezone(zone)
-    return f"• {start:%H:%M}-{end:%H:%M}: {e.summary}{suffix}"
+    return f"• {start:%H:%M}-{end:%H:%M}: {title}{suffix}"
 
 
 def event_dto(e: Event) -> dict[str, object]:

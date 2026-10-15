@@ -11,14 +11,16 @@ from zoneinfo import ZoneInfo
 from shared.a2a.executor import SkillHandler, SkillResult
 from shared.a2a.proposals import Proposal, to_data
 from shared.a2a.request import SkillRequest
+from shared.feed import MAX_ITEMS, InvalidFeedDate, feed_result, requested_day
 from shared.observability.logging import get_logger
 from shared.ports.clock import Clock
 from shared.ports.credentials import CredentialStore
 from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWorkFactory
 from shared.ports.users import UserSettings, UserSettingsRepository
-from shared.skill_ids import Calendar
+from shared.skill_ids import Calendar, Feed
 
+from calendar_agent.application.feed import feed_items
 from calendar_agent.application.ports import (
     CalendarAuthError,
     CalendarRejected,
@@ -211,7 +213,13 @@ def build_skills(
         if isinstance(event, SkillResult):
             return event
         summary = _summary(
-            d, locale, settings.timezone, change.op, event.summary, change.fields, event
+            d,
+            locale,
+            settings.timezone,
+            change.op,
+            event.summary or d.tr.t("feed.calendar.untitled", locale),
+            change.fields,
+            event,
         )
         payload = {
             "op": change.op,
@@ -252,7 +260,23 @@ def build_skills(
             },
         )
 
+    async def feed(request: SkillRequest) -> SkillResult:
+        settings = await d.settings(request.user_id)
+        try:
+            day = requested_day(request.params, settings.today(d.clock.now()))
+        except InvalidFeedDate as exc:
+            return _fail(exc.code)
+        locale = settings.locale or default_locale
+        try:
+            events = await d.events_on(request.user_id, day, settings.timezone, limit=MAX_ITEMS)
+        except NotConnected:
+            return feed_result([])
+        return feed_result(
+            feed_items(events, day, settings.timezone, lambda key, **p: d.tr.t(key, locale, **p))
+        )
+
     return {
+        Feed.EVENTS: _guard(feed),
         Calendar.CONNECT: _guard(connect),
         Calendar.DISCONNECT: _guard(disconnect),
         Calendar.STATUS: _guard(status),

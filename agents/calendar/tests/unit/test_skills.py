@@ -235,3 +235,17 @@ async def test_russian_stopwords_do_not_match_an_unrelated_event(env) -> None:
         req(user, Calendar.PROPOSE, op="delete", title="удали встреча врача", day="2026-10-14"), ()
     )
     assert result.data["kind"] == "not_found"
+
+
+async def test_blank_event_title_keeps_list_and_proposal_readable(env) -> None:
+    skills, google, _, user = env
+    google.events["ev-gym"]["summary"] = ""
+    listed = await skills[Calendar.LIST](req(user, Calendar.LIST, day="2026-10-14"), ())
+    assert "19:00-20:00: Untitled" in listed.output
+    assert listed.data["events"][2]["summary"] == ""
+    proposed = await skills[Calendar.PROPOSE](
+        req(user, Calendar.PROPOSE, op="delete", event_id="ev-gym"), ()
+    )
+    proposal = from_data(proposed.data)
+    assert proposal is not None
+    assert "Без названия" in proposal.summary

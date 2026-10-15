@@ -8,6 +8,7 @@ from typing import Any
 from shared.dashboard import DashboardContext, empty_card, history_points
 from shared.domain.recovery import baseline_mean, compute_bucket, compute_deltas, format_top3
 from shared.ports.health_logs import HealthLogRepository
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 READY_PCT = {"recovered": 85, "neutral": 55, "depleted": 20}
@@ -50,7 +51,9 @@ async def daily_metrics(
     logs = tx.repo(HealthLogRepository)
     since = ctx.now - timedelta(days=days)
     out: dict[date, dict[str, Any]] = {}
-    for r in reversed(await logs.recent(ctx.user_id, types=["sleep_session"], since=since)):
+    for r in reversed(
+        await logs.recent(ctx.user_id, types=["sleep_session"], since=since, agent="sleep")
+    ):
         day = out.setdefault(ctx.local_date(r.recorded_at), _empty())
         if (hrv := _f(r.data.get("hrv_weekly_avg"))) is not None:
             day["hrv"] = day["hrv_sdnn"] = hrv
@@ -63,7 +66,13 @@ async def daily_metrics(
                 day["sleep_efficiency_pct"] = round(
                     max(0.0, (duration - awake) / duration * 100), 1
                 )
-    for r in reversed(await logs.recent(ctx.user_id, types=["daily_stats"], since=since)):
+    # Garmin and HealthKit store the same daily shape under different source owners.
+    daily = [
+        row
+        for owner in ("sleep", "system")
+        for row in await logs.recent(ctx.user_id, types=["daily_stats"], since=since, agent=owner)
+    ]
+    for r in sorted(daily, key=lambda row: row.recorded_at):
         day = out.setdefault(ctx.local_date(r.recorded_at), _empty())
         for key, field in (
             ("rhr", "resting_hr"),
@@ -73,7 +82,9 @@ async def daily_metrics(
         ):
             if (value := _int(r.data.get(field))) is not None:
                 day[key] = value
-    for r in reversed(await logs.recent(ctx.user_id, types=["hrv_status"], since=since)):
+    for r in reversed(
+        await logs.recent(ctx.user_id, types=["hrv_status"], since=since, agent="sleep")
+    ):
         if (rmssd := _f(r.data.get("hrv_rmssd"))) is not None:
             day = out.setdefault(ctx.local_date(r.recorded_at), _empty())
             day["hrv"] = day["hrv_sdnn"] = rmssd
@@ -115,8 +126,13 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     return out
 
 
-def insight(metrics: dict[str, Any]) -> str:
+def insight(
+    metrics: dict[str, Any], *, translator: Translator | None = None, locale: str = "en"
+) -> str:
     bucket = metrics.get("bucket", "unknown")
+    if translator is not None:
+        key = bucket if bucket in {"recovered", "depleted"} else "neutral"
+        return "" if bucket == "unknown" else translator.t(f"feed.recovery.insight.{key}", locale)
     return {
         "unknown": "",
         "recovered": "3 of 4 metrics above baseline. Ready to train.",
@@ -124,7 +140,13 @@ def insight(metrics: dict[str, Any]) -> str:
     }.get(bucket, "Recovery metrics near baseline. Moderate training ok.")
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     metrics_by_day = await daily_metrics(tx, ctx, days=9)
     values = {day: float(m.get("hrv") or 0.0) for day, m in metrics_by_day.items()}
     history = history_points(ctx.last_days(7), values, lambda v: f"{int(v)} ms" if v else "—")
@@ -140,7 +162,7 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
                 metrics[f"{key}_delta_pct"] = round(delta, 1)
     return {
         "agent": "recovery",
-        "insight": insight(metrics),
+        "insight": insight(metrics, translator=translator, locale=locale),
         "metrics": metrics,
         "history": history,
     }

@@ -1,7 +1,13 @@
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Dashboard, Recovery
+from shared.skill_ids import Dashboard, Feed, Recovery
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Feed.EVENTS,
+        name="Day Feed",
+        description="Structured events of a local day.",
+        tags=["feed", "structured"],
+    ),
     AgentSkill(
         id=Dashboard.CARD,
         name="Dashboard Card",

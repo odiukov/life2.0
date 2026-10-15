@@ -11,11 +11,12 @@ from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
 from shared.dashboard import DashboardSkill
+from shared.feed import FeedSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Dashboard
+from shared.skill_ids import Dashboard, Feed
 from shared.skill_ids import Medication as MedicationSkill
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -25,6 +26,7 @@ from medication.application.archive import ArchiveMedication
 from medication.application.dashboard import card, detail
 from medication.application.data import AdherenceData
 from medication.application.define import DefineMedication
+from medication.application.feed import collect as feed_collect
 from medication.application.intake import LogIntake
 from medication.application.listing import ListActive
 from medication.settings import MedicationSettings
@@ -104,6 +106,13 @@ def build_runtime(
         ),
     }
     routable = tuple(handlers)
+    handlers[Feed.EVENTS] = FeedSkill(
+        uow=uow,
+        clock=base.clock,
+        translator=base.translator,
+        default_locale=base.default_locale,
+        collect=feed_collect,
+    )
     handlers[Dashboard.CARD] = DashboardSkill(
         uow=uow, clock=base.clock, build=card, name=Dashboard.CARD
     )

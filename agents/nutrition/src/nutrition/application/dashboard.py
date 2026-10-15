@@ -10,6 +10,7 @@ from shared.dashboard import DashboardContext, empty_card, history_points, pg_ro
 from shared.domain.energy import ActivityLevel, Sex, bmr_mifflin_st_jeor, tdee
 from shared.ports.health_logs import HealthLogRepository, HealthLogRow
 from shared.ports.profile import BodyProfileRepository
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 MEAL = "meal"
@@ -162,9 +163,17 @@ def _meal(row: HealthLogRow) -> dict[str, object]:
     }
 
 
-def insight(history: list[dict[str, object]], metrics: Mapping[str, Any]) -> str:
+def insight(
+    history: list[dict[str, object]],
+    metrics: Mapping[str, Any],
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> str:
     protein, goal_g = metrics.get("protein_g"), metrics.get("protein_goal_g")
     if protein is not None and goal_g and protein < goal_g * 0.8:
+        if translator is not None:
+            return translator.t("feed.nutrition.insight.below", locale, grams=int(goal_g - protein))
         return f"Protein below goal by {int(goal_g - protein)}g today."
     values = [float(h["value"]) for h in history if float(h["value"]) > 0]  # type: ignore[arg-type]
     if len(values) < 3:
@@ -172,10 +181,20 @@ def insight(history: list[dict[str, object]], metrics: Mapping[str, Any]) -> str
     average = sum(values) / len(values)
     goal = metrics.get("goal_kcal") or average
     days_over = sum(1 for v in values if v >= goal * 0.9)
+    if days_over >= 5 and translator is not None:
+        return translator.t(
+            "feed.nutrition.insight.track", locale, count=days_over, days=len(values)
+        )
     return f"On track {days_over} of {len(values)} days." if days_over >= 5 else ""
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     logs = tx.repo(HealthLogRepository)
     rows = await logs.recent(
         ctx.user_id, types=[MEAL], since=ctx.now - timedelta(days=9), agent="nutrition"
@@ -207,7 +226,7 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
         metrics["protein_goal_g"] = int(profile["protein_goal_g"])  # type: ignore[call-overload]
     return {
         "agent": "nutrition",
-        "insight": insight(history, metrics),
+        "insight": insight(history, metrics, translator=translator, locale=locale),
         "metrics": metrics,
         "history": history,
         "meals": meals,

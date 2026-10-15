@@ -524,6 +524,52 @@
     "body": {
       "weight": "Вес {kg} кг",
       "fat": "{text} · жир {pct}%"
+    },
+    "nutrition": {
+      "meal": "{meal}: {kcal} ккал, белок {protein} г",
+      "type": {
+        "breakfast": "Завтрак",
+        "lunch": "Обед",
+        "dinner": "Ужин",
+        "snack": "Перекус",
+        "other": "Приём пищи"
+      },
+      "insight": {
+        "below": "Сегодня белка меньше цели на {grams} г.",
+        "track": "В пределах цели в {count} из {days} дней."
+      }
+    },
+    "habits": {
+      "check": "✓ {name}",
+      "value": "✓ {name} · {value} {unit}",
+      "insight": {
+        "streak": "Серия {days} дн.",
+        "missed": "Пропущено: {names}{more}.",
+        "more": " и другие",
+        "rate": "Выполнено {percent}% за неделю."
+      }
+    },
+    "medication": {
+      "taken": "Принято: {name}",
+      "dose": "Принято: {name} · {dose}",
+      "insight": {
+        "full": "Все приёмы за неделю отмечены. Так держать.",
+        "missed": "За неделю пропущено дней: {days}. Препараты: {names}{more}.",
+        "more": " и другие",
+        "rate": "Соблюдение приёма за неделю: {percent}%."
+      }
+    },
+    "calendar": {
+      "event": "{time} {title}",
+      "all_day": "Весь день: {title}",
+      "untitled": "Без названия"
+    },
+    "recovery": {
+      "insight": {
+        "recovered": "3 из 4 показателей выше обычных. Можно тренироваться.",
+        "depleted": "3 из 4 показателей ниже обычных. Сегодня лучше отдохнуть.",
+        "neutral": "Показатели восстановления близки к обычным. Умеренная тренировка допустима."
+      }
     }
   }
 }
