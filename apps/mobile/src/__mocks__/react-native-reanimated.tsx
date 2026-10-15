@@ -25,12 +25,20 @@ function useAnimatedStyle(fn: () => object) {
   return fn();
 }
 
-const withTiming = (_toValue: unknown, _config?: unknown, callback?: (finished: boolean) => void) => {
+const withTiming = (
+  _toValue: unknown,
+  _config?: unknown,
+  callback?: (finished: boolean) => void,
+) => {
   if (callback) callback(true);
   return _toValue;
 };
 
-const withSpring = (_toValue: unknown, _config?: unknown, callback?: (finished: boolean) => void) => {
+const withSpring = (
+  _toValue: unknown,
+  _config?: unknown,
+  callback?: (finished: boolean) => void,
+) => {
   if (callback) callback(true);
   return _toValue;
 };
@@ -39,6 +47,7 @@ const Easing = {
   out: ID,
   in: ID,
   inOut: ID,
+  sin: ID,
   ease: ID,
   linear: ID,
   quad: ID,
@@ -77,6 +86,8 @@ const Animated = {
 module.exports = {
   default: Animated,
   useSharedValue,
+  useReducedMotion: () => false,
+  interpolate: ID,
   useAnimatedStyle,
   useAnimatedProps: (fn: () => object) => fn(),
   withTiming,

@@ -47,14 +47,18 @@
         {
           "microphonePermission": "Life Agents uses the microphone only while you hold the mic button, to turn your voice into chat text."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to attach your photos to a task.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to take a photo for a task."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
     },
-    "platforms": [
-      "ios",
-      "android"
-    ]
+    "platforms": ["ios", "android"]
   }
 }

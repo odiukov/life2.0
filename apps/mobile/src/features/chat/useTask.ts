@@ -1,4 +1,11 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
+import {
+  addPendingDelete,
+  flushPendingDeletes,
+  loadPendingDeletes,
+  subscribePendingDeletes,
+} from './pendingDeletes';
 import type { AgentId } from '@life-agents/ui';
 import { clearOpenTaskId, loadOpenTaskId, saveOpenTaskId } from './taskStorage';
 import {
@@ -102,6 +109,12 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
     const id = unreadTask.current ?? (await loadOpenTaskId());
     if (!id) return;
     unreadTask.current = id;
+    if ((await loadPendingDeletes()).includes(id)) {
+      await clearOpenTaskId();
+      unreadTask.current = null;
+      reset();
+      return;
+    }
     const snapshot = await api.read(id);
     if (!snapshot) {
       await clearOpenTaskId();
@@ -123,12 +136,17 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
     busy.current = true;
     setPhase('restoring');
     try {
-      await serialize(readSavedTask);
+      await serialize(async () => {
+        // Establish the saved-task barrier even if queue storage or flushing fails.
+        unreadTask.current = unreadTask.current ?? (await loadOpenTaskId());
+        await flushPendingDeletes((id) => api.close(id));
+        await readSavedTask();
+      });
     } finally {
       busy.current = false;
       setPhase('idle');
     }
-  }, [readSavedTask, serialize]);
+  }, [api, readSavedTask, serialize]);
 
   // Only identity operations in the queue call this helper.
   const ensureTask = useCallback(
@@ -308,13 +326,21 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
       await serialize(async () => {
         const id = task.current.id ?? unreadTask.current;
         if (id) {
-          for (let attempt = 1; ; attempt++) {
-            try {
-              await api.close(id);
-              break;
-            } catch (e) {
-              if (!(e instanceof TaskBusyError) || attempt >= BUSY_RETRIES) throw e;
-              await sleep(BUSY_DELAY_MS);
+          try {
+            for (let attempt = 1; ; attempt++) {
+              try {
+                await api.close(id);
+                break;
+              } catch (e) {
+                if (!(e instanceof TaskBusyError) || attempt >= BUSY_RETRIES) throw e;
+                await sleep(BUSY_DELAY_MS);
+              }
+            }
+          } catch (error) {
+            if (error instanceof TaskBusyError) throw error;
+            if (!(error instanceof TasksApiError && error.status === 404)) {
+              // Persist before clearing either the in-memory or saved identity.
+              await addPendingDelete(id);
             }
           }
         }
@@ -326,6 +352,57 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
       closing.current = false;
     }
   }, [api, reset, serialize]);
+
+  useEffect(() => {
+    let disposed = false;
+    let active = AppState.currentState == null || AppState.currentState === 'active';
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let delay = 10000;
+    const cancel = () => {
+      clearTimeout(timer);
+      timer = undefined;
+    };
+    const schedule = async () => {
+      if (disposed || !active || timer) return;
+      try {
+        const ids = await loadPendingDeletes();
+        if (!disposed && active && ids.length && !timer) {
+          timer = setTimeout(() => {
+            timer = undefined;
+            void retry();
+          }, delay);
+        }
+      } catch {
+        // A later queue mutation or foreground transition can retry a storage failure.
+      }
+    };
+    const retry = async () => {
+      if (disposed || !active) return;
+      try {
+        await flushPendingDeletes((id) => api.close(id));
+      } catch {
+        /* Keep durable identities for the next retry. */
+      }
+      await schedule();
+      delay = Math.min(delay * 2, 60000);
+    };
+    const unsubscribe = subscribePendingDeletes(() => {
+      void schedule();
+    });
+    const subscription = AppState.addEventListener('change', (state) => {
+      active = state === 'active';
+      cancel();
+      delay = 10000;
+      if (active) void retry();
+    });
+    void schedule();
+    return () => {
+      disposed = true;
+      cancel();
+      unsubscribe();
+      subscription.remove();
+    };
+  }, [api]);
 
   return {
     taskId,

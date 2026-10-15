@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, type AppStateStatus } from 'react-native';
+import { loadPendingDeletes, addPendingDelete } from './pendingDeletes';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import * as SecureStore from 'expo-secure-store';
 import type { TasksApi } from './tasksApi';
@@ -30,6 +33,7 @@ function fakeApi(overrides: Partial<TasksApi> = {}): jest.Mocked<TasksApi> {
 }
 
 beforeEach(async () => {
+  jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
   await SecureStore.deleteItemAsync('open_task_id');
 });
 
@@ -619,4 +623,124 @@ test('failed restore retry reports unsent input and retains the saved task', asy
   expect(sent).toBe(false);
   expect(api.post).not.toHaveBeenCalled();
   expect(await SecureStore.getItemAsync('open_task_id')).toBe('t9');
+});
+
+test('offline close persists delete before forgetting identity and restore retries it', async () => {
+  const api = fakeApi({ close: jest.fn().mockRejectedValue(new TypeError('offline')) });
+  const first = renderHook(() => useTask(api));
+  await act(() => first.result.current.send({ text: 'hello' }));
+  await act(() => first.result.current.close());
+  expect(first.result.current.taskId).toBeNull();
+  expect(await SecureStore.getItemAsync('open_task_id')).toBeNull();
+  expect(await loadPendingDeletes()).toEqual(['t1']);
+  first.unmount();
+  const online = fakeApi();
+  const second = renderHook(() => useTask(online));
+  await act(() => second.result.current.restore());
+  expect(online.close).toHaveBeenCalledWith('t1');
+  expect(online.read).not.toHaveBeenCalled();
+  expect(await loadPendingDeletes()).toEqual([]);
+});
+
+test('failed queue persistence retains the saved identity and visible task', async () => {
+  const api = fakeApi({ close: jest.fn().mockRejectedValue(new TypeError('offline')) });
+  const { result } = renderHook(() => useTask(api));
+  await act(() => result.current.send({ text: 'hello' }));
+  jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'));
+  await act(async () => {
+    await expect(result.current.close()).rejects.toThrow('disk full');
+  });
+  expect(result.current.taskId).toBe('t1');
+  expect(await SecureStore.getItemAsync('open_task_id')).toBe('t1');
+});
+
+test('restore never reads a queued offline task', async () => {
+  await SecureStore.setItemAsync('open_task_id', 't9');
+  await addPendingDelete('t9');
+  const api = fakeApi({ close: jest.fn().mockRejectedValue(new TypeError('offline')) });
+  const { result } = renderHook(() => useTask(api));
+  await act(() => result.current.restore());
+  expect(api.read).not.toHaveBeenCalled();
+  expect(result.current.taskId).toBeNull();
+  expect(await loadPendingDeletes()).toEqual(['t9']);
+});
+
+test('app resume retries pending deletes and removes its listener on unmount', async () => {
+  let resume!: (state: AppStateStatus) => void;
+  const remove = jest.fn();
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, callback) => {
+      resume = callback;
+      return { remove };
+    });
+  await addPendingDelete('old');
+  const api = fakeApi();
+  const hook = renderHook(() => useTask(api));
+  await act(async () => {
+    resume('active');
+  });
+  expect(api.close).toHaveBeenCalledWith('old');
+  expect(await loadPendingDeletes()).toEqual([]);
+  hook.unmount();
+  expect(remove).toHaveBeenCalled();
+  listener.mockRestore();
+});
+
+test('queued deletes retry with backoff only in foreground and stop after success', async () => {
+  jest.useFakeTimers();
+  let change!: (state: AppStateStatus) => void;
+  const listener = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation((_event, callback) => {
+      change = callback;
+      return { remove: jest.fn() };
+    });
+  try {
+    const api = fakeApi({ close: jest.fn().mockRejectedValueOnce(new TypeError('offline')) });
+    const hook = renderHook(() => useTask(api));
+    await act(() => hook.result.current.send({ text: 'hello' }));
+    await act(() => hook.result.current.close());
+    await act(async () => {
+      change('background');
+      await jest.advanceTimersByTimeAsync(60000);
+    });
+    expect(api.close).toHaveBeenCalledTimes(1);
+    api.close.mockRejectedValueOnce(new TypeError('offline'));
+    await act(async () => {
+      change('active');
+    });
+    expect(api.close).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10000);
+    });
+    expect(api.close).toHaveBeenCalledTimes(3);
+    expect(await loadPendingDeletes()).toEqual([]);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(120000);
+    });
+    expect(api.close).toHaveBeenCalledTimes(3);
+    hook.unmount();
+    expect(jest.getTimerCount()).toBe(0);
+  } finally {
+    listener.mockRestore();
+    jest.useRealTimers();
+  }
+});
+
+test('a queue read failure during restore retains the saved-task barrier on send', async () => {
+  await SecureStore.setItemAsync('open_task_id', 'saved');
+  const api = fakeApi({ read: jest.fn().mockRejectedValue(new TypeError('offline')) });
+  const { result } = renderHook(() => useTask(api));
+  // The mount scheduler reads storage too; let its initial check complete first.
+  await act(async () => {
+    await Promise.resolve();
+  });
+  jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('disk'));
+  await act(async () => {
+    await result.current.restore().catch(() => undefined);
+  });
+  await act(() => result.current.send({ text: 'keep identity' }));
+  expect(api.open).not.toHaveBeenCalled();
+  expect(await SecureStore.getItemAsync('open_task_id')).toBe('saved');
 });

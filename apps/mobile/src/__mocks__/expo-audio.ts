@@ -11,3 +11,5 @@ const recorder = {
   uri: 'file:///tmp/voice.m4a',
 };
 export const useAudioRecorder = () => recorder;
+
+export const useAudioRecorderState = () => ({ isRecording: false, metering: -30 });

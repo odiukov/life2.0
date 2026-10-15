@@ -15,6 +15,8 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testMatch: ['**/*.test.ts?(x)'],
   moduleNameMapper: {
+    '^expo-haptics$': '<rootDir>/src/__mocks__/expo-haptics.ts',
+    '^expo-image-picker$': '<rootDir>/src/__mocks__/expo-image-picker.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@life-agents/ui$': '<rootDir>/../../packages/ui/src/index.ts',
     '^@life-agents/i18n$': '<rootDir>/../../packages/i18n/src/index.ts',
