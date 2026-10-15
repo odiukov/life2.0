@@ -204,3 +204,19 @@ async def test_local_day_bounds_accept_different_offsets(at: str) -> None:
     body = (await get(api(lookup))).json()
     assert body["unavailable"] == []
     assert len(body["items"]) == 9
+
+
+@pytest.mark.parametrize(
+    ("at", "timezone"),
+    [
+        ("9999-12-31T23:59:59Z", "Europe/Kyiv"),
+        ("0001-01-01T00:00:00Z", "America/New_York"),
+    ],
+)
+async def test_timezone_overflow_isolates_peer(at: str, timezone: str) -> None:
+    lookup, _, _ = clients({"sleep": SkillReply("", {"items": [item(at=at)]})})
+    response = await get(api(lookup, timezone=timezone))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["unavailable"] == ["sleep"]
+    assert {entry["agent"] for entry in body["items"]} == set(FEED_AGENTS) - {"sleep"}

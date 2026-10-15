@@ -85,9 +85,10 @@ async def _ask(
             return None
         try:
             item = FeedItemOut.model_validate({**raw, "agent": ""})
-        except ValidationError:
+            local_day = item.at.astimezone(zone).date()
+        except (ValidationError, OverflowError):
             return None
-        if item.at.astimezone(zone).date() != day:
+        if local_day != day:
             return None
         items.append(item)
     return items
