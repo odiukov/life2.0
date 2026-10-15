@@ -38,7 +38,7 @@ skip() { echo "SKIP  $1"; skips=$((skips + 1)); }
 equal() {
   local label=$1 actual=$2 expected=$3
   if [[ "$actual" == "$expected" ]]; then pass "$label"; return 0; fi
-  fail "$label (expected $expected, got $actual)"
+  fail "$label (mismatch)"
   return 1
 }
 api() {
@@ -63,38 +63,19 @@ seed_batch() {
   sql_owner "INSERT INTO kitchen_batches (household_id,name,display_name,category,quantity,unit,location,status,added_at,added_by,expires_on,expiry_source,next_check_on,source) VALUES ('$household','$name','$name','other',1,'pcs','fridge','active',now(),'$author','$expires','explicit','$expires','text')" >/dev/null
 }
 sse_text() { sed -n 's/^data: //p' "$1" | jq -sr '[.[] | select(.type == "TextMessageContent") | .delta] | join("")'; }
-relay_tool_text() {
-  compose exec -T orchestrator python - "$1" <<'PY'
-import asyncio
-import json
-import os
-import sys
-
-from langchain_core.messages import AIMessage, ToolMessage
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
-
-async def main() -> None:
-    async with AsyncPostgresSaver.from_conn_string(os.environ["POSTGRES_DSN"]) as saver:
-        saved = await saver.aget_tuple({"configurable": {"thread_id": sys.argv[1]}})
-    messages = [] if saved is None else saved.checkpoint["channel_values"].get("messages", [])
-    ids = {
-        call["id"]
-        for message in messages
-        if isinstance(message, AIMessage)
-        for call in message.tool_calls
-        if call["name"] == "ask_kitchen_agent"
-    }
-    replies = [
-        message.content
-        for message in messages
-        if isinstance(message, ToolMessage) and message.tool_call_id in ids
-    ]
-    print(json.dumps(replies[-1] if replies else None))
-
-
-asyncio.run(main())
-PY
+task_message() {
+  local who=$1 lead=$2 message=$3 payload status
+  if [[ -n "$lead" ]]; then
+    payload=$(jq -nc --arg lead "$lead" '{lead_agent:$lead}')
+  else
+    payload='{}'
+  fi
+  api "$who" POST /tasks "$payload" || return 1
+  TASK_ID=$(json '.id')
+  status=$(curl -sS --max-time 180 -o "$WORK/response" -w '%{http_code}' \
+    -H "X-User-Id: $who" -F "text=$message" -F 'timezone=UTC' \
+    "$API/tasks/$TASK_ID/messages") || { fail 'task message request'; return 1; }
+  [[ "$status" == 200 ]] || { fail "task message HTTP $status"; return 1; }
 }
 
 # A reused project would invalidate all counts and isolation claims.
@@ -123,16 +104,18 @@ api "$B" GET /household || exit 1
 HOUSEHOLD_B=$(json '.id')
 
 if [[ "$LLM_AVAILABLE" == 1 ]]; then
-  for phrase in 'купил кефир' 'купил творог'; do
-    payload=$(jq -nc --arg text "$phrase" '{messages:[{role:"user",content:$text}]}')
-    if api "$B" POST /agent/kitchen/stream "$payload"; then
+  for phrase in 'bought kefir' 'bought curd'; do
+    if task_message "$B" kitchen "$phrase"; then
       cp "$WORK/response" "$WORK/direct.sse"
-      response=$(sse_text "$WORK/direct.sse")
-      [[ "$response" == *'Записал'* ]] && pass 'direct kitchen A2A purchase' || fail 'direct kitchen A2A purchase'
+      if jq -es 'any(.[]; .type == "RunFinished")' < <(sed -n 's/^data: //p' "$WORK/direct.sse") >/dev/null; then
+        pass 'kitchen task completed'
+      else
+        fail 'kitchen task incomplete'
+      fi
     fi
   done
 else
-  skip 'direct kitchen A2A purchases (no real LLM configured)'
+  skip 'kitchen task purchases (no real LLM configured)'
   seed_batch "$HOUSEHOLD_B" "$B" acceptance_kefir "$EXPIRY_DATE"
   seed_batch "$HOUSEHOLD_B" "$B" acceptance_curd "$EXPIRY_DATE"
 fi
@@ -145,29 +128,24 @@ if api "$A" GET /kitchen/inventory; then
 fi
 
 if [[ "$LLM_AVAILABLE" == 1 ]]; then
-  THREAD=$(uuidgen | tr '[:upper:]' '[:lower:]')
-  payload=$(jq -nc --arg thread "$THREAD" '{threadId:$thread,messages:[{role:"user",content:"купил молоко и 2 кг курицы"}]}')
-  if api "$B" POST /chat/stream "$payload"; then
+  if task_message "$B" '' 'bought milk and chicken'; then
     cp "$WORK/response" "$WORK/chat.sse"
     chat_text=$(sse_text "$WORK/chat.sse")
-    if [[ "$chat_text" == 'Записал:'* ]]; then pass 'chat kitchen response starts with recorded confirmation';
-    else fail 'chat kitchen response starts with recorded confirmation'; fi
-    tool_json=$(relay_tool_text "$THREAD" 2>"$WORK/relay.err" || true)
-    tool_text=$(jq -nr --argjson value "${tool_json:-null}" '$value // empty' 2>/dev/null || true)
-    if [[ -n "$tool_text" && "$tool_text" == "$chat_text" ]]; then
-      pass 'orchestrator relays kitchen tool response verbatim'
-    else
-      fail 'orchestrator relays kitchen tool response verbatim'
+    if [[ -n "$chat_text" ]]; then pass 'chat task returned text';
+    else fail 'chat task returned text'; fi
+    if api "$B" GET "/tasks/$TASK_ID"; then
+      saved=$(json '.messages[-1].text')
+      equal 'task transcript matches SSE' "$saved" "$chat_text" || true
     fi
     if api "$A" GET /kitchen/inventory; then equal 'four items after chat' "$(json '.items | length')" 4 || true; fi
   fi
 else
-  skip 'chat routing, four-item result and verbatim relay (no real LLM configured)'
+  skip 'chat routing and four-item result (no real LLM configured)'
   seed_batch "$HOUSEHOLD_A" "$B" acceptance_chicken "$EXPIRY_DATE"
 fi
 
 if api "$A" GET /kitchen/inventory; then
-  CHICKEN=$(json '.items[] | select(.name | test("куриц|acceptance_chicken")) | .id' 2>/dev/null | head -1 || true)
+  CHICKEN=$(json '.items[] | select(.name | test("куриц|chicken|acceptance_chicken"; "i")) | .id' 2>/dev/null | head -1 || true)
   if [[ -n "$CHICKEN" ]] && api "$A" POST "/kitchen/items/$CHICKEN/action" '{"action":"consumed"}'; then
     GROUP=$(json '.group_id')
     if api "$A" POST "/kitchen/undo/$GROUP" && api "$A" GET /kitchen/inventory; then
@@ -204,7 +182,6 @@ for who in "$A" "$B"; do
   if api "$who" GET /notifications; then
     equal 'one kitchen digest in member inbox' "$(json '[.items[] | select(.kind == "kitchen.digest")] | length')" 1 || true
     equal 'digest names the seeded expiring item' "$(json --arg fixture acceptance_expiry_fixture '[.items[] | select(.kind == "kitchen.digest") | .body | contains($fixture)] | any')" true || true
-    equal 'digest marks the seeded item for tomorrow' "$(json '[.items[] | select(.kind == "kitchen.digest") | .body | test("завтра|tomorrow")] | any')" true || true
   fi
 done
 

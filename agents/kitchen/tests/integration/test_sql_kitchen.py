@@ -247,14 +247,15 @@ async def test_digest_discovery_local_date_claim_and_privileges(clean_db: Postgr
                     text(
                         "SELECT prosecdef, proconfig, "
                         "has_function_privilege('app_rw', oid, 'EXECUTE') AS rw, "
-                        "has_function_privilege('app_legacy', oid, 'EXECUTE') AS legacy "
+                        "EXISTS (SELECT 1 FROM aclexplode(COALESCE(proacl, acldefault('f', proowner))) a "
+                        "WHERE a.grantee NOT IN (proowner, (SELECT oid FROM pg_roles WHERE rolname = 'app_rw'))) AS unexpected_grant "
                         "FROM pg_proc WHERE oid = 'public.kitchen_digests_due(timestamptz)'::regprocedure"
                     )
                 )
             ).one()
             assert privileges.prosecdef
             assert privileges.rw
-            assert not privileges.legacy
+            assert not privileges.unexpected_grant
             assert privileges.proconfig == ["search_path=public, pg_temp"]
             for name in (
                 "kitchen_batches",
@@ -266,7 +267,9 @@ async def test_digest_discovery_local_date_claim_and_privileges(clean_db: Postgr
                     await conn.execute(
                         text(
                             "SELECT relrowsecurity, relforcerowsecurity, "
-                            "has_table_privilege('app_legacy', oid, 'SELECT,INSERT,UPDATE,DELETE') AS legacy "
+                            "EXISTS (SELECT 1 FROM information_schema.role_table_grants "
+                            "WHERE table_schema = 'public' AND table_name = :name "
+                            "AND grantee NOT IN ('app_owner', 'app_rw', current_user)) AS unexpected_grant "
                             "FROM pg_class WHERE relname = :name"
                         ),
                         {"name": name},
@@ -274,7 +277,7 @@ async def test_digest_discovery_local_date_claim_and_privileges(clean_db: Postgr
                 ).one()
                 assert flags.relrowsecurity
                 assert not flags.relforcerowsecurity
-                assert not flags.legacy
+                assert not flags.unexpected_grant
     finally:
         await raw.dispose()
         await admin.dispose()

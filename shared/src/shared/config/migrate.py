@@ -17,7 +17,6 @@ class MigrateSettings(BaseSettings):
     postgres_password: SecretStr
     app_owner_password: SecretStr
     app_rw_password: SecretStr
-    app_legacy_password: SecretStr
 
     def url(self, user: str, password: SecretStr) -> str:
         return URL.create(
@@ -33,5 +32,4 @@ class MigrateSettings(BaseSettings):
         return RolePasswords(
             owner=self.app_owner_password.get_secret_value(),
             rw=self.app_rw_password.get_secret_value(),
-            legacy=self.app_legacy_password.get_secret_value(),
         )

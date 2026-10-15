@@ -311,12 +311,12 @@ async def test_real_provider_failure_is_failed_without_meal_memory_or_success_re
         yield Task.model_validate(reply), None
 
     monkeypatch.setattr(
-        peer_adapter.legacy_peer,
-        "get_client",
+        peer_adapter,
+        "_get_client",
         AsyncMock(return_value=SimpleNamespace(send_message=send_message)),
     )
     assert (
-        await peer_adapter.legacy_peer.call_peer("http://nutrition", skill, user_id=str(user))
+        await peer_adapter.call_peer("http://nutrition", skill, user_id=str(user))
         == peer_adapter.LEGACY_UNAVAILABLE
     )
 

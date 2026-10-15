@@ -1,47 +1,14 @@
-# PostgreSQL roles
+# PostgreSQL roles and migrations
 
-The `migrate` service (`python -m shared.schema`) runs on every `docker compose up`:
+The `migrate` service runs on every `docker compose up`. It uses the configured PostgreSQL administrator to create or update two roles:
 
-1. As the bootstrap superuser (`POSTGRES_USER`), it creates or updates three roles:
-   - `app_owner` owns the schema and applies Alembic migrations;
-   - `app_rw` (NOBYPASSRLS) is used by migrated services; every transaction sets
-     `app.user_id`, and row-level security limits it to that user's rows;
-   - `app_legacy` (BYPASSRLS) is used by services not yet migrated; it disappears when the
-     last one moves to `app_rw`.
-2. As `app_owner`, it runs `alembic upgrade heads`.
+- `app_owner` owns the schema and runs Alembic migrations.
+- `app_rw` is the runtime role. Services set `app.user_id` for each tenant transaction, and row-level security restricts user data.
 
-Passwords come from `APP_OWNER_PASSWORD`, `APP_RW_PASSWORD`, `APP_LEGACY_PASSWORD` in `.env`
-(letters, digits, `_` and `-` only).
+Set `APP_OWNER_PASSWORD` and `APP_RW_PASSWORD` in `.env` using letters, digits, `_` or `-`. The bootstrap revokes `CREATE` on `public` from `PUBLIC` and `app_rw`. Runtime code cannot change the schema or write Alembic's version table. All services connect as `app_rw`.
 
-Bootstrap uses the configured administrator only for `ensure_roles`. Alembic always
-connects as `app_owner`, including in the test container. The controlled roles
-are reset to `NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION`; only
-`app_legacy` retains `BYPASSRLS`. Bootstrap revokes public schema creation from
-`PUBLIC` and `app_rw`. Both application roles receive table DML, while
-`app_legacy` temporarily retains schema creation for LangGraph checkpoints.
-Alembic migration history (`alembic_version`) is owner-only: application roles
-have all privileges revoked on that control table after the application grants.
+When upgrading from before 3c, the migrate job reassigns objects owned by the retired runtime role to `app_owner`, drops the old role and its remaining grants, then applies the current schema. Remove the old legacy-role password entry from `.env`; it is no longer read. The role retirement applies to this deployment's single application database. If a cluster has other databases with grants to that old role, bootstrap fails visibly so those grants can be handled by the administrator.
 
-Every tenant table has `ENABLE` and `FORCE ROW LEVEL SECURITY`, including
-`users` and the text-keyed `telemetry_consent`. UUID tenant keys compare against
-`NULLIF(current_setting('app.user_id', true), '')::uuid`; consent compares text
-without a UUID cast. Missing or cleared transaction-local tenants see no rows.
-The development consent seed `owner` is read through the administrator or
-legacy connection, or through an explicitly selected tenant.
+Alembic owns the four LangGraph checkpoint tables. Revision `c0010_chat` recreates them using the schema pinned to `langgraph-checkpoint-postgres` 3.1.3. Earlier checkpoint rows lacked user ownership and are intentionally removed during this migration. The new orchestrator verifies the checkpoint schema version at startup and does not run the library's `setup()`.
 
-`c0001_initial` starts the `core` Alembic branch. Future domain branches use a
-separate root with `branch_labels = ("nutrition",)` (or the domain name),
-`down_revision = None`, and `depends_on = "c0001_initial"`. Subsequent domain
-revisions link to their preceding domain revision. Nutrition adds no tables in
-this foundation, so no empty domain revision is created. `upgrade heads`
-applies every domain head after its core dependency.
-
-This initial revision targets a fresh database after the approved development
-data reset; it does not translate an earlier migration history. On
-Compose startup every database consumer waits for the migrate service to finish
-successfully. Services use `app_legacy` until their migration to tenant-aware
-`app_rw` transactions. Runtime `init_db_pool()` never changes the schema.
-
-Integration tests require a running Docker daemon. A missing or unreachable
-Docker daemon fails the integration suite, including CI. Tests use a disposable
-PostgreSQL 16 container, not the developer's database. Unit tests do not start it.
+Integration tests use a disposable PostgreSQL 16 container and require Docker. Unit tests do not start it.

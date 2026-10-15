@@ -38,6 +38,11 @@ def _user_fk() -> sa.Column:
     return sa.Column("user_id", UUID, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     op.create_table(
         "users",
@@ -226,16 +231,14 @@ def upgrade() -> None:
     )
 
     # Grants: DML only for the application roles; the owner keeps DDL.
-    op.execute(
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_rw, app_legacy"
-    )
+    op.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_rw")
     op.execute(
         "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw, app_legacy"
+        "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rw"
     )
 
     # Alembic creates its control table before this revision. Its history is owner-only.
-    op.execute("REVOKE ALL PRIVILEGES ON TABLE alembic_version FROM app_rw, app_legacy")
+    op.execute("REVOKE ALL PRIVILEGES ON TABLE alembic_version FROM app_rw")
 
     # Row-level security, enforced even for the table owner.
     for table in RLS_TABLES:
@@ -254,6 +257,14 @@ def upgrade() -> None:
     op.execute("ALTER TABLE users FORCE ROW LEVEL SECURITY")
     op.execute(
         f"CREATE POLICY tenant_isolation ON users USING (id = {TENANT}) WITH CHECK (id = {TENANT})"
+    )
+
+    op.execute(
+        _if_legacy(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_legacy; "
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_legacy; "
+            "REVOKE ALL PRIVILEGES ON TABLE alembic_version FROM app_legacy"
+        )
     )
 
 

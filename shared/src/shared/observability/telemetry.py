@@ -6,7 +6,7 @@ with gen_ai.* semantic conventions.
 
 First line of each service's `main.py`:
 
-    from shared.telemetry import init_telemetry
+    from shared.observability.telemetry import init_telemetry
     init_telemetry("my-service")
 
 Env vars:
@@ -103,7 +103,7 @@ def init_telemetry(
     _instrument_frameworks()
 
     if capture == "consented":
-        from shared.consent import install_consent_pipeline
+        from shared.observability.consent import install_consent_pipeline
 
         install_consent_pipeline()
     # Stash consent_lookup for later callers that need it.

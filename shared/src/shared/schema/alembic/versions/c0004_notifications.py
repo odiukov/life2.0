@@ -33,6 +33,11 @@ BEGIN
 END $$"""
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     op.create_table(
         "notifications",
@@ -56,7 +61,7 @@ def upgrade() -> None:
     )
     op.create_index("push_tokens_user_idx", "push_tokens", ["user_id"])
     for table in ("notifications", "push_tokens"):
-        op.execute(f"REVOKE ALL ON {table} FROM app_legacy")
+        op.execute(_if_legacy(f"REVOKE ALL ON {table} FROM app_legacy"))
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         op.execute(

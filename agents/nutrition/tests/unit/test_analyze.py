@@ -18,10 +18,10 @@ from nutrition.testing import (
 from shared.a2a.request import SkillRequest
 from shared.adapters import peers as peer_adapter
 from shared.adapters.i18n import JsonTranslator
+from shared.analysis.chip_rules import PEER_CHIP_RULES
+from shared.analysis.grounding import GROUNDING_RULES
+from shared.analysis.personas import IDENTITY
 from shared.config import find_locales_dir
-from shared.grounding import GROUNDING_RULES
-from shared.peer_chip_rules import PEER_CHIP_RULES
-from shared.personas import IDENTITY
 from shared.ports.llm import LLMTask, LLMUnavailable
 from shared.testing.fakes import FakeLLM, FakePeerClient, FixedClock, InMemoryVectorMemory
 
@@ -264,7 +264,7 @@ async def test_adapter_peer_failures_allow_analysis(
 
         fetch = AsyncMock(side_effect=wait_forever)
         monkeypatch.setattr(peer_adapter, "PEER_TIMEOUT_S", 0.01)
-    monkeypatch.setattr(peer_adapter.legacy_peer, "fetch_peer_artifacts", fetch)
+    monkeypatch.setattr(peer_adapter, "fetch_peer_artifacts", fetch)
     world.handler.peers = peer_adapter.A2APeerClient(
         {"workout": "http://workout", "sleep": "http://sleep"}
     )

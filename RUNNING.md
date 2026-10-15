@@ -2,127 +2,51 @@
 
 ## Prerequisites
 
-- Docker Desktop (or OrbStack / Colima) installed and running
-- An API key for one of the supported LLM providers (OpenRouter by default — see `.env.example`)
+- Docker Desktop (or OrbStack / Colima) running
+- An API key for the provider selected in `LLM__DEFAULT`
+- `curl` and `jq` for HTTP checks
 
-## First-time Setup
+## First-time setup
 
-1. Clone or navigate to the project directory
-2. Copy environment file:
+1. Copy `.env.example` to `.env`.
+2. Set `APP_OWNER_PASSWORD`, `APP_RW_PASSWORD`, `AUTH_JWT_SECRET`, `SECRETS__KEY`, and a provider API key. Keep the sealing key backed up; changing it makes stored integration credentials unreadable.
+3. Choose `LLM__DEFAULT=<provider>:<model>` and optional `LLM__TASKS__*` routes. The mood coach route uses Groq only.
+4. For a local demo, set `AUTH_MODE=dev`. Use OAuth mode for a reachable deployment.
 
-   ```bash
-   cp .env.example .env
-   ```
+Upgrading from before 3c: remove the old legacy-role password and DSN entries from `.env`. Home Assistant credentials now belong to the family connection in the app; remove `HA_TOKEN` and `HA_BASE_URL`, then reconnect in the family panel if the old setup used only those variables.
 
-3. Set `APP_OWNER_PASSWORD`, `APP_RW_PASSWORD` and `APP_LEGACY_PASSWORD` in `.env`
-   (letters, digits, `-` and `_`). The migrate service bootstraps roles as the configured
-   administrator, then runs Alembic strictly as `app_owner`; services wait for success.
-4. All health peers read `LLM__DEFAULT` (`<provider>:<model>`) and optional `LLM__TASKS__*`
-   routes instead of `LLM_PROVIDER` / `LLM_MODEL`. Keep both routes aligned for the same
-   provider, and supply its API key. Health peers connect using `app_rw`; unmigrated
-   services use `app_legacy`. See [database role details](deploy/postgres/README.md).
-
-## LLM provider
-
-Set `LLM_PROVIDER` in `.env` to one of: `anthropic`, `openrouter`, `gemini`,
-`groq`, `ollama`. Default is `openrouter` with a free model. Set the
-matching API key.
-
-- **OpenRouter / Anthropic / Gemini:** just set the API key. Plain HTTP.
-- **Groq:** just set `GROQ_API_KEY`. Free tier is ~30 req/min, ~14 400 req/day across Llama 3.x models — the most generous free option for tool-calling workloads. Get a key at https://console.groq.com/keys.
-- **Ollama:** run Ollama on the host; set `OLLAMA_HOST=http://host.docker.internal:11434`.
-
-Switch providers with an env change and `docker compose up -d --force-recreate <service>`.
-
-> **Note:** changing `LLM_PROVIDER` or `LLM_MODEL` in `.env` requires
-> `docker compose up -d --force-recreate <service>` — a plain
-> `docker compose restart` does not re-read `env_file`.
-
-## Start the System
+## Start and verify
 
 ```bash
 docker compose up --build -d
-```
-
-Wait ~60 seconds for all services to become healthy.
-
-## Verify Everything is Running
-
-```bash
-# All services should show as healthy
 docker compose ps
-
-# Orchestrator discovered the sleep agent
-curl http://localhost:8000/agents
-
-# Send a test message
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Как я спал на этой неделе?"}'
 ```
 
-Expected response from /agents:
-
-```json
-{ "agents": ["sleep"] }
-```
-
-Expected response from /chat:
-
-```json
-{ "status": "completed", "output": "...Claude's response..." }
-```
-
-## Verify Data Was Logged
+Wait until `migrate`, orchestrator, sync service and the needed agents are healthy. In local development mode, create and read a task with a fixed demo user:
 
 ```bash
-docker compose exec postgres psql -U lifeagents -d lifeagents \
-  -c "SELECT agent, skill_id, output, created_at FROM tasks ORDER BY created_at DESC LIMIT 3;"
+USER_ID=de000000-0000-4000-8000-000000000001
+curl -fsS -H "X-User-Id: $USER_ID" -H 'Content-Type: application/json' \
+  -d '{}' http://localhost:8000/tasks
+curl -fsS -H "X-User-Id: $USER_ID" http://localhost:8000/agents
 ```
 
-### LangGraph checkpoints
+The first response contains a task `id`; use `POST /tasks/{id}/messages` with multipart `text` for SSE chat. The mobile app stores the open task ID and restores its transcript from `GET /tasks/{id}` after a restart.
 
-The orchestrator persists in-flight conversation state (per `threadId`) to
-four LangGraph-managed tables: `checkpoints`, `checkpoint_blobs`,
-`checkpoint_writes`, `checkpoint_migrations`. LangGraph owns the schema —
-`AsyncPostgresSaver.setup()` creates them on first orchestrator startup.
+Run `bash scripts/acceptance_orchestrator.sh` for the full stack checks after configuring a real model and an isolated test stack.
 
-This means `docker compose restart orchestrator` **preserves** an ongoing
-conversation: sending a follow-up message on the same `threadId` resumes
-from the last checkpoint instead of starting fresh. Quick verification:
+## Checkpoints
 
-```bash
-./scripts/smoke-checkpointer.sh
-```
+Alembic creates four checkpoint tables with the schema pinned to `langgraph-checkpoint-postgres` 3.1.3. The orchestrator verifies that version at startup and refuses to run if it differs. Each task has a server-built, tenant-scoped checkpoint key. Closing a task removes its checkpoint and transcript rows together.
 
-The AG-UI frontend still loses `threadId` on page reload — refreshing the
-tab starts a new conversation by design. Persisting it on the client is a
-separate follow-up.
-
-## Logs
+## Logs and stop
 
 ```bash
 docker compose logs -f orchestrator
-docker compose logs -f agent-sleep
-```
-
-## Stop
-
-```bash
 docker compose down
 ```
 
-## Architecture
-
-```
-[You] → curl/Browser
-  ↓
-[Orchestrator :8000] → classify intent → route via A2A
-  ↓
-[Sleep Agent :8001] → build prompt → LLM provider → store in DB/Qdrant
-  ↓
-[Postgres :5432] + [Qdrant :6333]
-```
+Logs contain codes, names, IDs and counts; request bodies, transcripts, tokens and exception messages are omitted.
 
 ## Mood agent
 
@@ -136,129 +60,13 @@ Optional per-user behavior flags (all default-off / safe defaults):
 
 When Groq is unavailable, `/coach` replies "unavailable" and does not fall back to a paid provider.
 
-## Google Calendar setup (one-time)
+## Google Calendar setup
 
-The orchestrator talks to the Google Calendar v3 REST API directly
-(`orchestrator/app/google_calendar_api.py`). There is no calendar MCP server:
-each user connects their own Google account through the mobile app, and the
-resulting OAuth tokens live per-user in the encrypted vault
-(`orchestrator/app/google_calendar.py` refreshes them lazily).
+Create a dedicated Google OAuth client for Calendar access and set `GOOGLE_CALENDAR_OAUTH_CLIENT_ID` and `GOOGLE_CALENDAR_OAUTH_REDIRECT_URI` in `.env`. Register the redirect URI from the mobile app configuration. Connect from Settings → Integrations → Google Calendar. The gateway signs a one-time PKCE state and sends the returned code to the calendar agent, which stores sealed tokens per user. A revoked refresh token requires reconnecting in the app.
 
-### 1. Create an OAuth Client in Google Cloud Console
+## Home Assistant setup
 
-1. Visit <https://console.cloud.google.com/>.
-2. Create a new project (or reuse an existing one).
-3. **APIs & Services → Library**: enable **Google Calendar API**.
-4. **APIs & Services → OAuth consent screen**: User type External, app name
-   "life-agents", scopes `.../auth/calendar.events` and
-   `.../auth/calendar.readonly`. Add your Google account as a test user.
-5. **Credentials → Create Credentials → OAuth Client ID**: application type
-   **iOS** (this is the mobile client — do not reuse the app sign-in Google
-   client).
-
-> While the consent screen stays in "Testing" mode, Google expires refresh
-> tokens after 7 days. Publish the app to "Production" for a permanent setup.
-
-### 2. Put the client in `.env`
-
-```bash
-GOOGLE_CALENDAR_OAUTH_CLIENT_ID=<client-id>.apps.googleusercontent.com
-GOOGLE_CALENDAR_OAUTH_CLIENT_SECRET=<secret>
-GOOGLE_CALENDAR_OAUTH_REDIRECT_URI=com.googleusercontent.apps.<client-id>:/integrations-callback
-```
-
-The redirect URI must match the iOS URL scheme shown on the OAuth client page.
-
-### 3. Connect from the app
-
-Settings → Integrations → Google Calendar. The app calls
-`POST /integrations/google_calendar/start`, opens the returned `auth_url`, and
-posts the code back to `POST /integrations/google_calendar/callback` (PKCE, with
-a signed `state` nonce stored in the `oauth_state` table).
-
-### 4. Verify
-
-```bash
-curl -s -H "Authorization: Bearer <jwt>" localhost:8000/agents/calendar/detail | jq .metrics
-```
-
-Expected: `events_count` and today's events. An empty result with
-`"Reconnect Google Calendar"` in chat means the refresh token was revoked —
-reconnect from the app.
-
-### Troubleshooting
-
-- **503 "Google Calendar OAuth is not configured"**: `GOOGLE_CALENDAR_OAUTH_CLIENT_ID`
-  is missing from the orchestrator env.
-- **"redirect_uri_mismatch"**: the URL scheme in `.env` does not match the OAuth
-  client. Copy it verbatim from the Google Cloud Console page.
-- **Calendar silently empty in the briefing**: calls have a 2s budget
-  (`_CALENDAR_TIMEOUT_SECONDS` in `calendar_context.py`) and degrade to "no
-  calendar section" — check orchestrator logs for `calendar list failed`.
-
-## Home Assistant MCP setup (one-time)
-
-The orchestrator reads live state and performs confirm-gated actions on
-Home Assistant via HA's native Model Context Protocol Server integration
-(available since HA 2025.2). No custom MCP server or Dockerfile — HA itself
-hosts the endpoint at `/mcp_server/sse`.
-
-### 1. Install the integration in HA
-
-HA UI → **Settings → Devices & Services → Add Integration** → search
-**Model Context Protocol Server** → **Submit**. By default it uses the Assist
-pipeline configuration already on your instance.
-
-### 2. Issue a long-lived access token
-
-HA UI → click your avatar (bottom-left) → **Security** → **Long-Lived Access
-Tokens** → **Create Token** → name it `life-agents` → copy the token. Paste
-into `.env` as `HA_TOKEN=...`. The token is shown once; re-issue if lost.
-
-### 3. Expose entities to Assist
-
-HA UI → **Settings → Voice assistants → Expose**. Only exposed entities are
-visible to MCP tools. Start with one sensor for a smoke check — e.g.,
-`sensor.temperature_bedroom`. Add more as you use them.
-
-### 4. Restart the orchestrator to pick up the env
-
-```bash
-docker compose up -d --force-recreate orchestrator
-docker compose logs --tail 50 orchestrator | grep -E "(MCP|Hass)"
-```
-
-Expected: `Loaded N MCP tools: [..., GetLiveContext, HassTurnOn, ...]`.
-If you see `No MCP servers configured` or the HA tools are missing, verify
-`HA_BASE_URL` and `HA_TOKEN` are both set in `.env` and the container was
-recreated (not just restarted — `docker compose restart` does not re-read
-env_file).
-
-### 5. Smoke test from the host
-
-```bash
-source .env
-bash scripts/smoke-ha-mcp.sh
-```
-
-Step 1 should print `{"message":"API running."}`; step 2 should list the
-discovered `Hass*` tools. If step 1 fails with 401, the token is wrong or
-expired. If step 2 fails with SSE handshake errors, HA 2025.2+ is required
-for the integration — check HA System Information.
-
-### Troubleshooting
-
-- **"0 tools discovered" but step 1 OK**: the integration is installed but
-  no entities are exposed. Go to step 3.
-- **orchestrator log shows `MCP tool discovery failed`**: typical causes —
-  HA is on a different LAN segment from Docker host, or Docker bridge
-  network can't reach `homeassistant.local` (on macOS this usually just works).
-  Try `docker compose exec orchestrator curl http://homeassistant.local:8123/api/`
-  with the Bearer header to confirm reachability.
-- **Mutations fire without confirmation**: the safety clause is in
-  `_SYSTEM_PROMPT` but LLMs sometimes ignore it on smaller models. If using
-  Groq Llama 3.3 70B (recommended), this is rare but possible. File an
-  issue and consider a stricter gate.
+Install Home Assistant's Model Context Protocol Server integration and expose the intended entities to Assist. Create a long-lived access token in Home Assistant, then connect it from the app's family Home Assistant panel. Any household member can see the connection status; changes proposed by chat require confirmation in the app. The service no longer reads `HA_BASE_URL` or `HA_TOKEN` from `.env`.
 
 ## Garmin and Yazio sync
 
@@ -326,43 +134,7 @@ only. Statuses are `ok`, `partial` (some parts failed and are retried in the nex
 
 ## Payoneer Finance PDF
 
-**One-time setup:**
-
-1. Apply migration 0006:
-   ```bash
-   docker compose exec -T postgres psql -U lifeagents -d lifeagents < db/migrations/0006_finance.sql
-   ```
-2. Rebuild orchestrator after code changes:
-   ```bash
-   docker compose up -d --build orchestrator
-   ```
-
-**Ingest workflow:**
-
-Upload a Payoneer monthly-statement PDF via `POST /finance/upload`.
-
-Orchestrator parses the PDF deterministically via pymupdf text extraction
-(5-line groups anchored on the "Date/Description/Amount/Currency/Running
-Balance" table header), synthesizes a `txn_id` via
-`sha256(period|date|desc|amount|currency|running_balance)`, UPSERTs on
-conflict, and LLM-categorizes new rows with a description cache
-(`finance_category_cache`).
-
-Chat queries use three ReAct tools:
-
-- `query_finance_summary("2026-04")` — income + spending snapshot
-- `query_finance_categories("2026-04")` — breakdown
-- `query_finance_runway()` — balance + runway per currency
-
-**Smoke:**
-
-```bash
-bash scripts/smoke-finance-pdf.sh
-```
-
-The smoke script builds a synthetic Payoneer-shaped PDF at runtime via
-pymupdf and POSTs it to `/finance/upload`, so it needs no real statement
-file on disk.
+Attach a Payoneer statement PDF to a task message. The finance agent parses and categorizes transactions and stores them under the authenticated user. The task transcript shows the import summary. `POST /finance/upload` and its smoke script were removed; the chat attachment path is the supported workflow.
 
 ## Medication Agent
 
@@ -399,17 +171,17 @@ The stack includes self-hosted Langfuse v3 for OTEL tracing of every user reques
 **Telemetry consumer env** (applies to orchestrator + all agents + sync-service):
 
 - `TELEMETRY_ENABLED=true`
-- `TELEMETRY_CAPTURE_BODIES=full` — options: `full` (default dev), `metadata` (no prompts/completions), `consented` (per-user opt-in via `telemetry_consent` table)
+- `TELEMETRY_CAPTURE_BODIES=consented` — default; `full` is for a private development stack, `metadata` records token counts only
 - `LANGFUSE_DEFAULT_USER_ID=owner` — fallback for set_span_user(None)
 - `OTEL_EXPORTER_OTLP_ENDPOINT=http://langfuse-web:3000/api/public/otel`
 
 **Smoke:** `bash scripts/smoke-langfuse.sh`
 
-**Full-stack E2E smoke:** `bash scripts/smoke-telemetry-e2e.sh`
+**Full-stack check:** `bash scripts/acceptance_orchestrator.sh`
 
 **Wipe Langfuse state (dev only):** `bash scripts/wipe-langfuse.sh`
 
-**Consent table:** `telemetry_consent (user_id, bodies_ok, updated_at)`. Only meaningful in `consented` mode. Owner row auto-seeded with `bodies_ok=TRUE` by migration 0007.
+**Consent table:** `telemetry_consent (user_id, bodies_ok, updated_at)` uses UUID users. Missing rows deny body capture.
 
 **Right-to-erasure:** `DELETE /api/public/traces?userId=<id>` via Langfuse public API. Works because every root span carries `langfuse.user.id`.
 
@@ -424,14 +196,7 @@ The stack includes self-hosted Langfuse v3 for OTEL tracing of every user reques
 - Traces not appearing: check `docker compose logs langfuse-worker` — worker drains queue; if it's crashed, traces pile up in Redis and never materialize.
 - If `ClickHouse unhealthy` on boot (ports 8123 refuse connection): IPv6 binding issue on docker-for-mac. The healthcheck uses `127.0.0.1` explicitly; if you see `localhost:8123` fall-through, re-pull the compose file.
 
-**Consent mode switching (when moving from single-user dev to multi-user):**
-
-1. Set `TELEMETRY_CAPTURE_BODIES=consented` in `.env`.
-2. Ensure each user has a row in `telemetry_consent` with their actual `user_id`. Row absent → treated as `bodies_ok=FALSE` (conservative).
-3. In `orchestrator`, replace `LANGFUSE_DEFAULT_USER_ID` usage with JWT/session-sourced user_id when adding mobile auth.
-4. Redeploy; no code changes required.
-
-Verify: flip `telemetry_consent.bodies_ok` for a user, send a new `/chat/stream`, then check Langfuse trace — prompts should appear (consented=TRUE) or show `[REDACTED]` (consented=FALSE).
+**Consent:** `TELEMETRY_CAPTURE_BODIES=consented` is the default. Use `make telemetry-consent USER_ID=<uuid>` to enable body capture for one user, or add `OFF=1` to disable it. Send a new task message and check its Langfuse trace; users without consent show redacted bodies.
 
 ## Running the mobile app against the local backend
 
@@ -501,9 +266,9 @@ that the entire production Compose stack is healthy.
 
 The script uses a future UTC digest date and explicit expiring food fixture so the live
 scheduler cannot claim the test digest first. It verifies the raw `app_rw` RLS view as user C
-and compares the orchestrator's final chat text with its persisted kitchen tool response.
+and compares the orchestrator's SSE answer with its persisted task transcript.
 If no genuine LLM key is configured, set `ACCEPTANCE_LLM_AVAILABLE=0`; direct kitchen chat,
-orchestrator chat and verbatim relay are then reported as `SKIP`, while SQL-seeded inventory
+orchestrator chat is then reported as `SKIP`, while SQL-seeded inventory
 still exercises joining, actions, digest and isolation. Skipped acceptance exits nonzero and
 must not be reported as a complete pass. Also run `make lint`, `make test`,
 `make test-integration`, `pnpm -r typecheck`, and the mobile and UI tests.
@@ -515,16 +280,7 @@ an acceptance pass. Regenerate prompt snapshots with `uv run pytest --update-sna
 (select the relevant snapshot tests when needed). Review snapshot diffs in every PR
 that changes a prompt.
 
-With a configured stack running in `AUTH_MODE=dev`, run
-`bash scripts/acceptance_agents.sh` from the repository root. It needs `curl`, `jq`,
-Docker Compose and database credentials (`APP_RW_PASSWORD`, `POSTGRES_DB`, from `.env`
-or the environment). It writes synthetic entries for a dedicated test user, checks
-stored row values under RLS and prints analysis answers with fact checks. Review the
-printed answers for accuracy beyond those checks, especially recovery and body where
-no direct entry is logged. Use `COMPOSE_PROJECT_NAME` for an isolated stack; the script
-never removes volumes. API and agent-card host URLs can be overridden via `API` and
-`AGENT_HOST`. Existing entries are preserved; run against a fresh isolated database
-for a clean acceptance run.
+With a configured stack running in `AUTH_MODE=dev`, run `bash scripts/acceptance_agents.sh`. It needs `curl` and `jq`, creates a separate task for each domain agent, checks the agent card and complete SSE response, and prints only agent names and task IDs. Set `API`, `AGENT_HOST` and `ACCEPTANCE_USER_ID` to override defaults. Use an isolated stack with a real model; this script does not assess answer quality.
 
 ### Sync privacy and concurrent reconnects
 

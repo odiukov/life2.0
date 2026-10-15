@@ -36,9 +36,9 @@ async def _count_as(engine: AsyncEngine, user: UUID | None) -> int:
 async def engines(clean_db: PostgresUrls):
     admin = create_async_engine(clean_db.admin)
     rw = create_async_engine(clean_db.rw, pool_size=1, max_overflow=0)
-    legacy = create_async_engine(clean_db.legacy)
-    yield admin, rw, legacy
-    for engine in (admin, rw, legacy):
+    owner = create_async_engine(clean_db.owner)
+    yield admin, rw, owner
+    for engine in (admin, rw, owner):
         await engine.dispose()
 
 
@@ -71,10 +71,17 @@ async def test_tenant_reads_own_user_row_only(engines) -> None:
     assert ids == [a]
 
 
-async def test_legacy_role_bypasses_rls(engines) -> None:
-    admin, _, legacy = engines
-    await _seed(admin)
-    assert await _count_as(legacy, None) == 2
+async def test_owner_is_tenant_scoped_without_a_bypass_role(engines) -> None:
+    admin, _, owner = engines
+    a, _ = await _seed(admin)
+    assert await _count_as(owner, None) == 0
+    assert await _count_as(owner, a) == 1
+    async with admin.connect() as conn:
+        assert (
+            await conn.execute(
+                text("SELECT rolname FROM pg_roles WHERE rolname LIKE 'app_%' AND rolbypassrls")
+            )
+        ).all() == []
 
 
 async def test_rw_reads_tables_without_rls(engines) -> None:

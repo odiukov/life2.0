@@ -296,7 +296,6 @@ services:
     environment:
       DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
       QDRANT_HOST: ${QDRANT_HOST}
-      LLM_PROVIDER: ${LLM_PROVIDER}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}

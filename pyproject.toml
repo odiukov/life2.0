@@ -48,7 +48,7 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 pythonpath = ["gateway/tests", ".", "shared/src", "agents/kitchen/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests"]
-testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests", "agents/body/tests", "agents/recovery/tests", "agents/sleep/tests", "agents/workout/tests", "agents/mood/tests", "agents/habits/tests", "agents/medication/tests", "sync_service/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests", "orchestrator/tests", "legacy_orchestrator/tests"]
+testpaths = ["shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests", "agents/body/tests", "agents/recovery/tests", "agents/sleep/tests", "agents/workout/tests", "agents/mood/tests", "agents/habits/tests", "agents/medication/tests", "sync_service/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests", "orchestrator/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin -p pytester"
 consider_namespace_packages = true
 markers = [
@@ -66,20 +66,6 @@ name = "Ports do not depend on adapters"
 type = "forbidden"
 source_modules = ["shared.ports"]
 forbidden_modules = ["shared.adapters", "shared.schema", "sqlalchemy", "asyncpg", "qdrant_client"]
-
-[[tool.importlinter.contracts]]
-name = "New shared code does not import legacy modules"
-type = "forbidden"
-# Direct imports only: shared.adapters may wrap a legacy module, and new code may use adapters.
-allow_indirect_imports = true
-source_modules = ["shared.ports", "shared.testing", "shared.config", "shared.observability.logging", "shared.schema", "shared.a2a", "shared.domain", "shared.analysis", "shared.dashboard", "nutrition", "household", "gateway", "kitchen", "body", "recovery", "sleep", "workout", "mood", "habits", "medication", "sync", "finance", "calendar_agent", "home", "orchestrator"]
-forbidden_modules = [
-    "shared.personas", "shared.grounding", "shared.peer_chip_rules",
-    "shared.db", "shared.llm", "shared.vector", "shared.embeddings", "shared.peer",
-    "shared.a2a_clients", "shared.i18n",
-    "shared.consent",
-    "shared.recovery", "shared.telemetry",
-]
 
 [[tool.importlinter.contracts]]
 name = "Shared domain is pure"
@@ -123,10 +109,7 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501"]
 "os.getenv".msg = "Read configuration through shared.config settings, not the environment."
 
 [tool.ruff.lint.per-file-ignores]
-# Legacy code: formatted, not linted, until it migrates onto the foundation.
-"legacy_orchestrator/**" = ["ALL"]
 "shared/src/shared/*.py" = ["ALL"]
-"tests/**" = ["ALL"]
 "scripts/**" = ["ALL"]
 # The OTEL/Traceloop SDKs are configured through environment variables by design.
 "shared/src/shared/observability/telemetry.py" = ["ALL"]
@@ -146,13 +129,9 @@ explicit_package_bases = true
 disable_error_code = ["type-abstract"]
 
 [[tool.mypy.overrides]]
-# Legacy modules: type-checked only after they migrate.
+# Selected compatibility modules remain outside strict typing.
 module = [
-    "shared.a2a_clients", "shared.consent",
-    "shared.db", "shared.embeddings", "shared.grounding",
-    "shared.i18n", "shared.llm", "shared.peer",
-    "shared.peer_chip_rules", "shared.personas", "shared.recovery", "shared.skill_ids",
-    "shared.observability.telemetry", "shared.telemetry", "shared.vector",
+    "shared.skill_ids", "shared.observability.telemetry",
 ]
 ignore_errors = true
 
@@ -431,9 +410,3 @@ ignore_unmatched_forbidden_imports = true
 type = "forbidden"
 source_modules = ["orchestrator.domain", "orchestrator.application", "orchestrator.adapters"]
 forbidden_modules = ["orchestrator.composition", "orchestrator.main", "orchestrator.serve"]
-
-[[tool.importlinter.contracts]]
-name = "The legacy orchestrator is not imported by new code"
-type = "forbidden"
-source_modules = ["orchestrator", "gateway", "shared"]
-forbidden_modules = ["legacy_orchestrator"]

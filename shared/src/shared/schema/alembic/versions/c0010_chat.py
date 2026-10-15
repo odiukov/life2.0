@@ -56,6 +56,11 @@ CHECKPOINT_DDL = [
 ]
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     # Existing checkpoints (written by the legacy orchestrator) have no owner and are dropped.
     for statement in CHECKPOINT_DDL:
@@ -114,7 +119,7 @@ def upgrade() -> None:
         "CREATE UNIQUE INDEX pending_actions_one_pending_per_task ON pending_actions (task_id) WHERE status = 'pending'"
     )
     for table in ("chat_tasks", "chat_messages", "pending_actions"):
-        op.execute(f"REVOKE ALL ON {table} FROM app_legacy")
+        op.execute(_if_legacy(f"REVOKE ALL ON {table} FROM app_legacy"))
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
         check = f"user_id = {TENANT}"

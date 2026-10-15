@@ -120,14 +120,21 @@ async def test_c0008_refuses_plaintext_ha_rows(clean_db: PostgresUrls) -> None:
         await admin.dispose()
 
 
-async def test_legacy_role_has_no_credential_access(clean_db: PostgresUrls) -> None:
-    legacy = create_async_engine(clean_db.legacy)
+async def test_credentials_have_only_application_grants(clean_db: PostgresUrls) -> None:
+    admin = create_async_engine(clean_db.admin)
     try:
-        async with legacy.begin() as conn:
-            with pytest.raises(DBAPIError, match="permission denied"):
-                await conn.execute(text("SELECT * FROM household_credentials"))
+        async with admin.connect() as conn:
+            assert (
+                await conn.execute(
+                    text(
+                        "SELECT grantee FROM information_schema.role_table_grants "
+                        "WHERE table_schema = 'public' AND table_name = 'household_credentials' "
+                        "AND grantee NOT IN ('app_owner', 'app_rw', current_user)"
+                    )
+                )
+            ).all() == []
     finally:
-        await legacy.dispose()
+        await admin.dispose()
 
 
 async def test_c0008_preserves_credentials_for_users_without_membership(

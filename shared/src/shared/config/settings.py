@@ -26,7 +26,7 @@ from shared.config.locales import find_locales_dir
 from shared.ports.llm import LLMTask
 
 Provider = Literal["anthropic", "openrouter", "gemini", "groq", "ollama", "claude_sdk", "fake"]
-DatabaseRole = Literal["app_owner", "app_rw", "app_legacy"]
+DatabaseRole = Literal["app_owner", "app_rw"]
 
 
 class LLMRoute(BaseModel):
@@ -93,13 +93,6 @@ class SecretsSettings(BaseModel):
                 "SECRETS__KEY must decode to 32 bytes (generate: openssl rand -base64 32)"
             )
         return value
-
-
-class SecretsEnvSettings(BaseSettings):
-    """Load the required sealing key for legacy services without other settings."""
-
-    model_config = SettingsConfigDict(env_nested_delimiter="__", extra="ignore")
-    secrets: SecretsSettings
 
 
 class TelemetrySettings(BaseModel):

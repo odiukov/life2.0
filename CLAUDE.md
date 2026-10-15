@@ -46,10 +46,9 @@ docker compose up --force-recreate orchestrator
 ### Smoke tests (require running stack)
 
 ```bash
-bash scripts/smoke-llm.sh
 bash scripts/smoke-mood.sh
-bash scripts/smoke-telemetry-e2e.sh
-# etc. — ~20 scripts in scripts/
+bash scripts/smoke-vector-memory.sh
+# Full chat and agent checks: scripts/acceptance_orchestrator.sh
 ```
 
 ### Database migrations
@@ -68,10 +67,10 @@ make migrate   # python -m shared.schema; needs POSTGRES_* and APP_*_PASSWORD
 ```
 Frontend:   React Native (apps/mobile)
                 │
-Orchestrator (:8000) — LangGraph ReAct agent, manages conversation state in PostgreSQL,
-                       serves /chat/stream SSE to the mobile app, calls peer agents via A2A SDK
+Orchestrator (:8000) — LangGraph ReAct agent, manages tasks and transcripts in PostgreSQL,
+                       serves /tasks and task SSE to the mobile app, calls peer agents via A2A SDK
                 │
-9 Peer Agents (:8001–:8009) — sleep, workout, nutrition, body, mood, habits, recovery, medication, kitchen
+12 Peer Agents — sleep, workout, nutrition, body, mood, habits, recovery, medication, kitchen, finance, calendar, home
                                Each is a FastAPI + A2A SDK server with 3–4 domain skills
 STT (:8010, internal) — local faster-whisper speech-to-text over HTTP
                 │
@@ -118,20 +117,20 @@ tables use `ENABLE ROW LEVEL SECURITY` without `FORCE`, because the table-owner 
 functions must move rows between households. Every new household-scoped table must be added
 to `HOUSEHOLD_TABLES` and to the registry in its migration.
 
-**A2A flow**: orchestrator calls peer agents over HTTP using `google-a2a` SDK. Each peer skill receives an A2A Message, runs its LLM prompt, persists results, and streams artifacts back. Peer artifact fetching (for cross-domain context) lives in `shared/peer.py`.
+**A2A flow**: orchestrator calls peer agents over HTTP using `google-a2a` SDK. Each peer skill receives an A2A Message, runs its LLM prompt, persists results, and streams artifacts back. Peer artifact fetching (for cross-domain context) lives in `shared/adapters/peers.py`.
 
-**LangGraph checkpointing**: conversation state is stored per `thread_id` in PostgreSQL via `AsyncPostgresSaver`. Mobile app currently loses `thread_id` on refresh (ephemeral session design).
+**LangGraph checkpointing**: conversation state is stored per task ID in PostgreSQL via `AsyncPostgresSaver`. The mobile app restores task cards and transcripts through `/tasks`.
 
 **Shared Python library**: `shared/src/shared/` is installed through the uv workspace (`make sync`) into every Python service. Add cross-service utilities here (LLM factory, DB helpers, A2A client cache, vector ops, telemetry init).
 
-**LLM factory** (`shared/llm.py`): legacy services get their LLM via `LLM_PROVIDER` env var (anthropic | openrouter | gemini | groq | ollama). All health peers use typed `LLM__DEFAULT` / `LLM__TASKS__*` routes and the shared LLM adapters. Mood coach is hard-locked to Groq (`MOOD_COACH_PROVIDER`); it never falls back to paid providers.
+**LLM factory**: services use typed `LLM__DEFAULT` / `LLM__TASKS__*` routes and the shared LLM adapters.
 
-**Telemetry**: call `init_telemetry("service-name")` before application imports in legacy `main.py` or migrated `serve.py`. Migrated composition configures privacy-safe logging before constructing adapters. Three consent modes: `full` (dev), `metadata` (token counts only), `consented` (per-user opt-in via `telemetry_consent` table).
+**Telemetry**: call `init_telemetry("service-name")` before application imports in `serve.py`. Composition configures privacy-safe logging before constructing adapters. Three consent modes: `full` (dev), `metadata` (token counts only), `consented` (per-user opt-in via `telemetry_consent` table).
 
 ### Directory layout
 
 ```
-agents/           9 peer agents, including layered kitchen
+agents/           12 layered peer agents
 household/        Household domain, application and SQL adapter
 gateway/          Typed gateway routes mounted in orchestrator
 stt_service/      Internal speech-to-text HTTP service
@@ -143,16 +142,15 @@ packages/
   api-client/     OpenAPI-generated TypeScript client (shared by web + mobile)
   i18n/           Russian + English strings
   ui/             Shared React components
-shared/           Python shared library (asyncpg, LLM factory, A2A, Qdrant, telemetry)
+shared/           Python shared library (SQLAlchemy, LLM adapters, A2A, Qdrant, telemetry)
 shared/src/shared/schema/ SQLAlchemy metadata and Alembic migrations
-tests/            100+ pytest files; conftest.py seeds LLM env placeholders + TEST_USER_ID
-scripts/          ~20 smoke test shell scripts
+scripts/          smoke and acceptance scripts
 ```
 
 ### Integration quirks
 
 - **Yazio**: v18 API has 3 distinct entry shapes; `insert_rows` behaves as UPSERT; sleep query uses "most recent" window, not yesterday.
-- **Google Calendar**: direct REST calls (`orchestrator/app/google_calendar_api.py`) with per-user OAuth tokens from the vault — no MCP server in the path.
+- **Google Calendar**: direct REST calls from `agents/calendar` with per-user OAuth tokens from the credential store — no MCP server in the path.
 - **Langfuse `ENCRYPTION_KEY`**: must be exactly 64 hex chars (`openssl rand -hex 32`).
 - **A2A client cache**: cleared between tests via `clear_caches()`; don't share across test cases.
 

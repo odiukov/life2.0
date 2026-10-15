@@ -283,6 +283,11 @@ PUBLIC_FUNCTIONS = (
 SCOPED = "household_id = (SELECT current_household_id())"
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     op.create_table(
         "households",
@@ -362,7 +367,13 @@ def upgrade() -> None:
     # Default privileges granted DML to app_rw/app_legacy; narrow them.
     op.execute(
         "REVOKE ALL ON households, household_members, household_invites, "
-        "household_join_attempts, household_tables FROM app_rw, app_legacy"
+        "household_join_attempts, household_tables FROM app_rw"
+    )
+    op.execute(
+        _if_legacy(
+            "REVOKE ALL ON households, household_members, household_invites, "
+            "household_join_attempts, household_tables FROM app_legacy"
+        )
     )
     op.execute("GRANT SELECT ON households, household_members TO app_rw")
     op.execute("GRANT SELECT, INSERT, DELETE ON household_invites TO app_rw")

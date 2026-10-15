@@ -42,6 +42,11 @@ ORDER BY m.household_id, c.created_at DESC, c.id
 """
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     uuid = pg.UUID(as_uuid=True)
     op.create_table(
@@ -63,7 +68,7 @@ def upgrade() -> None:
         sa.CheckConstraint("service IN ('ha')", name="household_credentials_service_check"),
     )
     op.execute("INSERT INTO household_tables VALUES ('household_credentials', false, NULL)")
-    op.execute("REVOKE ALL ON household_credentials FROM app_legacy")
+    op.execute(_if_legacy("REVOKE ALL ON household_credentials FROM app_legacy"))
     # Migrations run as app_owner, which is subject to FORCE RLS: lift it for the move only.
     for table in ("integrations_credentials", "users"):
         op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
@@ -73,7 +78,9 @@ def upgrade() -> None:
     # Generations survive disconnects, so old proposals cannot match a new connection.
     op.execute("CREATE SEQUENCE household_credentials_version_seq AS integer")
     op.execute("GRANT USAGE ON SEQUENCE household_credentials_version_seq TO app_rw")
-    op.execute("REVOKE ALL ON SEQUENCE household_credentials_version_seq FROM app_legacy")
+    op.execute(
+        _if_legacy("REVOKE ALL ON SEQUENCE household_credentials_version_seq FROM app_legacy")
+    )
     op.execute(
         "SELECT setval('household_credentials_version_seq', COALESCE((SELECT max(version) FROM household_credentials), 1), EXISTS (SELECT 1 FROM household_credentials))"
     )

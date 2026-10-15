@@ -58,6 +58,11 @@ def _user_fk() -> sa.Column:  # type: ignore[type-arg]
     return sa.Column("user_id", UUID, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
 
+def _if_legacy(sql: str) -> str:
+    """Skip grants for the retired role on fresh installations."""
+    return f"DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_legacy') THEN {sql}; END IF; END $$"
+
+
 def upgrade() -> None:
     op.create_table(
         "kitchen_batches",
@@ -129,7 +134,7 @@ def upgrade() -> None:
     for table, (moves, item_filter) in TABLES.items():
         filter_sql = "NULL" if item_filter is None else "'" + item_filter.replace("'", "''") + "'"
         op.execute(f"INSERT INTO household_tables VALUES ('{table}', {moves}, {filter_sql})")
-        op.execute(f"REVOKE ALL ON {table} FROM app_legacy")
+        op.execute(_if_legacy(f"REVOKE ALL ON {table} FROM app_legacy"))
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(
             f"CREATE POLICY household_scope ON {table} USING ({SCOPED}) WITH CHECK ({SCOPED})"

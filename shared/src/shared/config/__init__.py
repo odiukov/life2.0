@@ -8,7 +8,6 @@ from shared.config.settings import (
     LLMSettings,
     NotificationSettings,
     Provider,
-    SecretsEnvSettings,
     SecretsSettings,
     TelemetrySettings,
 )
@@ -21,7 +20,6 @@ __all__ = [
     "LLMSettings",
     "NotificationSettings",
     "Provider",
-    "SecretsEnvSettings",
     "SecretsSettings",
     "TelemetrySettings",
     "env_names",

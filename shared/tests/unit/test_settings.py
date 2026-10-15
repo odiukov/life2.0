@@ -89,7 +89,7 @@ def test_database_defaults_to_application_role() -> None:
     assert db.pool_size == 5
 
 
-@pytest.mark.parametrize("role", ["app_owner", "app_rw", "app_legacy"])
+@pytest.mark.parametrize("role", ["app_owner", "app_rw"])
 def test_database_accepts_supported_roles(role: str) -> None:
     db = DatabaseSettings.model_validate({"dsn": DSN, "role": role})
     assert db.role == role
@@ -156,3 +156,24 @@ def test_env_example_documents_every_setting() -> None:
         if not re.search(rf"^#?\s*{re.escape(name)}=", text, re.MULTILINE)
     ]
     assert missing == []
+
+
+def test_database_rejects_retired_role() -> None:
+    with pytest.raises(ValidationError):
+        DatabaseSettings.model_validate({"dsn": DSN, "role": "app_legacy"})
+
+
+def test_migrate_settings_require_only_owner_and_runtime_passwords() -> None:
+    from shared.config.migrate import MigrateSettings
+
+    settings = MigrateSettings.model_validate(
+        {
+            "postgres_db": "life",
+            "postgres_user": "postgres",
+            "postgres_password": "admin-pw",
+            "app_owner_password": "owner-pw",
+            "app_rw_password": "rw-pw",
+        }
+    )
+    assert settings.passwords().owner == "owner-pw"
+    assert settings.passwords().rw == "rw-pw"

@@ -24,7 +24,7 @@ async def test_peer_client_keeps_only_real_answers(monkeypatch: pytest.MonkeyPat
         )
         return {"workout": "ran 5k", "sleep": "(данные недоступны)", "mood": "   "}
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", fake_fetch)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", fake_fetch)
     client = A2APeerClient({"workout": "http://w/", "sleep": "http://s/", "mood": "http://m/"})
     uid = UUID("00000000-0000-0000-0000-000000000001")
     wanted = {"workout": "analyze_workout", "sleep": "analyze_sleep", "mood": "analyze_mood"}
@@ -48,7 +48,7 @@ async def test_peer_client_skips_empty_requests(monkeypatch: pytest.MonkeyPatch)
     async def forbidden(*_: Any, **__: Any) -> dict[str, str]:
         pytest.fail("An empty request must not call peers")
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", forbidden)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", forbidden)
     assert await A2APeerClient({}).fetch_artifacts(user_id=uuid4(), wanted={}) == {}
 
 
@@ -67,7 +67,7 @@ async def test_peer_client_backend_failures_are_private(
     async def boom(*_: Any, **__: Any) -> dict[str, str]:
         raise error
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", boom)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", boom)
     monkeypatch.setattr(peers_module, "logger", Logger())
     client = A2APeerClient({"workout": "http://w/"})
     assert (
@@ -80,7 +80,7 @@ async def test_peer_client_propagates_cancellation(monkeypatch: pytest.MonkeyPat
     async def cancelled(*_: Any, **__: Any) -> dict[str, str]:
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", cancelled)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", cancelled)
     with pytest.raises(asyncio.CancelledError):
         await A2APeerClient({"workout": "http://w/"}).fetch_artifacts(
             user_id=uuid4(), wanted={"workout": "analyze_workout"}
@@ -97,7 +97,7 @@ async def test_peer_client_has_a_wall_deadline(monkeypatch: pytest.MonkeyPatch) 
             cancelled.set()
         return {}
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", stalled)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", stalled)
     monkeypatch.setattr(peers_module, "PEER_TIMEOUT_S", 0.01)
     async with asyncio.timeout(1):
         got = await A2APeerClient({"sleep": "http://slow/"}).fetch_artifacts(
@@ -111,7 +111,7 @@ async def test_default_peer_registry_is_used_and_explicit_empty_is_preserved(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        peers_module.legacy_peer,
+        peers_module,
         "default_peer_registry",
         lambda: {"sleep": {"url": "http://sleep/"}},
     )
@@ -121,7 +121,7 @@ async def test_default_peer_registry_is_used_and_explicit_empty_is_preserved(
         registries.append(registry)
         return {}
 
-    monkeypatch.setattr(peers_module.legacy_peer, "fetch_peer_artifacts", fetch)
+    monkeypatch.setattr(peers_module, "fetch_peer_artifacts", fetch)
     for client in (A2APeerClient(), A2APeerClient({})):
         await client.fetch_artifacts(user_id=uuid4(), wanted={"sleep": "analyze_sleep"})
     assert registries == [{"sleep": {"url": "http://sleep/"}}, {}]
@@ -149,7 +149,7 @@ async def test_peer_legacy_calls_are_depth_one_and_failed_peers_are_omitted(
             raise ConnectionError("down")
         return Client()
 
-    monkeypatch.setattr(peers_module.legacy_peer, "get_client", get_client)
+    monkeypatch.setattr(peers_module, "_get_client", get_client)
     client = A2APeerClient(
         {"sleep": "http://sleep/", "mood": "http://slow/", "body": "http://down/"}
     )
@@ -188,8 +188,8 @@ async def test_vector_memory_maps_payloads(monkeypatch: pytest.MonkeyPatch) -> N
             }
         ]
 
-    monkeypatch.setattr(vector_module.legacy_vector, "upsert_memory", fake_upsert)
-    monkeypatch.setattr(vector_module.legacy_vector, "search_memories", fake_search)
+    monkeypatch.setattr(vector_module, "_upsert", fake_upsert)
+    monkeypatch.setattr(vector_module, "_search", fake_search)
     memory = QdrantVectorMemory()
     uid = uuid4()
     metadata = {"skill": "log_meal"}
@@ -215,7 +215,7 @@ async def test_vector_metadata_cannot_override_reserved_payload_fields(
     async def upsert(**kwargs: Any) -> None:
         stored.update(kwargs)
 
-    monkeypatch.setattr(vector_module.legacy_vector, "upsert_memory", upsert)
+    monkeypatch.setattr(vector_module, "_upsert", upsert)
     metadata = {
         "user_id": "other",
         "agent_id": "other",
@@ -266,8 +266,8 @@ async def test_vector_legacy_roundtrip_isolates_users_agents_and_keys(
     async def embed(*_: Any, **__: Any) -> list[float]:
         return [0.0] * 768
 
-    monkeypatch.setattr(vector_module.legacy_vector, "_get_client", lambda: qdrant)
-    monkeypatch.setattr(vector_module.legacy_vector, "embed", embed)
+    monkeypatch.setattr(vector_module, "_get_client", lambda: qdrant)
+    monkeypatch.setattr(vector_module, "_embed", embed)
     memory = QdrantVectorMemory()
     alice, bob = uuid4(), uuid4()
     for user, agent, key, text in (
@@ -304,8 +304,8 @@ async def test_vector_backend_failures_are_private_and_best_effort(
     async def boom(*_: Any, **__: Any) -> Any:
         raise ConnectionError("private query and memory")
 
-    monkeypatch.setattr(vector_module.legacy_vector, "upsert_memory", boom)
-    monkeypatch.setattr(vector_module.legacy_vector, "search_memories", boom)
+    monkeypatch.setattr(vector_module, "_upsert", boom)
+    monkeypatch.setattr(vector_module, "_search", boom)
     monkeypatch.setattr(vector_module, "logger", Logger())
     memory = QdrantVectorMemory()
     assert (
@@ -325,8 +325,8 @@ async def test_vector_propagates_cancellation(monkeypatch: pytest.MonkeyPatch) -
     async def cancelled(*_: Any, **__: Any) -> Any:
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(vector_module.legacy_vector, "upsert_memory", cancelled)
-    monkeypatch.setattr(vector_module.legacy_vector, "search_memories", cancelled)
+    monkeypatch.setattr(vector_module, "_upsert", cancelled)
+    monkeypatch.setattr(vector_module, "_search", cancelled)
     memory = QdrantVectorMemory()
     with pytest.raises(asyncio.CancelledError):
         await memory.upsert(user_id=uuid4(), agent="nutrition", key="k", text="oats", metadata={})
@@ -344,7 +344,7 @@ async def test_vector_empty_agent_scope_uses_legacy_cross_agent_search(
         assert agent_ids is None
         return [{"source": "agent"}]
 
-    monkeypatch.setattr(vector_module.legacy_vector, "search_memories", search)
+    monkeypatch.setattr(vector_module, "_search", search)
     found = await QdrantVectorMemory().search(user_id=uuid4(), query="x", limit=5, agents=agents)
     assert found[0].text == ""
     assert found[0].agent == ""

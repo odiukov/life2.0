@@ -52,7 +52,7 @@ def test_every_card_skill_has_a_handler() -> None:
 # Recorded from the legacy executor before its deletion. Only generated UUIDs
 # and timestamps are normalized; fields, values and event order are preserved.
 LEGACY = json.loads(
-    (Path(__file__).resolve().parents[4] / "tests/fixtures/nutrition_legacy_a2a.json").read_text()
+    (Path(__file__).resolve().parents[1] / "fixtures/nutrition_legacy_a2a.json").read_text()
 )
 
 
@@ -116,9 +116,7 @@ async def test_every_skill_preserves_recorded_status_and_artifact_events(skill: 
 
 
 LEGACY_FAILURES = json.loads(
-    (
-        Path(__file__).resolve().parents[4] / "tests/fixtures/nutrition_legacy_failure_a2a.json"
-    ).read_text()
+    (Path(__file__).resolve().parents[1] / "fixtures/nutrition_legacy_failure_a2a.json").read_text()
 )
 
 

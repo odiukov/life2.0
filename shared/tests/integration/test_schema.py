@@ -72,17 +72,16 @@ async def test_role_bootstrap_is_idempotent_and_restores_separation(postgres_url
                 )
             ).all()
             assert rows == [
-                ("app_legacy", False, False, False, False, True),
                 ("app_owner", False, False, False, False, False),
                 ("app_rw", False, False, False, False, False),
             ]
             assert (
                 await conn.execute(
                     text(
-                        "SELECT has_schema_privilege('app_owner', 'public', 'CREATE'), has_schema_privilege('app_rw', 'public', 'CREATE'), has_schema_privilege('app_legacy', 'public', 'CREATE')"
+                        "SELECT has_schema_privilege('app_owner', 'public', 'CREATE'), has_schema_privilege('app_rw', 'public', 'CREATE')"
                     )
                 )
-            ).one() == (True, False, True)
+            ).one() == (True, False)
             assert (
                 await conn.execute(
                     text(
@@ -94,12 +93,11 @@ async def test_role_bootstrap_is_idempotent_and_restores_separation(postgres_url
         await engine.dispose()
 
 
-async def test_rw_cannot_ddl_and_legacy_can_create_checkpoint_tables(postgres_urls):
+async def test_rw_cannot_ddl_and_owner_can_create_tables(postgres_urls):
     import pytest
     from sqlalchemy.exc import DBAPIError
 
     rw = create_async_engine(postgres_urls.rw)
-    legacy = create_async_engine(postgres_urls.legacy)
     owner = create_async_engine(postgres_urls.owner)
     try:
         with pytest.raises(DBAPIError, match="permission denied"):
@@ -108,18 +106,15 @@ async def test_rw_cannot_ddl_and_legacy_can_create_checkpoint_tables(postgres_ur
         with pytest.raises(DBAPIError, match="must be owner"):
             async with rw.begin() as conn:
                 await conn.execute(text("ALTER TABLE tasks ADD COLUMN forbidden integer"))
-        async with legacy.begin() as conn:
-            await conn.execute(text("CREATE TABLE checkpoint_probe (id integer)"))
-            await conn.execute(text("DROP TABLE checkpoint_probe"))
         async with owner.begin() as conn:
             await conn.execute(text("CREATE TABLE owner_probe (id integer)"))
             await conn.execute(text("DROP TABLE owner_probe"))
     finally:
-        for engine in (rw, legacy, owner):
+        for engine in (rw, owner):
             await engine.dispose()
 
 
-@pytest.mark.parametrize("role", ["app_rw", "app_legacy"])
+@pytest.mark.parametrize("role", ["app_rw"])
 async def test_application_roles_cannot_access_migration_control_table(postgres_urls, role):
     from shared.schema.migrate import ensure_roles
     from shared.testing.pytest_plugin import TEST_PASSWORDS
@@ -129,9 +124,7 @@ async def test_application_roles_cannot_access_migration_control_table(postgres_
     for _ in range(2):
         await ensure_roles(postgres_urls.admin, postgres_urls.database, TEST_PASSWORDS)
     owner = create_async_engine(postgres_urls.owner)
-    application = create_async_engine(
-        postgres_urls.rw if role == "app_rw" else postgres_urls.legacy
-    )
+    application = create_async_engine(postgres_urls.rw)
     try:
         async with owner.connect() as conn:
             assert (
@@ -165,7 +158,7 @@ async def test_application_roles_cannot_access_migration_control_table(postgres_
         await application.dispose()
 
 
-async def test_chat_upgrade_preserves_valid_consent_and_legacy_checkpoint_access(postgres_urls):
+async def test_chat_upgrade_preserves_valid_consent_and_rebuilds_old_checkpoints(postgres_urls):
     from uuid import UUID, uuid4
 
     from alembic import command
@@ -173,7 +166,6 @@ async def test_chat_upgrade_preserves_valid_consent_and_legacy_checkpoint_access
     from shared.testing.pytest_plugin import TEST_PASSWORDS
 
     admin = create_async_engine(postgres_urls.admin)
-    legacy = create_async_engine(postgres_urls.legacy)
     user = UUID("aabbccdd-1111-4222-8333-123456789abc")
     other = uuid4()
 
@@ -201,7 +193,7 @@ async def test_chat_upgrade_preserves_valid_consent_and_legacy_checkpoint_access
                     "orphan": str(uuid4()),
                 },
             )
-        async with legacy.begin() as conn:
+        async with admin.begin() as conn:
             await conn.execute(text("CREATE TABLE checkpoints (thread_id text)"))
             await conn.execute(text("INSERT INTO checkpoints VALUES ('old-unowned-thread')"))
         await ensure_roles(postgres_urls.admin, postgres_urls.database, TEST_PASSWORDS)
@@ -217,8 +209,8 @@ async def test_chat_upgrade_preserves_valid_consent_and_legacy_checkpoint_access
                     text("SELECT relforcerowsecurity FROM pg_class WHERE oid = 'users'::regclass")
                 )
             ).scalar_one() is True
-        # Task 13 still runs the old orchestrator as app_legacy.
-        async with legacy.begin() as conn:
+        # Migration bootstrap remains compatible with the checkpoint schema.
+        async with admin.begin() as conn:
             await conn.execute(
                 text(
                     "INSERT INTO checkpoints (thread_id, checkpoint_id, checkpoint) VALUES ('legacy-thread', 'c1', '{}')"
@@ -230,4 +222,47 @@ async def test_chat_upgrade_preserves_valid_consent_and_legacy_checkpoint_access
     finally:
         await asyncio.to_thread(upgrade, postgres_urls.owner)
         await admin.dispose()
-        await legacy.dispose()
+
+
+async def test_no_retired_role_and_no_create_on_public(postgres_urls) -> None:
+    engine = create_async_engine(postgres_urls.admin)
+    try:
+        async with engine.connect() as conn:
+            assert (
+                await conn.scalar(
+                    text("SELECT count(*) FROM pg_roles WHERE rolname = 'app_legacy'")
+                )
+                == 0
+            )
+            assert (
+                await conn.scalar(text("SELECT has_schema_privilege('app_rw', 'public', 'CREATE')"))
+                is False
+            )
+            assert (
+                await conn.scalar(text("SELECT has_schema_privilege('app_rw', 'public', 'USAGE')"))
+                is True
+            )
+    finally:
+        await engine.dispose()
+
+
+async def test_migrations_run_without_retired_role(fresh_database) -> None:
+    assert (
+        await fresh_database.scalar(text("SELECT version_num FROM alembic_version")) == "c0010_chat"
+    )
+
+
+async def test_retirement_preserves_old_owned_objects(fresh_database_with_legacy_role) -> None:
+    conn = fresh_database_with_legacy_role
+    assert (
+        await conn.scalar(text("SELECT count(*) FROM pg_roles WHERE rolname = 'app_legacy'")) == 0
+    )
+    assert (
+        await conn.scalar(
+            text("SELECT tableowner FROM pg_tables WHERE tablename = 'legacy_scratch'")
+        )
+        == "app_owner"
+    )
+    assert (
+        await conn.scalar(text("SELECT has_table_privilege('app_rw', 'users', 'SELECT')")) is True
+    )

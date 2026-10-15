@@ -342,14 +342,23 @@ async def test_every_household_table_has_rls_and_a_policy(engines) -> None:
             assert policies >= 1, table
 
 
-async def test_legacy_role_has_no_access_to_household_tables(clean_db: PostgresUrls) -> None:
-    legacy = create_async_engine(clean_db.legacy)
+async def test_household_tables_have_only_application_grants(clean_db: PostgresUrls) -> None:
+    admin = create_async_engine(clean_db.admin)
     try:
-        async with legacy.connect() as conn:
-            with pytest.raises(DBAPIError, match="permission denied"):
-                await conn.execute(text("SELECT count(*) FROM household_members"))
+        async with admin.connect() as conn:
+            for table in [*HOUSEHOLD_TABLES, "households", "household_members"]:
+                assert (
+                    await conn.execute(
+                        text(
+                            "SELECT grantee FROM information_schema.role_table_grants "
+                            "WHERE table_schema = 'public' AND table_name = :t "
+                            "AND grantee NOT IN ('app_owner', 'app_rw', current_user)"
+                        ),
+                        {"t": table},
+                    )
+                ).all() == []
     finally:
-        await legacy.dispose()
+        await admin.dispose()
 
 
 async def test_concurrent_redemption_has_one_winner(engines) -> None:
@@ -479,7 +488,8 @@ async def test_security_definer_grants_search_path_and_enable_only_rls(engines) 
             await conn.execute(
                 text(
                     "SELECT p.proname, p.prosecdef, p.proconfig, r.rolname, "
-                    "has_function_privilege('app_legacy', p.oid, 'EXECUTE') AS legacy, "
+                    "EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a "
+                    "WHERE a.grantee NOT IN (p.proowner, (SELECT oid FROM pg_roles WHERE rolname = 'app_rw'))) AS unexpected_grant, "
                     "has_function_privilege('app_rw', p.oid, 'EXECUTE') AS rw "
                     "FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
                     "JOIN pg_roles r ON r.oid = p.proowner "
@@ -503,7 +513,7 @@ async def test_security_definer_grants_search_path_and_enable_only_rls(engines) 
             assert row.prosecdef
             assert row.rolname == "app_owner"
             assert row.proconfig == ["search_path=public, pg_temp"]
-            assert not row.legacy
+            assert not row.unexpected_grant
             assert row.rw == (row.proname in public)
         assert (
             await conn.execute(
@@ -598,7 +608,7 @@ async def test_concurrent_sole_member_moves_use_registry_and_delete_old_homes(en
 
 
 @pytest.mark.parametrize("attack", ["actor_null", "unnest", "preview_format", "move_format"])
-async def test_legacy_overloads_cannot_execute_with_household_definer_privileges(
+async def test_existing_overloads_cannot_execute_with_household_definer_privileges(
     engines, clean_db: PostgresUrls, attack: str
 ) -> None:
     admin, rw = engines
@@ -633,11 +643,10 @@ async def test_legacy_overloads_cannot_execute_with_household_definer_privileges
         ),
     }
     signature, ddl = attacks[attack]
-    legacy = create_async_engine(clean_db.legacy)
     # New backends resolve definer expressions after the malicious overload exists.
     await rw.dispose()
     try:
-        async with legacy.begin() as conn:
+        async with admin.begin() as conn:
             await conn.execute(text(ddl))
         async with admin.begin() as conn:
             await conn.execute(
@@ -661,7 +670,7 @@ async def test_legacy_overloads_cannot_execute_with_household_definer_privileges
                 await conn.execute(text("SELECT name FROM households WHERE id = :h"), {"h": home})
             ).scalar_one() == "protected-owner"
     finally:
-        async with legacy.begin() as conn:
+        async with admin.begin() as conn:
             await conn.execute(text(f"DROP FUNCTION IF EXISTS public.{signature}"))
         async with admin.begin() as conn:
             await conn.execute(
@@ -670,4 +679,3 @@ async def test_legacy_overloads_cannot_execute_with_household_definer_privileges
                     "WHERE table_name = 'household_invites'"
                 )
             )
-        await legacy.dispose()

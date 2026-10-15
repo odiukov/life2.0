@@ -1,8 +1,7 @@
 # Life Agents
 
-A self-hosted, multi-agent health and household assistant. Nine specialised LLM agents — sleep,
-workout, nutrition, body, mood, habits, recovery, medication, kitchen — sit behind a
-LangGraph orchestrator and answer questions about your own data, pulled from
+A self-hosted, multi-agent health and household assistant. Twelve domain agents — sleep, workout, nutrition, body, mood, habits, recovery,
+medication, kitchen, finance, calendar and home — sit behind a LangGraph orchestrator and answer questions about your own data, pulled from
 Apple Health, Garmin, Yazio and Google Calendar.
 
 Everything runs on your machine: your own Postgres, your own vector store, your
@@ -37,13 +36,13 @@ flowchart TD
     M["React Native app<br/>(Expo, HealthKit, offline SQLite)"]
     O["Orchestrator :8000<br/>LangGraph ReAct agent"]
     S["Sync service :8080<br/>Garmin + Yazio pollers"]
-    A["9 peer agents :8001–8009<br/>FastAPI + A2A SDK"]
+    A["12 peer agents :8001–8009, :8011–8013<br/>FastAPI + A2A SDK"]
     STT["stt :8010<br/>local speech-to-text"]
     PG[("PostgreSQL<br/>health_logs, tasks,<br/>LangGraph checkpoints")]
     Q[("Qdrant<br/>vector memory")]
     L["Langfuse v3<br/>traces via OTEL"]
 
-    M -- "SSE /chat/stream" --> O
+    M -- "Tasks API + SSE /tasks/{id}/messages" --> O
     O -- "A2A over HTTP" --> A
     O -- "HTTP" --> STT
     O --> PG
@@ -55,7 +54,7 @@ flowchart TD
 ```
 
 The orchestrator is a LangGraph ReAct agent whose conversation state is
-checkpointed per `thread_id` in Postgres. Peer agents are addressed with the
+checkpointed per server-issued task key in Postgres. Peer agents are addressed with the
 [A2A protocol](https://github.com/google/A2A) — each publishes an agent card,
 exposes three to four domain skills, and streams artifacts back.
 
@@ -73,6 +72,9 @@ exposes three to four domain skills, and streams artifacts back.
 | `medication` | 8008 | Medication registry, doses, adherence; foundation (ports, pipeline, RLS) |
 | `kitchen`    | 8009 (internal) | Household food inventory and expiry digest |
 | `stt`        | 8010 (internal) | Local speech-to-text service |
+| `finance`    | 8011 | Transactions, categories and Payoneer imports |
+| `calendar`   | 8012 | Google Calendar events and confirmed changes |
+| `home`       | 8013 | Household Home Assistant state and confirmed changes |
 
 ### Households
 
@@ -116,19 +118,17 @@ New and migrated code follows a ports-and-adapters layout:
   (use cases on ports), `adapters/` (SQL, HTTP, A2A card), `composition.py` (wiring).
 
 import-linter enforces the direction of these dependencies (`make lint`). The orchestrator
-and the sync service still use legacy modules at the top of `shared/src/shared/` and
-move over one at a time.
+and the sync service use the same layered ports and adapters.
 
 ## Database roles and row-level security
 
-`docker compose up` runs the `migrate` service, which creates three roles and applies Alembic
-migrations (see `deploy/postgres/README.md`). Migrated services connect as `app_rw`: every
-transaction sets `app.user_id` and PostgreSQL row-level security limits it to that user's rows.
-Legacy services connect as `app_legacy`, which bypasses RLS until they migrate.
+`docker compose up` runs the `migrate` service, which creates `app_owner` and `app_rw` and applies Alembic migrations (see
+`deploy/postgres/README.md`). Services connect as `app_rw`: every tenant transaction sets
+`app.user_id`, and PostgreSQL row-level security limits it to that user's rows.
 
-## LLM providers for migrated services
+## LLM providers
 
-Migrated services read `LLM__DEFAULT` and optional per-task routes `LLM__TASKS__FAST`,
+Services read `LLM__DEFAULT` and optional per-task routes `LLM__TASKS__FAST`,
 `LLM__TASKS__SMART`, `LLM__TASKS__MOOD_COACH`, each `"<provider>:<model>"`. The provider
 `claude_sdk` uses the Claude Agent SDK with a local Claude Code login and is meant for
 personal self-hosting only. Sending a Claude subscription OAuth token to the API
@@ -137,9 +137,8 @@ Follow [Anthropic's authentication and credential-use guidance](https://code.cla
 applications and services should use API keys or supported cloud credentials; do not collect or
 intermediate other users' subscription credentials.
 
-Vector memory currently wraps the legacy implementation: `QDRANT_HOST` / `QDRANT_PORT`
-and `GEMINI_API_KEY` remain effective. The typed `QDRANT_URL` field is reserved and is not
-consumed by that wrapper. OTEL/Traceloop also retain their SDK environment configuration.
+Vector memory uses `QDRANT_HOST` / `QDRANT_PORT` and `GEMINI_API_KEY`.
+The typed `QDRANT_URL` field is reserved and is not consumed by that adapter. OTEL/Traceloop also retain their SDK environment configuration.
 New vector writes namespace keys by user and agent; older unscoped points can coexist until
 an explicit data reset or migration. Peer context is best effort with a 20-second whole-batch
 deadline; a timeout discards the incomplete batch, including partial answers.
@@ -157,7 +156,7 @@ as `failed` with a localized explanation and no success artifacts.
 | Garmin          | Pull, scheduled | Per-user credentials stored in an encrypted vault                 |
 | Yazio           | Pull, scheduled | Requires your own OAuth client credentials (see below)            |
 | Google Calendar | Pull, on demand | Direct REST API, per-user OAuth tokens                            |
-| Home Assistant  | Pull, on demand | Optional; long-lived access token                                 |
+| Home Assistant  | Pull, on demand | Household connection managed in the app family panel             |
 
 ## Quick start
 
@@ -238,14 +237,14 @@ the annotated list. The essentials:
 
 | Variable                                  | Purpose                                                                |
 | ----------------------------------------- | ---------------------------------------------------------------------- |
-| `LLM_PROVIDER`                            | `anthropic` \| `openrouter` \| `gemini` \| `groq` \| `ollama`          |
+| `LLM__DEFAULT`                            | `<provider>:<model>` for the shared model route                  |
 | `ANTHROPIC_API_KEY` etc.                  | The key matching your provider                                         |
-| `MOOD_COACH_PROVIDER`                     | Hard-locked to `groq`; the coach never falls back to a paid provider   |
-| `YAZIO_CLIENT_ID` / `YAZIO_CLIENT_SECRET` | Yazio has no public API programme — supply your own client credentials |
+| `LLM__TASKS__MOOD_COACH`                  | Groq-only coach route                                             |
+| `SYNC__YAZIO_CLIENT_ID` / `SYNC__YAZIO_CLIENT_SECRET` | Optional Yazio client credentials                 |
 | `GOOGLE_CALENDAR_OAUTH_*`                 | A dedicated OAuth client for the mobile app                            |
 | `TELEMETRY_ENABLED`                       | Turns on OTEL tracing to the bundled Langfuse stack                    |
 
-> Changing `LLM_PROVIDER` or `LLM_MODEL` requires
+> Changing `LLM__DEFAULT` or a `LLM__TASKS__*` route requires
 > `docker compose up -d --force-recreate <service>` — a plain `restart` does not
 > re-read `env_file`.
 
@@ -272,7 +271,7 @@ turbo lint
 
 Python suites cover the agents, orchestrator routing, ingestion and auth. Unit tests
 require no Docker; integration tests start disposable PostgreSQL 16 containers. Existing
-legacy baseline failures are tracked separately and must never hide a new regression.
+lint baseline failures are tracked separately and must never hide a new regression.
 Real-provider evals are excluded from ordinary tests and CI; skipped evals are not quality passes.
 
 Shell smoke tests against a live stack live in `scripts/`.
@@ -298,19 +297,18 @@ booted simulator — see the flow comments in `apps/mobile/.maestro/config.yaml`
 ## Project layout
 
 ```
-agents/           8 peer agents
+agents/           12 peer agents
 orchestrator/     LangGraph orchestrator and its domain modules
 sync_service/     Garmin/Yazio sync per user at 09:00 local; credentials sealed with `SECRETS__KEY`
 shared/           Python shared library (LLM factory, A2A client, DB, telemetry)
 apps/
   mobile/         React Native (Expo 54) — HealthKit, share extension, offline SQLite
-  calendar-mcp-lite/  Google Calendar MCP server
 packages/
   api-client/     OpenAPI-generated TypeScript client
   i18n/           Russian + English strings
   ui/             Shared React components
 shared/src/shared/schema/  SQLAlchemy metadata and Alembic migrations
-tests/            Python test suite
+orchestrator/tests/ and shared/tests/  Python suites
 scripts/          Smoke tests against a running stack
 ```
 

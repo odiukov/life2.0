@@ -51,7 +51,6 @@ async def test_users_see_only_their_notifications_and_tokens_move_between_users(
 async def test_claim_permissions_and_direct_cross_tenant_writes(clean_db: PostgresUrls) -> None:
     admin = create_async_engine(clean_db.admin)
     rw = create_async_engine(clean_db.rw)
-    legacy = create_async_engine(clean_db.legacy)
     a, b = uuid4(), uuid4()
     try:
         async with admin.begin() as conn:
@@ -76,15 +75,17 @@ async def test_claim_permissions_and_direct_cross_tenant_writes(clean_db: Postgr
         async with rw.begin() as conn:
             with pytest.raises(DBAPIError, match="no_tenant"):
                 await conn.execute(text("SELECT public.push_token_claim('x'::text, 'ios'::text)"))
-        async with legacy.connect() as conn:
+        async with admin.connect() as conn:
             assert (
                 await conn.execute(
                     text(
-                        "SELECT has_function_privilege('app_legacy', 'public.push_token_claim(text,text)', 'EXECUTE')"
+                        "SELECT EXISTS (SELECT 1 FROM pg_proc p, "
+                        "LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a "
+                        "WHERE p.oid = 'public.push_token_claim(text,text)'::regprocedure "
+                        "AND a.grantee NOT IN (p.proowner, (SELECT oid FROM pg_roles WHERE rolname = 'app_rw')))"
                     )
                 )
             ).scalar_one() is False
     finally:
         await admin.dispose()
         await rw.dispose()
-        await legacy.dispose()
