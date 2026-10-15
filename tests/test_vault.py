@@ -43,15 +43,15 @@ async def _pool_and_seed_user(monkeypatch):
 @pytest.mark.asyncio
 async def test_put_get_round_trip():
     payload = {"base_url": "https://home.test", "token": "secret-xyz"}
-    await vault.put(USER, "ha", payload)
-    assert await vault.get(USER, "ha") == payload
+    await vault.put(USER, "google_calendar", payload)
+    assert await vault.get(USER, "google_calendar") == payload
 
 
 @pytest.mark.asyncio
 async def test_overwrite_replaces():
-    await vault.put(USER, "ha", {"base_url": "https://old", "token": "t1"})
-    await vault.put(USER, "ha", {"base_url": "https://new", "token": "t2"})
-    got = await vault.get(USER, "ha")
+    await vault.put(USER, "google_calendar", {"base_url": "https://old", "token": "t1"})
+    await vault.put(USER, "google_calendar", {"base_url": "https://new", "token": "t2"})
+    got = await vault.get(USER, "google_calendar")
     assert got == {"base_url": "https://new", "token": "t2"}
 
 

@@ -304,5 +304,17 @@
       "all_day": "{day}, all day"
     },
     "title_stopwords": "delete remove event calendar please the a an"
+  },
+  "home": {
+    "proposal": {
+      "HassTurnOn": "Turn on: {target}?",
+      "HassTurnOff": "Turn off: {target}?",
+      "HassLightSet": "Change the light: {target}?",
+      "HassClimateSetTemperature": "Set the temperature: {target}?",
+      "HassListAddItem": "Add to the list: {target}?",
+      "HassMediaPause": "Pause: {target}?",
+      "HassMediaUnpause": "Resume: {target}?",
+      "generic": "Run “{tool}” ({target})?"
+    }
   }
 }

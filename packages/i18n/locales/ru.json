@@ -309,5 +309,17 @@
       "all_day": "{day}, весь день"
     },
     "title_stopwords": "удали удалить убери событие ивент встречу встреча календарь календаре пожалуйста"
+  },
+  "home": {
+    "proposal": {
+      "HassTurnOn": "Включить: {target}?",
+      "HassTurnOff": "Выключить: {target}?",
+      "HassLightSet": "Изменить свет: {target}?",
+      "HassClimateSetTemperature": "Задать температуру: {target}?",
+      "HassListAddItem": "Добавить в список: {target}?",
+      "HassMediaPause": "Пауза: {target}?",
+      "HassMediaUnpause": "Продолжить: {target}?",
+      "generic": "Выполнить «{tool}» ({target})?"
+    }
   }
 }

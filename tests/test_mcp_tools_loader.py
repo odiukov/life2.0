@@ -18,10 +18,12 @@ async def test_load_mcp_tools_returns_empty_when_no_servers_configured(monkeypat
 
 @pytest.mark.asyncio
 async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
-    """With HA env set, loader opens a session per server and feeds it to
+    """With explicit server configuration, loader opens a session and feeds it to
     _adapter_load_tools."""
-    monkeypatch.setenv("HA_BASE_URL", "http://ha.example")
-    monkeypatch.setenv("HA_TOKEN", "tok")
+    monkeypatch.setattr(
+        "orchestrator.app.mcp_tools._servers_from_env",
+        lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
+    )
 
     fake_tool = type("T", (), {"name": "HassTurnOn"})()  # minimal stand-in
 
@@ -66,8 +68,10 @@ async def test_load_mcp_tools_returns_discovered_tools(monkeypatch):
 @pytest.mark.asyncio
 async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
     """If MultiServerMCPClient raises (e.g. server down), loader returns []."""
-    monkeypatch.setenv("HA_BASE_URL", "http://ha.example")
-    monkeypatch.setenv("HA_TOKEN", "tok")
+    monkeypatch.setattr(
+        "orchestrator.app.mcp_tools._servers_from_env",
+        lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
+    )
 
     class FakeClient:
         def __init__(self, servers):
@@ -88,8 +92,10 @@ async def test_load_mcp_tools_swallows_errors_and_returns_empty(monkeypatch):
 @pytest.mark.asyncio
 async def test_load_mcp_tools_caches_by_name(monkeypatch):
     """After a successful load, tools are indexed by `.name` in the module cache."""
-    monkeypatch.setenv("HA_BASE_URL", "http://ha.example")
-    monkeypatch.setenv("HA_TOKEN", "tok")
+    monkeypatch.setattr(
+        "orchestrator.app.mcp_tools._servers_from_env",
+        lambda: {"home-assistant": {"url": "http://ha.example/mcp_server/sse", "transport": "sse"}},
+    )
 
     class FakeTool:
         def __init__(self, name):

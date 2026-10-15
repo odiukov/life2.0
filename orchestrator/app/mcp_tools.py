@@ -16,7 +16,6 @@ down.
 from __future__ import annotations
 
 import logging
-import os
 import asyncio
 from contextlib import AsyncExitStack
 
@@ -37,18 +36,8 @@ _session_stack: AsyncExitStack | None = None
 
 
 def _servers_from_env() -> dict[str, dict]:
-    """Build MultiServerMCPClient config from env. Extensible for future MCPs."""
-    servers: dict[str, dict] = {}
-    ha_base = os.environ.get("HA_BASE_URL")
-    ha_token = os.environ.get("HA_TOKEN")
-    if ha_base and ha_token:
-        servers["home-assistant"] = {
-            "url": f"{ha_base.rstrip('/')}/mcp_server/sse",
-            "transport": "sse",
-            "headers": {"Authorization": f"Bearer {ha_token}"},
-        }
-    # Future: MCP_GMAIL_URL, MCP_GITHUB_URL, etc. added here.
-    return servers
+    """Global HA discovery is retired; the home agent owns household sessions."""
+    return {}
 
 
 async def load_mcp_tools() -> list[BaseTool]:

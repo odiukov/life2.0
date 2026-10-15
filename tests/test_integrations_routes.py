@@ -62,30 +62,23 @@ async def _client():
 @pytest.mark.asyncio
 async def test_ha_connect_then_disconnect():
     async with await _client() as c:
-        r = await c.post(
-            "/integrations/ha/connect",
-            json={"base_url": "https://home.test", "token": "longenoughtoken"},
-            headers=AUTH_HEADER,
-        )
-        assert r.status_code == 200, r.text
-        assert r.json() == {"status": "connected"}
-
-        # Test the "test" endpoint — will 502 because home.test isn't reachable;
-        # both 200 and 502 are acceptable for this smoke (the endpoint reached
-        # the credentials, that's what matters).
-        r = await c.post("/integrations/ha/test", headers=AUTH_HEADER)
-        assert r.status_code in (200, 502), r.text
-
-        r = await c.post("/integrations/ha/disconnect", headers=AUTH_HEADER)
-        assert r.status_code == 200
+        for path, payload in (
+            ("connect", {"base_url": "https://home.test", "token": "longenoughtoken"}),
+            ("test", None),
+            ("disconnect", None),
+        ):
+            response = await c.post(f"/integrations/ha/{path}", json=payload, headers=AUTH_HEADER)
+            assert response.status_code == 503
+            assert response.json() == {"detail": "ha_moved_to_household"}
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_ha_test_without_connect_is_404():
+async def test_ha_test_without_connect_is_temporarily_unavailable():
     async with await _client() as c:
-        r = await c.post("/integrations/ha/test", headers=AUTH_HEADER)
-        assert r.status_code == 404
+        response = await c.post("/integrations/ha/test", headers=AUTH_HEADER)
+        assert response.status_code == 503
+        assert response.json() == {"detail": "ha_moved_to_household"}
 
 
 @pytest.mark.asyncio

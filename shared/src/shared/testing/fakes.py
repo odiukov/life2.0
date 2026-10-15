@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
 
+from shared.ports.household_credentials import HouseholdConnection, NoHousehold
 from shared.ports.secrets import SecretsUnreadable
 from shared.ports.health_logs import HealthLogRow
 from shared.ports.users import SUPPORTED_LOCALES, UserSettings, resolve_zone
@@ -291,7 +292,7 @@ class _InMemoryUnitOfWork:
             repo = self._factory.repositories[kind]
         except KeyError:
             raise LookupError(f"no repository registered for {kind.__name__}") from None
-        if isinstance(repo, InMemoryCredentialStore):
+        if isinstance(repo, (InMemoryCredentialStore, InMemoryHouseholdCredentials)):
             repo = repo.for_tenant(self.user_id)
         return cast(RepoT, repo)
 
@@ -460,3 +461,56 @@ class InMemoryCredentialStore:
         if self._tenant is not None and self._tenant != user_id:
             return
         self.rows.pop((user_id, service), None)
+
+
+class InMemoryHouseholdCredentials:
+    """Households are seeded explicitly; the tenant comes from the unit of work (for_tenant)."""
+
+    def __init__(self, tenant: UUID | None = None) -> None:
+        self._tenant = tenant
+        self._generation = [0]
+        self.homes: dict[UUID, UUID] = {}  # user → household
+        self.names: dict[UUID, str] = {}
+        self.rows: dict[tuple[UUID, str], HouseholdConnection] = {}
+
+    def for_tenant(self, user_id: UUID | None) -> InMemoryHouseholdCredentials:
+        other = InMemoryHouseholdCredentials(user_id)
+        other.homes, other.names, other.rows = self.homes, self.names, self.rows
+        other._generation = self._generation
+        return other
+
+    def seed_member(self, user_id: UUID, household_id: UUID, name: str = "member") -> None:
+        self.homes[user_id] = household_id
+        self.names[user_id] = name
+
+    def _household(self) -> UUID | None:
+        return self.homes.get(self._tenant) if self._tenant is not None else None
+
+    async def get(self, service: str) -> HouseholdConnection | None:
+        house = self._household()
+        return self.rows.get((house, service)) if house is not None else None
+
+    async def put(
+        self, service: str, payload: Mapping[str, Any], *, actor: UUID
+    ) -> HouseholdConnection:
+        house = self._household()
+        if house is None:
+            raise NoHousehold
+        self._generation[0] += 1
+        conn = HouseholdConnection(
+            house,
+            dict(payload),
+            self._generation[0],
+            actor,
+            self.names.get(actor),
+            datetime.now(UTC),
+        )
+        self.rows[(house, service)] = conn
+        return conn
+
+    async def delete(self, service: str) -> bool:
+        house = self._household()
+        return house is not None and self.rows.pop((house, service), None) is not None
+
+    async def household_id(self) -> UUID | None:
+        return self._household()

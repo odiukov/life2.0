@@ -25,7 +25,6 @@ from shared.db import get_pool
 
 from . import google_calendar, vault
 from .auth import current_user
-from .mcp_tools import invalidate_user_mcp_cache
 
 router = APIRouter(prefix="/integrations")
 
@@ -101,36 +100,21 @@ class GarminPayload(BaseModel):
 # -------- Home Assistant --------
 
 
+# The household home agent owns these credentials after c0008. The migrated
+# gateway delegates to it; legacy routes stay unavailable during the transition.
 @router.post("/ha/connect")
 async def ha_connect(p: HAPayload, user_id: UUID = Depends(current_user)):
-    await vault.put(user_id, "ha", p.model_dump())
-    invalidate_user_mcp_cache(user_id)
-    return {"status": "connected"}
+    raise HTTPException(status_code=503, detail="ha_moved_to_household")
 
 
 @router.post("/ha/test")
 async def ha_test(user_id: UUID = Depends(current_user)):
-    creds = await vault.get(user_id, "ha")
-    if not creds:
-        raise HTTPException(status_code=404, detail="ha not connected")
-    url = creds["base_url"].rstrip("/") + "/api/"
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            r = await c.get(url, headers={"Authorization": f"Bearer {creds['token']}"})
-            r.raise_for_status()
-            return {"status": "ok", "ha_version": r.json().get("version")}
-    except httpx.HTTPError as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"ha unreachable: {e.__class__.__name__}",
-        )
+    raise HTTPException(status_code=503, detail="ha_moved_to_household")
 
 
 @router.post("/ha/disconnect")
 async def ha_disconnect(user_id: UUID = Depends(current_user)):
-    await vault.delete(user_id, "ha")
-    invalidate_user_mcp_cache(user_id)
-    return {"status": "disconnected"}
+    raise HTTPException(status_code=503, detail="ha_moved_to_household")
 
 
 # -------- Yazio (opt-in BYOC) --------

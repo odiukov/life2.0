@@ -181,12 +181,12 @@ async def test_auth_failure_waits_for_tomorrow(env) -> None:  # type: ignore[no-
 async def test_plaintext_function_lists_rows_to_reseal(env) -> None:  # type: ignore[no-untyped-def]
     admin, rw, _ = env
     a, _b = await seed_user(admin), await seed_user(admin)
-    await plaintext(admin, a, "ha", {"url": "x", "token": "y"})
+    await plaintext(admin, a, "google_calendar", {"url": "x", "token": "y"})
     async with rw.connect() as conn:
         rows = (
             await conn.execute(text("SELECT user_id, service FROM credentials_plaintext()"))
         ).all()
-    assert [(r.user_id, r.service) for r in rows] == [(a, "ha")]
+    assert [(r.user_id, r.service) for r in rows] == [(a, "google_calendar")]
 
 
 async def test_sync_state_is_tenant_isolated(env) -> None:  # type: ignore[no-untyped-def]

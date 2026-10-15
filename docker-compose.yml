@@ -365,6 +365,28 @@ services:
       retries: 5
       start_period: 30s
 
+  agent-home:
+    build:
+      context: .
+      dockerfile: agents/home/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8013:8013"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8013/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   stt:
     build:
       context: .
@@ -394,8 +416,6 @@ services:
       STT_URL: http://stt:8010
       POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
       AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007,http://agent-medication:8008,http://agent-kitchen:8009,http://agent-finance:8011"
-      HA_BASE_URL: ${HA_BASE_URL}
-      HA_TOKEN: ${HA_TOKEN}
     ports:
       - "8000:8000"
     depends_on:

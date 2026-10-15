@@ -25,7 +25,7 @@ TEST_PASSWORDS = RolePasswords(owner="owner-pw", rw="rw-pw", legacy="legacy-pw")
 TRUNCATE = (
     "TRUNCATE users, health_logs, tasks, habits, medications, finance_transactions, "
     "finance_category_cache, integration_sync_state, integrations_credentials, oauth_state, telemetry_consent, "
-    "households, household_members, household_invites, household_join_attempts, "
+    "households, household_credentials, household_members, household_invites, household_join_attempts, "
     "kitchen_batches, kitchen_operation_groups, kitchen_clarifications, kitchen_digest_runs, "
     "notifications, push_tokens, auth_flows, auth_tickets, auth_identities, auth_sessions "
     "RESTART IDENTITY CASCADE"

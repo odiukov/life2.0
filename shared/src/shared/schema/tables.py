@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Identity,
     Index,
+    Integer,
     LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
@@ -244,7 +245,7 @@ integrations_credentials = Table(
     Column("last_used_at", TSTZ),
     UniqueConstraint("user_id", "service", name="integrations_credentials_user_id_service_key"),
     CheckConstraint(
-        "service IN ('ha', 'yazio', 'google_calendar', 'garmin')",
+        "service IN ('yazio', 'google_calendar', 'garmin')",
         name="integrations_credentials_service_check",
     ),
     CheckConstraint(
@@ -476,6 +477,7 @@ kitchen_digest_runs = Table(
 
 # Registry completeness and move behavior are checked against the migrated database.
 HOUSEHOLD_TABLES: dict[str, bool] = {
+    "household_credentials": False,
     "household_invites": False,
     "kitchen_batches": True,
     "kitchen_operation_groups": True,
@@ -494,4 +496,23 @@ integration_sync_state = Table(
     Column("last_error", Text),
     PrimaryKeyConstraint("user_id", "service", name="integration_sync_state_pkey"),
     CheckConstraint("service IN ('garmin', 'yazio')", name="integration_sync_state_service_check"),
+)
+
+
+household_credentials = Table(
+    "household_credentials",
+    metadata,
+    Column(
+        "household_id",
+        UUID(as_uuid=True),
+        ForeignKey("households.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("service", Text, nullable=False),
+    Column("payload_enc", LargeBinary, nullable=False),
+    Column("version", Integer, nullable=False, server_default=text("1")),
+    Column("updated_by", UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")),
+    Column("updated_at", TSTZ, nullable=False, server_default=NOW),
+    PrimaryKeyConstraint("household_id", "service", name="household_credentials_pkey"),
+    CheckConstraint("service IN ('ha')", name="household_credentials_service_check"),
 )

@@ -48,7 +48,10 @@ async def test_reencrypt_seals_every_plaintext_row(clean_db: PostgresUrls) -> No
     a = await seed(
         admin,
         "UTC",
-        {"garmin": {"email": "a@b.c", "password": "pw"}, "ha": {"url": "u", "token": "t"}},
+        {
+            "garmin": {"email": "a@b.c", "password": "pw"},
+            "google_calendar": {"url": "u", "token": "t"},
+        },
     )
     await seed(admin, "UTC", {"yazio": {"email": "b@b.c", "password": "pw2"}})
     uow = sync_uow(engine, BOX)
@@ -61,7 +64,10 @@ async def test_reencrypt_seals_every_plaintext_row(clean_db: PostgresUrls) -> No
             )
         ).scalar_one() == 0
     async with uow.for_user(a) as tx:
-        assert await tx.repo(CredentialStore).get(a, "ha") == {"url": "u", "token": "t"}
+        assert await tx.repo(CredentialStore).get(a, "google_calendar") == {
+            "url": "u",
+            "token": "t",
+        }
     await admin.dispose()
     await engine.dispose()
 

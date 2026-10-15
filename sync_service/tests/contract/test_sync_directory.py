@@ -132,7 +132,7 @@ async def test_due_rule(backend: Backend) -> None:
 async def test_invalid_zone_and_exact_retry_boundary(backend: Backend) -> None:
     user = await backend.seed_user("invalid/zone")
     await backend.seed_credentials(user, "garmin")
-    await backend.seed_credentials(user, "ha")
+    await backend.seed_credentials(user, "google_calendar")
     await backend.seed_state(
         user, "garmin", SyncStatus(NOW - timedelta(hours=1), None, "unavailable")
     )
