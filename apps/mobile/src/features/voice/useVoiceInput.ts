@@ -6,6 +6,7 @@ import {
   IOSOutputFormat,
   setAudioModeAsync,
   useAudioRecorder,
+  useAudioRecorderState,
   type RecordingOptions,
 } from 'expo-audio';
 import { useT } from '@life-agents/i18n';
@@ -14,6 +15,7 @@ import { uploadRecording, VoiceError } from './upload';
 import { MAX_RECORDING_MS, voiceReducer } from './voiceState';
 
 const OPTIONS: RecordingOptions = {
+  isMeteringEnabled: true,
   extension: '.m4a',
   sampleRate: 16000,
   numberOfChannels: 1,
@@ -23,13 +25,19 @@ const OPTIONS: RecordingOptions = {
   web: {},
 };
 
-type Options = { onTranscript: (text: string) => void; onNotice: (text: string) => void };
+type Options = {
+  onTranscript: (text: string, seconds: number) => void;
+  onNotice: (text: string) => void;
+  onFinished?: () => void;
+};
 type Phase = 'idle' | 'starting' | 'recording' | 'stopping' | 'transcribing';
 
-export function useVoiceInput({ onTranscript, onNotice }: Options) {
+export function useVoiceInput({ onTranscript, onNotice, onFinished }: Options) {
   const locale = appLocale();
   const t = useT(locale);
   const recorder = useAudioRecorder(OPTIONS);
+  const recorderState = useAudioRecorderState(recorder, 100);
+  const cancelled = useRef(false);
   const [state, dispatch] = useReducer(voiceReducer, { phase: 'idle' });
   const [seconds, setSeconds] = useState(0);
   const phase = useRef<Phase>('idle');
@@ -37,8 +45,8 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
   const released = useRef(false);
   const mounted = useRef(true);
   const cap = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const callbacks = useRef({ onTranscript, onNotice, t, locale });
-  callbacks.current = { onTranscript, onNotice, t, locale };
+  const callbacks = useRef({ onTranscript, onNotice, onFinished, t, locale });
+  callbacks.current = { onTranscript, onNotice, onFinished, t, locale };
 
   const clearCap = useCallback(() => {
     if (cap.current !== null) clearTimeout(cap.current);
@@ -79,6 +87,7 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
     phase.current = 'stopping';
     clearCap();
     const at = Date.now();
+    const duration = Math.floor((at - startedAt.current) / 1000);
     const next = voiceReducer(
       { phase: 'recording', startedAt: startedAt.current },
       { type: 'stop', at },
@@ -86,7 +95,7 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
     dispatch({ type: 'stop', at });
     try {
       await recorder.stop();
-      if (!mounted.current || next.phase !== 'transcribing') return;
+      if (cancelled.current || !mounted.current || next.phase !== 'transcribing') return;
       phase.current = 'transcribing';
       const uri = recorder.uri;
       if (!uri) {
@@ -94,11 +103,11 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
         return;
       }
       const text = await uploadRecording(uri, callbacks.current.locale);
-      if (!mounted.current) return;
-      if (text.trim()) callbacks.current.onTranscript(text);
+      if (!mounted.current || cancelled.current) return;
+      if (text.trim()) callbacks.current.onTranscript(text, duration);
       else callbacks.current.onNotice(callbacks.current.t('voice.not_heard'));
     } catch (error) {
-      if (mounted.current) {
+      if (mounted.current && !cancelled.current) {
         const code = error instanceof VoiceError ? error.code : 'stt_unavailable';
         const key =
           code === 'audio_too_long'
@@ -114,12 +123,14 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
       if (mounted.current) {
         dispatch({ type: 'done' });
         setSeconds(0);
+        callbacks.current.onFinished?.();
       }
     }
   }, [recorder, clearCap]);
 
   const start = useCallback(async () => {
     if (!mounted.current || phase.current !== 'idle') return;
+    cancelled.current = false;
     phase.current = 'starting';
     released.current = false;
     let prepared = false;
@@ -163,9 +174,28 @@ export function useVoiceInput({ onTranscript, onNotice }: Options) {
         }
         await setAudioModeAsync({ allowsRecording: false }).catch(() => undefined);
         phase.current = 'idle';
+        if (mounted.current) callbacks.current.onFinished?.();
       }
     }
   }, [recorder, stop]);
 
-  return { state: state.phase, seconds, start, stop };
+  const cancel = useCallback(async () => {
+    cancelled.current = true;
+    await stop();
+  }, [stop]);
+
+  return {
+    state: state.phase,
+    seconds,
+    level: state.phase === 'recording' ? meteringLevel(recorderState.metering) : 0,
+    start,
+    stop,
+    cancel,
+  };
+}
+
+/** Convert dBFS metering to a visual level; -60 dB and below is silence. */
+export function meteringLevel(db: number | null | undefined): number {
+  if (db == null || !Number.isFinite(db)) return 0;
+  return Math.min(1, Math.max(0, (db + 60) / 60));
 }

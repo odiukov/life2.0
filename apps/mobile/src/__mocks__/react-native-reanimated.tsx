@@ -98,7 +98,7 @@ module.exports = {
   withDecay: NOOP,
   withRepeat: NOOP,
   withSequence: NOOP,
-  withDelay: NOOP,
+  withDelay: (_ms: number, value: unknown) => value,
   cancelAnimation: NOOP,
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
   runOnUI: (fn: (...args: unknown[]) => unknown) => fn,

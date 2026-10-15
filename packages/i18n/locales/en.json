@@ -603,7 +603,12 @@
     "button": "New task",
     "button_hint": "Tap to write, hold to talk",
     "restore_failed": "Could not restore task",
-    "sheet_retry": "Retry"
+    "sheet_retry": "Retry",
+    "hold": {
+      "hint": "release to send · ← cancel",
+      "cancel": "release to cancel",
+      "transcribing": "Listening back…"
+    }
   },
   "house": {
     "title": "Home",

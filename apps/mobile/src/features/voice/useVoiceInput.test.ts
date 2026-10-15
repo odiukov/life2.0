@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { AudioModule, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
-import { useVoiceInput } from './useVoiceInput';
+import { meteringLevel, useVoiceInput } from './useVoiceInput';
 import { uploadRecording } from './upload';
 
 jest.mock('./upload', () => ({
@@ -95,7 +95,7 @@ test('one-minute cap stops the current recorder and transcribes', async () => {
     jest.advanceTimersByTime(60000);
     await Promise.resolve();
   });
-  await waitFor(() => expect(onTranscript).toHaveBeenCalledWith('bought bread'));
+  await waitFor(() => expect(onTranscript).toHaveBeenCalledWith('bought bread', 60));
   expect(recorder.stop).toHaveBeenCalledTimes(1);
   expect(result.current.state).toBe('idle');
 });
@@ -232,4 +232,174 @@ test('a cancelled start remains busy until recorder and audio-mode cleanup finis
     await result.current.start();
   });
   expect(permission).toHaveBeenCalledTimes(permissionCalls + 1);
+});
+
+test.each([
+  [undefined, 0],
+  [null, 0],
+  [-80, 0],
+  [-60, 0],
+  [-30, 0.5],
+  [0, 1],
+  [6, 1],
+])('metering %p becomes %p', (db, level) => {
+  expect(meteringLevel(db)).toBeCloseTo(level);
+});
+
+test('cancel stops recording without uploading', async () => {
+  const onTranscript = jest.fn();
+  const { result } = renderHook(() => useVoiceInput({ onTranscript, onNotice: jest.fn() }));
+  await act(async () => {
+    await result.current.start();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+    await result.current.cancel();
+  });
+  expect(recorder.stop).toHaveBeenCalledTimes(1);
+  expect(upload).not.toHaveBeenCalled();
+  expect(onTranscript).not.toHaveBeenCalled();
+  expect(result.current.state).toBe('idle');
+});
+
+test('cancel during deferred upload suppresses late transcript and notice', async () => {
+  let finish!: (text: string) => void;
+  upload.mockReturnValue(
+    new Promise<string>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onTranscript = jest.fn();
+  const onNotice = jest.fn();
+  const { result } = renderHook(() => useVoiceInput({ onTranscript, onNotice }));
+  await act(async () => {
+    await result.current.start();
+  });
+  let stopped!: Promise<void>;
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+    stopped = result.current.stop();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await result.current.cancel();
+    finish('late text');
+    await stopped;
+  });
+  expect(onTranscript).not.toHaveBeenCalled();
+  expect(onNotice).not.toHaveBeenCalled();
+});
+
+test('cap snapshots duration before deferred stop and upload complete', async () => {
+  let finishStop!: () => void;
+  jest.mocked(recorder.stop).mockReturnValue(
+    new Promise<void>((resolve) => {
+      finishStop = resolve;
+    }),
+  );
+  const onTranscript = jest.fn();
+  const onFinished = jest.fn();
+  const { result } = renderHook(() =>
+    useVoiceInput({ onTranscript, onNotice: jest.fn(), onFinished }),
+  );
+  await act(async () => {
+    await result.current.start();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(60000);
+    await Promise.resolve();
+  });
+  expect(upload).not.toHaveBeenCalled();
+  await act(async () => {
+    jest.advanceTimersByTime(3000);
+    finishStop();
+    await Promise.resolve();
+  });
+  expect(onTranscript).toHaveBeenCalledWith('bought bread', 60);
+  expect(onFinished).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    await result.current.stop();
+  });
+  expect(recorder.stop).toHaveBeenCalledTimes(1);
+});
+
+test('cancel while native stop is pending prevents upload', async () => {
+  let finish!: () => void;
+  jest.mocked(recorder.stop).mockReturnValue(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onTranscript = jest.fn();
+  const { result } = renderHook(() => useVoiceInput({ onTranscript, onNotice: jest.fn() }));
+  await act(async () => {
+    await result.current.start();
+  });
+  let stopped!: Promise<void>;
+  act(() => {
+    jest.advanceTimersByTime(2000);
+    stopped = result.current.stop();
+  });
+  await act(async () => {
+    await result.current.cancel();
+    finish();
+    await stopped;
+  });
+  expect(upload).not.toHaveBeenCalled();
+  expect(onTranscript).not.toHaveBeenCalled();
+  expect(result.current.state).toBe('idle');
+});
+
+test('recorder failure finishes the hold without a transcript', async () => {
+  jest.mocked(recorder.stop).mockRejectedValue(new Error('native failure'));
+  const onFinished = jest.fn();
+  const onNotice = jest.fn();
+  const onTranscript = jest.fn();
+  const { result } = renderHook(() => useVoiceInput({ onTranscript, onNotice, onFinished }));
+  await act(async () => {
+    await result.current.start();
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+    await result.current.stop();
+  });
+  expect(onFinished).toHaveBeenCalledTimes(1);
+  expect(onNotice).toHaveBeenCalledTimes(1);
+  expect(onTranscript).not.toHaveBeenCalled();
+  expect(result.current.state).toBe('idle');
+});
+
+test('cancelled upload keeps the session busy so a new start cannot revive its callback', async () => {
+  let finish!: (text: string) => void;
+  upload.mockReturnValue(
+    new Promise<string>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onTranscript = jest.fn();
+  const { result } = renderHook(() => useVoiceInput({ onTranscript, onNotice: jest.fn() }));
+  await act(async () => {
+    await result.current.start();
+  });
+  let stopped!: Promise<void>;
+  await act(async () => {
+    jest.advanceTimersByTime(2000);
+    stopped = result.current.stop();
+    await Promise.resolve();
+  });
+  await act(async () => {
+    await result.current.cancel();
+    await result.current.start();
+  });
+  expect(recorder.record).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    finish('stale');
+    await stopped;
+  });
+  expect(onTranscript).not.toHaveBeenCalled();
+  await act(async () => {
+    await result.current.start();
+  });
+  expect(recorder.record).toHaveBeenCalledTimes(2);
+  expect(result.current.state).toBe('recording');
 });

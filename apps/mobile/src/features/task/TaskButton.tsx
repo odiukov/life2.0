@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -17,7 +17,9 @@ import { Icon, useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
 import { haptic } from '@/lib/haptics';
-import { HOLD_MS } from './classifyPress';
+import { useVoiceInput } from '@/features/voice/useVoiceInput';
+import { VoiceHold } from './VoiceHold';
+import { CANCEL_DX, classifyPress, HOLD_MS } from './classifyPress';
 import { openTask, type Point } from './sheetStore';
 
 export const BUTTON_SIZE = 64;
@@ -54,6 +56,70 @@ export function TaskButton() {
   );
   const pressIn = useCallback(() => haptic('light'), []);
 
+  const [holding, setHolding] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const holdingRef = useRef(false);
+  const armedSV = useSharedValue(false);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flash = useCallback((text: string) => {
+    setNotice(text);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 3000);
+  }, []);
+  useEffect(
+    () => () => {
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    },
+    [],
+  );
+
+  const voice = useVoiceInput({
+    onTranscript: (text, seconds) => {
+      haptic('success');
+      openTask({ ...(origin.current ? { origin: origin.current } : {}), voice: { text, seconds } });
+    },
+    onNotice: flash,
+    onFinished: () => {
+      holdingRef.current = false;
+      setHolding(false);
+      setArmed(false);
+    },
+  });
+
+  const beginHold = useCallback(() => {
+    holdingRef.current = true;
+    haptic('medium');
+    setHolding(true);
+    setArmed(false);
+    void voice.start();
+  }, [voice]);
+
+  const endHold = useCallback(
+    (dx: number) => {
+      if (!holdingRef.current) return;
+      holdingRef.current = false;
+      setHolding(false);
+      setArmed(false);
+      if (classifyPress({ held: true, dx }) === 'cancel') {
+        haptic('warning');
+        void voice.cancel();
+      } else {
+        void voice.stop();
+      }
+    },
+    [voice],
+  );
+
+  const abortHold = useCallback(() => {
+    if (!holdingRef.current) return;
+    holdingRef.current = false;
+    setHolding(false);
+    setArmed(false);
+    void voice.cancel();
+  }, [voice]);
+
   const tap = Gesture.Tap()
     .maxDuration(HOLD_MS)
     .onBegin(() => {
@@ -68,6 +134,31 @@ export function TaskButton() {
     })
     .withTestId('task-button-tap');
 
+  const hold = Gesture.Pan()
+    .activateAfterLongPress(HOLD_MS)
+    .onStart(() => {
+      armedSV.value = false;
+      scale.value = withSpring(1.25, PRESS_SPRING);
+      runOnJS(beginHold)();
+    })
+    .onUpdate((e) => {
+      const next = e.translationX < CANCEL_DX;
+      if (next !== armedSV.value) {
+        armedSV.value = next;
+        runOnJS(setArmed)(next);
+      }
+    })
+    .onEnd((e) => {
+      runOnJS(endHold)(e.translationX);
+    })
+    .onFinalize(() => {
+      scale.value = withSpring(1, PRESS_SPRING);
+      runOnJS(abortHold)(); // no-op after onEnd; cancels when the system interrupts the hold
+    })
+    .withTestId('task-button-hold');
+
+  const gesture = Gesture.Exclusive(hold, tap);
+
   const buttonStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const haloStyle = useAnimatedStyle(() => ({
     opacity: 0.25 + glow.value * 0.3,
@@ -75,7 +166,7 @@ export function TaskButton() {
   }));
 
   return (
-    <GestureDetector gesture={tap}>
+    <GestureDetector gesture={gesture}>
       <View
         ref={ref}
         onLayout={measure}
@@ -87,6 +178,15 @@ export function TaskButton() {
         onAccessibilityTap={open}
         style={styles.wrap}
       >
+        {(holding || voice.state === 'transcribing') && (
+          <VoiceHold
+            seconds={voice.seconds}
+            level={voice.level}
+            armed={armed}
+            transcribing={voice.state === 'transcribing'}
+          />
+        )}
+        {notice && <Text style={[styles.notice, { color: colors.fg2 }]}>{notice}</Text>}
         <Animated.View
           pointerEvents="none"
           style={[styles.halo, { backgroundColor: colors.accent }, haloStyle]}
@@ -98,7 +198,12 @@ export function TaskButton() {
             end={{ x: 0.8, y: 1 }}
             style={styles.fill}
           >
-            <Icon name="Sparkle" size={26} color={colors.accentInk} weight="fill" />
+            <Icon
+              name={holding ? 'Microphone' : 'Sparkle'}
+              size={26}
+              color={colors.accentInk}
+              weight="fill"
+            />
           </LinearGradient>
         </Animated.View>
       </View>
@@ -121,6 +226,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: BUTTON_SIZE + 12,
   },
+  notice: { bottom: BUTTON_SIZE + 24, position: 'absolute', textAlign: 'center', width: 300 },
   wrap: {
     alignItems: 'center',
     height: BUTTON_SIZE + 12,

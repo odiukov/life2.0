@@ -1,6 +1,6 @@
 import { ThemeProvider } from '@life-agents/ui';
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { haptic } from '@/lib/haptics';
@@ -38,4 +38,98 @@ test('assistive activation opens the sheet with the same tap action', () => {
   button.props.onAccessibilityTap();
   expect(useTaskSheet.getState().visible).toBe(true);
   expect(button.props.accessibilityHint).toBe('Tap to write, hold to talk');
+});
+
+let mockVoiceOpts: {
+  onTranscript: (text: string, seconds: number) => void;
+  onNotice: (text: string) => void;
+  onFinished: () => void;
+};
+const mockVoice = {
+  state: 'idle',
+  seconds: 6,
+  level: 0.4,
+  start: jest.fn(async () => undefined),
+  stop: jest.fn(async () => undefined),
+  cancel: jest.fn(async () => undefined),
+};
+jest.mock('@/features/voice/useVoiceInput', () => ({
+  useVoiceInput: (opts: typeof mockVoiceOpts) => {
+    mockVoiceOpts = opts;
+    return mockVoice;
+  },
+}));
+
+const hold = (dx: number) =>
+  act(() =>
+    fireGestureHandler(getByGestureTestId('task-button-hold'), [
+      { state: State.BEGAN, translationX: 0 },
+      { state: State.ACTIVE, translationX: 0 },
+      { state: State.ACTIVE, translationX: dx },
+      { state: State.END, translationX: dx },
+    ]),
+  );
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockVoice.state = 'idle';
+});
+
+test('hold records and release waits for transcript with captured duration', () => {
+  render(
+    <ThemeProvider>
+      <TaskButton />
+    </ThemeProvider>,
+  );
+  hold(-80);
+  expect(mockVoice.start).toHaveBeenCalledTimes(1);
+  expect(mockVoice.stop).toHaveBeenCalledTimes(1);
+  expect(mockVoice.cancel).not.toHaveBeenCalled();
+  expect(useTaskSheet.getState().visible).toBe(false);
+  act(() => mockVoiceOpts.onTranscript('meal', 6));
+  expect(useTaskSheet.getState()).toMatchObject({
+    visible: true,
+    pending: { voice: { text: 'meal', seconds: 6 } },
+  });
+});
+
+test('left beyond 80 points cancels and opens nothing', () => {
+  render(
+    <ThemeProvider>
+      <TaskButton />
+    </ThemeProvider>,
+  );
+  hold(-81);
+  expect(mockVoice.cancel).toHaveBeenCalledTimes(1);
+  expect(mockVoice.stop).not.toHaveBeenCalled();
+  expect(haptic).toHaveBeenCalledWith('warning');
+  expect(useTaskSheet.getState().visible).toBe(false);
+});
+
+test('auto completion clears hold and later release cannot stop twice', () => {
+  render(
+    <ThemeProvider>
+      <TaskButton />
+    </ThemeProvider>,
+  );
+  const gesture = getByGestureTestId('task-button-hold');
+  act(() => gesture.handlers.onStart?.({} as never));
+  act(() => mockVoiceOpts.onFinished());
+  expect(screen.queryByTestId('voice-hold')).toBeNull();
+  act(() => gesture.handlers.onEnd?.({ translationX: 0 } as never, true));
+  expect(mockVoice.stop).not.toHaveBeenCalled();
+});
+
+test('voice failure shows notice without opening sheet', () => {
+  render(
+    <ThemeProvider>
+      <TaskButton />
+    </ThemeProvider>,
+  );
+  act(() => {
+    mockVoiceOpts.onNotice('No audio');
+    mockVoiceOpts.onFinished();
+  });
+  expect(screen.getByText('No audio')).toBeTruthy();
+  expect(useTaskSheet.getState().visible).toBe(false);
 });
