@@ -30,11 +30,13 @@ from shared.ports.stt import SpeechToText
 from shared.ports.uow import UnitOfWorkFactory
 from shared.ports.users import UserSettingsRepository
 
+from gateway.agents import AgentDirectory, SqlTaskCounts, TaskCounts, build_agents_router
 from gateway.agents_client import AgentClients
 from gateway.auth.authenticate import Authenticator
 from gateway.auth.routes import build_router as build_auth_router
 from gateway.auth.settings import AuthSettings
 from gateway.auth.store import AuthStore, SqlAuthStore
+from gateway.dashboard import build_router as build_dashboard_router
 from gateway.hooks import HouseholdEnsurer
 from gateway.integrations import (
     OAuthStateRepository,
@@ -104,6 +106,7 @@ def build_gateway(
             CredentialStore: sql_credential_store(AesGcmSecretBox.from_settings(settings.secrets)),
             OAuthStateRepository: SqlOAuthStates,
             SourceActivity: SqlSourceActivity,
+            TaskCounts: SqlTaskCounts,
         },
     )
     state_secret = (
@@ -116,7 +119,10 @@ def build_gateway(
     auth_uow = uow or SqlUnitOfWorkFactory(engine, {AuthStore: SqlAuthStore})
     authenticate = Authenticator(auth, auth_uow)
     authenticate.add_hook(HouseholdEnsurer(households))
+    directory = AgentDirectory(settings.agent_urls, http)
     routers = [
+        build_dashboard_router(clients.client, directory, data_uow, authenticate),
+        build_agents_router(directory, data_uow, clock, authenticate),
         build_auth_router(auth, auth_uow, http),
         build_router(households, authenticate),
         build_kitchen_router(KitchenGateway(skill_client), authenticate),
