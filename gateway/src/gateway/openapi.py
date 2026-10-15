@@ -23,7 +23,10 @@ async def _documented_user(authorization: str | None = Header(default=None)) -> 
 
 async def _openapi_document() -> dict[str, Any]:
     settings = GatewaySettings.model_validate(
-        {"database": {"dsn": "postgresql://doc:doc@localhost/doc"}}
+        {
+            "database": {"dsn": "postgresql://doc:doc@localhost/doc"},
+            "secrets": {"key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+        }
     )
     gateway = build_gateway(
         settings,

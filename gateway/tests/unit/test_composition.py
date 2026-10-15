@@ -158,3 +158,52 @@ def test_invalid_auth_settings_never_expose_secret(monkeypatch, from_env, caplog
     assert credential not in rendered
     assert credential not in caplog.text
     assert error.value.__suppress_context__ is True
+
+
+@pytest.mark.parametrize("custom", [False, True])
+async def test_body_and_calendar_clients_have_longer_configurable_budgets(custom):
+    import httpx
+
+    captured = {}
+
+    def unavailable(request: httpx.Request) -> httpx.Response:
+        captured[request.url.host] = request.extensions["timeout"]["read"]
+        raise httpx.ConnectError("unavailable", request=request)
+
+    overrides = {"body_skill_timeout_s": 120.0, "calendar_skill_timeout_s": 45.0} if custom else {}
+    settings = GatewaySettings.model_validate(
+        {
+            "database": {"dsn": "postgresql://u:p@localhost:1/db"},
+            "skill_timeout_s": 7.0,
+            **overrides,
+        }
+    )
+    http = httpx.AsyncClient(transport=httpx.MockTransport(unavailable))
+    gateway = build_gateway(settings, auth=AuthSettings(auth_mode="dev"), http=http)
+    app = FastAPI()
+    mount(app, gateway)
+    app.dependency_overrides[gateway.authenticate] = dev_user
+    headers = {"X-User-Id": "00000000-0000-0000-0000-000000000001"}
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://gw"
+        ) as client:
+            imported = await client.post(
+                "/me/profile/import-pdf",
+                headers=headers,
+                files={"file": ("report.pdf", b"%PDF-1.4 report", "application/pdf")},
+            )
+            disconnected = await client.post(
+                "/integrations/google_calendar/disconnect", headers=headers
+            )
+            kitchen = await client.get("/kitchen/digest", headers=headers)
+        assert imported.status_code == 503
+        assert disconnected.status_code == 502
+        assert kitchen.status_code == 503
+        assert captured == {
+            "agent-body": 120.0 if custom else 90.0,
+            "agent-calendar": 45.0 if custom else 30.0,
+            "agent-kitchen": 7.0,
+        }
+    finally:
+        await gateway.aclose()

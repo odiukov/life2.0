@@ -29,14 +29,10 @@ from . import vault
 from .auth import current_user
 from gateway.auth.settings import AuthSettings
 from .db import (
-    clear_activity,
     fetch_body_logs,
-    get_health_summary,
-    get_stats,
     get_tasks_today,
     get_yesterday_metrics,
 )
-from .integrations_routes import router as integrations_router
 from .health_agent import create_health_agent
 from .registry import check_agent_health, discover_agents, get_registry
 
@@ -91,7 +87,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["content-type"],
 )
-app.include_router(integrations_router)
 from .agent_passthrough import router as agent_passthrough_router
 
 app.include_router(agent_passthrough_router)
@@ -122,6 +117,15 @@ _val_logger = _logging.getLogger("orchestrator.validation")
 
 @app.exception_handler(_RVE)
 async def _log_validation_error(request, exc: _RVE):
+    if request.url.path.startswith(("/integrations/", "/me/profile")):
+        _val_logger.warning("invalid_gateway_request")
+        return _JR(
+            status_code=422,
+            content={
+                "detail": "Check the request fields and try again.",
+                "code": "invalid_request",
+            },
+        )
     if request.url.path.startswith("/auth/"):
         _val_logger.warning("422 %s %s", request.method, request.url.path)
         return _JR(status_code=422, content={"detail": "invalid_auth_request"})
@@ -157,33 +161,6 @@ class SyncHealthBody(BaseModel):
 
 
 _SYNC_SERVICE_BASE = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:8080")
-
-
-@app.post("/sync/trigger")
-async def sync_trigger(user_id: UUID = Depends(current_user)):
-    """Fire-and-forget: sync the authenticated user's Garmin and Yazio data.
-
-    Returns immediately with {"ok": true}. Failures are logged server-side.
-    Authenticated so random clients can't spam the sync service.
-    """
-
-    async def _fire():
-        async with httpx.AsyncClient(timeout=120.0) as c:
-            try:
-                response = await c.post(
-                    f"{_SYNC_SERVICE_BASE}/sync/user", json={"user_id": str(user_id)}
-                )
-                response.raise_for_status()
-            except Exception as exc:
-                _logging.getLogger(__name__).warning(
-                    "sync_user_failed code=unavailable user_id=%s", user_id
-                )
-                _logging.getLogger(__name__).debug(
-                    "sync_user_error error_type=%s", type(exc).__name__
-                )
-
-    asyncio.create_task(_fire())
-    return {"ok": True}
 
 
 @app.post("/sync/health")
@@ -236,22 +213,6 @@ class StreamChatRequest(BaseModel):
     actions: list = []
     extensions: dict = {}
     forward_props: dict = {}
-
-
-class BodyProfileUpdate(BaseModel):
-    height_cm: float | None = None
-    weight_kg: float | None = None
-    age: int | None = None
-    sex: str | None = None  # "male" | "female"
-    activity_level: str | None = None
-    calorie_goal_override: int | None = None
-
-
-class ViHealthProfileImport(BaseModel):
-    height_cm: float | None = None
-    weight_kg: float | None = None
-    age: int | None = None
-    sex: Literal["male", "female"] | None = None
 
 
 def _compute_tdee(
@@ -586,31 +547,6 @@ async def chat_stream(req: StreamChatRequest, user_id: UUID = Depends(current_us
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@app.get("/stats")
-async def stats(user_id: UUID = Depends(current_user)):
-    from shared.telemetry import set_span_user
-
-    set_span_user()
-    return await get_stats(user_id)
-
-
-@app.get("/health-summary")
-async def health_summary(user_id: UUID = Depends(current_user)):
-    from shared.telemetry import set_span_user
-
-    set_span_user()
-    return await get_health_summary(user_id)
-
-
-@app.delete("/activity")
-async def delete_activity():
-    from shared.telemetry import set_span_user
-
-    set_span_user()
-    deleted = await clear_activity()
-    return {"deleted": deleted}
 
 
 @app.get("/agents")
@@ -1167,82 +1103,6 @@ async def dashboard_summary(user_id: UUID = Depends(current_user)) -> dict:
     }
 
 
-@app.post("/finance/upload")
-async def finance_upload(
-    file: UploadFile = File(..., alias="csv"),
-    user_id: UUID = Depends(current_user),
-):
-    """Parse a Payoneer PDF monthly statement, UPSERT rows, categorize new
-    ones, return a summary string.
-
-    Historically this endpoint accepted CSV; Payoneer no longer exports CSV,
-    so the field name `csv` is kept only as a form-field alias for
-    backwards-compatibility with earlier client builds. The actual
-    expected payload is a Payoneer monthly statement PDF.
-
-    Errors:
-      415 if the upload is not a PDF (by content-type or filename).
-      422 if the PDF doesn't look like a Payoneer Account Statement.
-    """
-    from shared.telemetry import set_span_user
-
-    set_span_user()
-    from .payoneer_pdf import parse_payoneer_pdf, PayoneerPdfFormatError
-    from .finance_ingest import (
-        ingest_rows,
-        categorize_new,
-        build_upload_summary,
-    )
-    from .finance_queries import income_for_month, spending_by_category
-    from decimal import Decimal
-
-    ct = (file.content_type or "").lower()
-    name = (file.filename or "").lower()
-    if "pdf" not in ct and not name.endswith(".pdf"):
-        raise HTTPException(status_code=415, detail="expected application/pdf upload")
-
-    blob = await file.read()
-    if len(blob) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="pdf > 50 MB")
-
-    try:
-        rows, parse_skipped = parse_payoneer_pdf(blob)
-    except PayoneerPdfFormatError as e:
-        raise HTTPException(status_code=422, detail=f"bad payoneer pdf: {e}")
-
-    ingest_result = await ingest_rows(user_id, rows)
-    await categorize_new(user_id, ingest_result["uncategorized_ids"])
-
-    # Build income/spending summary for the months represented in this upload.
-    months = sorted({r["ts"].strftime("%Y-%m") for r in rows}) or [""]
-    income_total: dict[str, Decimal] = {}
-    spending_total: dict[str, Decimal] = {}
-    top_categories: list[tuple[str, Decimal, str]] = []
-    for m in months:
-        inc = await income_for_month(user_id, m)
-        for cur, amt in inc.items():
-            income_total[cur] = income_total.get(cur, Decimal("0")) + amt
-        spend = await spending_by_category(user_id, m)
-        for cat, cur, amt in spend:
-            spending_total[cur] = spending_total.get(cur, Decimal("0")) + amt
-            # build_upload_summary expects (name, amount, currency)
-            top_categories.append((cat, amt, cur))
-    top_categories.sort(key=lambda t: t[1], reverse=True)
-
-    summary = build_upload_summary(
-        inserted=ingest_result["inserted"],
-        skipped=ingest_result["skipped"] + parse_skipped,
-        income_by_currency=income_total,
-        spending_by_currency=spending_total,
-        top_categories=top_categories[:3],
-    )
-    return {
-        "summary": summary,
-        "inserted": ingest_result["inserted"],
-        "skipped": ingest_result["skipped"] + parse_skipped,
-    }
-
-
 @app.post("/chat/file")
 async def chat_file(
     file: UploadFile = File(...),
@@ -1302,133 +1162,3 @@ async def health():
 # ---------------------------------------------------------------------------
 
 from datetime import timezone as _tz  # noqa: E402
-
-
-def _thread_title(thread_id: str) -> str:
-    if thread_id.startswith("tg-"):
-        return "Legacy chat"
-    return f"Thread {thread_id[:8]}"
-
-
-async def _fetch_checkpoint_threads(limit: int = 50) -> list[dict]:
-    from shared.db import get_pool
-
-    pool = await get_pool()
-    rows = await pool.fetch(
-        "SELECT thread_id, MAX(created_at) AS updated_at "
-        "FROM checkpoints "
-        "GROUP BY thread_id "
-        "ORDER BY updated_at DESC "
-        "LIMIT $1",
-        limit,
-    )
-    return [dict(r) for r in rows]
-
-
-@app.get("/me")
-async def get_me(user_id: UUID = Depends(current_user)) -> dict:
-    return {"id": str(user_id), "voice_preset": "calm_coach"}
-
-
-@app.get("/me/profile")
-async def get_profile(user_id: UUID = Depends(current_user)) -> dict:
-    from .db import get_body_profile, fetch_body_logs
-
-    profile = await get_body_profile(user_id)
-    # Auto-fill weight from latest body_composition log if not in profile
-    weight_kg = profile.get("weight_kg")
-    if weight_kg is None:
-        try:
-            rows = await fetch_body_logs(user_id, limit=1)
-            if rows:
-                weight_kg = rows[0].get("data", {}).get("weight_kg")
-        except Exception:
-            pass
-    tdee_kcal = None
-    if all(
-        [
-            profile.get("height_cm"),
-            weight_kg,
-            profile.get("age"),
-            profile.get("sex"),
-            profile.get("activity_level"),
-        ]
-    ):
-        tdee_kcal = _compute_tdee(
-            weight_kg,
-            profile["height_cm"],
-            profile["age"],
-            profile["sex"],
-            profile["activity_level"],
-        )
-    return {
-        "height_cm": profile.get("height_cm"),
-        "weight_kg": weight_kg,
-        "age": profile.get("age"),
-        "sex": profile.get("sex"),
-        "activity_level": profile.get("activity_level"),
-        "calorie_goal_override": profile.get("calorie_goal_override"),
-        "tdee_kcal": tdee_kcal,
-    }
-
-
-@app.patch("/me/profile")
-async def update_profile(body: BodyProfileUpdate, user_id: UUID = Depends(current_user)) -> dict:
-    from .db import save_body_profile
-
-    updates = body.model_dump(exclude_unset=True)
-    await save_body_profile(user_id, updates)
-    return {"ok": True}
-
-
-@app.post("/me/profile/import-pdf")
-async def import_vihealth_pdf(
-    file: UploadFile = File(...),
-    user_id: UUID = Depends(current_user),
-) -> ViHealthProfileImport:
-    from .file_router import detect_file_type, _ingest_vihealth
-    from .vihealth_pdf import extract_profile_fields
-
-    ct = (file.content_type or "").lower()
-    name = (file.filename or "").lower()
-    if "pdf" not in ct and not name.endswith(".pdf"):
-        raise HTTPException(status_code=415, detail="expected application/pdf")
-
-    blob = await file.read()
-    if len(blob) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="pdf > 10 MB")
-
-    file_type = detect_file_type(blob)
-    if file_type == "payoneer":
-        raise HTTPException(status_code=422, detail="not a ViHealth PDF")
-
-    fields = extract_profile_fields(blob)
-    if not fields:
-        raise HTTPException(status_code=422, detail="could not extract profile fields")
-
-    # Ingest body composition data if PDF has a text layer (pdfplumber path)
-    # For image-only PDFs, file_type is "unknown" and _ingest_vihealth would return empty
-    if file_type == "vihealth":
-        await _ingest_vihealth(blob, user_id)
-
-    return ViHealthProfileImport(**fields)
-
-
-@app.get("/chat/threads")
-async def list_threads(user_id: UUID = Depends(current_user)) -> list:
-    try:
-        rows = await _fetch_checkpoint_threads(limit=50)
-    except Exception:
-        return []
-    return [
-        {
-            "id": r["thread_id"],
-            "title": _thread_title(r["thread_id"]),
-            "updated_at": (
-                r["updated_at"].astimezone(_tz.utc).isoformat().replace("+00:00", "Z")
-                if r["updated_at"] is not None
-                else None
-            ),
-        }
-        for r in rows
-    ]

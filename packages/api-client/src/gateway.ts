@@ -4,6 +4,108 @@
  */
 
 export interface paths {
+    "/auth/apple/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apple Callback */
+        post: operations["apple_callback_auth_apple_callback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange */
+        post: operations["exchange_auth_exchange_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google Callback */
+        get: operations["google_callback_auth_google_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh */
+        post: operations["refresh_auth_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign Out */
+        post: operations["sign_out_auth_sign_out_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/{provider}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Start */
+        get: operations["start_auth__provider__start_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/household": {
         parameters: {
             query?: never;
@@ -107,6 +209,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/integrations/google_calendar/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gcal Callback */
+        post: operations["gcal_callback_integrations_google_calendar_callback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/google_calendar/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gcal Disconnect */
+        post: operations["gcal_disconnect_integrations_google_calendar_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/google_calendar/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gcal Start */
+        post: operations["gcal_start_integrations_google_calendar_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/ha/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ha Connect */
+        post: operations["ha_connect_integrations_ha_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/ha/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ha Disconnect */
+        post: operations["ha_disconnect_integrations_ha_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/ha/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ha Status */
+        get: operations["ha_status_integrations_ha_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/ha/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ha Test */
+        post: operations["ha_test_integrations_ha_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preflight */
+        get: operations["preflight_integrations_preflight_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{service}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect */
+        post: operations["connect_integrations__service__connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{service}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect */
+        post: operations["disconnect_integrations__service__disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/kitchen/digest": {
         parameters: {
             query?: never;
@@ -169,6 +441,41 @@ export interface paths {
         put?: never;
         /** Undo */
         post: operations["undo_kitchen_undo__group_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_me_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Profile */
+        patch: operations["update_profile_me_profile_patch"];
+        trace?: never;
+    };
+    "/me/profile/import-pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Pdf */
+        post: operations["import_pdf_me_profile_import_pdf_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -260,6 +567,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sync/trigger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Trigger */
+        post: operations["sync_trigger_sync_trigger_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/voice/transcribe": {
         parameters: {
             query?: never;
@@ -291,6 +615,50 @@ export interface components {
              */
             user_id: string;
         };
+        /** BodyProfileOut */
+        BodyProfileOut: {
+            /** Activity Level */
+            activity_level?: ("sedentary" | "light" | "moderate" | "active" | "very_active") | null;
+            /** Age */
+            age?: number | null;
+            /** Calorie Goal Override */
+            calorie_goal_override?: number | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Sex */
+            sex?: ("male" | "female") | null;
+            /** Tdee Kcal */
+            tdee_kcal?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /** BodyProfileUpdate */
+        BodyProfileUpdate: {
+            /** Activity Level */
+            activity_level?: ("sedentary" | "light" | "moderate" | "active" | "very_active") | null;
+            /** Age */
+            age?: number | null;
+            /** Calorie Goal Override */
+            calorie_goal_override?: number | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Sex */
+            sex?: ("male" | "female") | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
+        /** Body_apple_callback_auth_apple_callback_post */
+        Body_apple_callback_auth_apple_callback_post: {
+            /** Code */
+            code: string;
+            /** State */
+            state: string;
+        };
+        /** Body_import_pdf_me_profile_import_pdf_post */
+        Body_import_pdf_me_profile_import_pdf_post: {
+            /** File */
+            file: string;
+        };
         /** Body_transcribe_voice_transcribe_post */
         Body_transcribe_voice_transcribe_post: {
             /** Audio */
@@ -301,10 +669,27 @@ export interface components {
              */
             language: string;
         };
+        /** CalendarCallback */
+        CalendarCallback: {
+            /** Code */
+            code: string;
+            /** State */
+            state: string;
+        };
         /** CodeIn */
         CodeIn: {
             /** Code */
             code: string;
+        };
+        /** Credentials */
+        Credentials: {
+            /** Email */
+            email: string;
+            /**
+             * Password
+             * Format: password
+             */
+            password: string;
         };
         /** DigestOut */
         DigestOut: {
@@ -321,6 +706,25 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HomeConnect */
+        HomeConnect: {
+            /** Base Url */
+            base_url: string;
+            /**
+             * Token
+             * Format: password
+             */
+            token: string;
+        };
+        /** HomeStatus */
+        HomeStatus: {
+            /** Connected */
+            connected: boolean;
+            /** Connected At */
+            connected_at?: string | null;
+            /** Connected By */
+            connected_by?: string | null;
         };
         /** HouseholdOut */
         HouseholdOut: {
@@ -515,6 +919,18 @@ export interface components {
             /** Updated */
             updated: number;
         };
+        /** RefreshBody */
+        RefreshBody: {
+            /** Refresh Token */
+            refresh_token: string;
+        };
+        /** TicketBody */
+        TicketBody: {
+            /** App Verifier */
+            app_verifier: string;
+            /** Ticket */
+            ticket: string;
+        };
         /** TranscriptOut */
         TranscriptOut: {
             /** Text */
@@ -541,6 +957,17 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** ViHealthProfileImport */
+        ViHealthProfileImport: {
+            /** Age */
+            age?: number | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Sex */
+            sex?: ("male" | "female") | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -550,11 +977,209 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    apple_callback_auth_apple_callback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_apple_callback_auth_apple_callback_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exchange_auth_exchange_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_callback_auth_google_callback_get: {
+        parameters: {
+            query: {
+                state: string;
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_auth_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sign_out_auth_sign_out_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_auth__provider__start_get: {
+        parameters: {
+            query: {
+                app_challenge: string;
+            };
+            header?: never;
+            path: {
+                provider: "google" | "apple";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_household_household_get: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -586,6 +1211,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -621,6 +1247,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -652,6 +1279,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -687,6 +1315,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -722,6 +1351,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -753,6 +1383,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path: {
                 user_id: string;
@@ -779,11 +1410,352 @@ export interface operations {
             };
         };
     };
+    gcal_callback_integrations_google_calendar_callback_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarCallback"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gcal_disconnect_integrations_google_calendar_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gcal_start_integrations_google_calendar_start_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ha_connect_integrations_ha_connect_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomeConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ha_disconnect_integrations_ha_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ha_status_integrations_ha_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ha_test_integrations_ha_test_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preflight_integrations_preflight_get: {
+        parameters: {
+            query: {
+                service: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_integrations__service__connect_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path: {
+                service: "garmin" | "yazio";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Credentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_integrations__service__disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path: {
+                service: "garmin" | "yazio";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     digest_kitchen_digest_get: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -817,6 +1789,7 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -848,6 +1821,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path: {
                 item_id: string;
@@ -885,6 +1859,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path: {
                 group_id: string;
@@ -913,11 +1888,118 @@ export interface operations {
             };
         };
     };
+    get_profile_me_profile_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BodyProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_me_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BodyProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_pdf_me_profile_import_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_import_pdf_me_profile_import_pdf_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViHealthProfileImport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     register_me_push_tokens_post: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -951,6 +2033,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path: {
                 token: string;
@@ -985,6 +2068,7 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1016,6 +2100,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -1047,6 +2132,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path: {
                 notification_id: string;
@@ -1073,11 +2159,44 @@ export interface operations {
             };
         };
     };
+    sync_trigger_sync_trigger_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     transcribe_voice_transcribe_post: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-User-Id"?: string | null;
             };
             path?: never;
             cookie?: never;

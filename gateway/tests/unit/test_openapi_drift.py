@@ -19,6 +19,19 @@ def test_committed_schema_matches_the_routes() -> None:
 def test_schema_has_every_gateway_route() -> None:
     paths = set(openapi_document()["paths"])
     assert {
+        "/me/profile",
+        "/me/profile/import-pdf",
+        "/integrations/ha/connect",
+        "/integrations/ha/test",
+        "/integrations/ha/status",
+        "/integrations/ha/disconnect",
+        "/integrations/google_calendar/start",
+        "/integrations/google_calendar/callback",
+        "/integrations/google_calendar/disconnect",
+        "/integrations/{service}/connect",
+        "/integrations/{service}/disconnect",
+        "/integrations/preflight",
+        "/sync/trigger",
         "/auth/{provider}/start",
         "/auth/google/callback",
         "/auth/apple/callback",
@@ -62,3 +75,13 @@ def test_export_closes_gateway_if_schema_generation_fails() -> None:
     ):
         openapi_document()
     assert gateway.closed
+
+
+def test_home_status_schema_has_typed_family_connection_fields():
+    document = openapi_document()
+    schema = document["paths"]["/integrations/ha/status"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    properties = document["components"]["schemas"][schema["$ref"].split("/")[-1]]["properties"]
+    assert properties["connected"]["type"] == "boolean"
+    assert {"connected_by", "connected_at"} <= properties.keys()
