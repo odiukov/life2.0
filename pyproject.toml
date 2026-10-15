@@ -47,7 +47,7 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-pythonpath = [".", "shared/src", "agents/kitchen/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests"]
+pythonpath = ["gateway/tests", ".", "shared/src", "agents/kitchen/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests"]
 testpaths = ["tests", "shared/tests", "agents/nutrition/tests", "household/tests", "gateway/tests", "agents/kitchen/tests", "stt_service/tests", "agents/body/tests", "agents/recovery/tests", "agents/sleep/tests", "agents/workout/tests", "agents/mood/tests", "agents/habits/tests", "agents/medication/tests", "sync_service/tests", "agents/finance/tests", "agents/calendar/tests", "agents/home/tests"]
 addopts = "--import-mode=importlib -ra -p shared.testing.pytest_plugin -p pytester"
 consider_namespace_packages = true

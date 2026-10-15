@@ -2,6 +2,7 @@ from uuid import UUID
 
 import pytest
 from fastapi import FastAPI, Header
+from gateway.auth.settings import AuthSettings
 from gateway.composition import GatewayNotConfigured, build_gateway, build_gateway_from_env, mount
 from gateway.settings import GatewaySettings
 
@@ -13,16 +14,17 @@ async def dev_user(x_user_id: str = Header(alias="X-User-Id")) -> UUID:
 def test_from_env_without_database_is_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE__DSN", raising=False)
     with pytest.raises(GatewayNotConfigured):
-        build_gateway_from_env(authenticate=dev_user)
+        build_gateway_from_env()
 
 
 async def test_mount_adds_household_routes() -> None:
     settings = GatewaySettings.model_validate(
         {"database": {"dsn": "postgresql://u:p@localhost/db"}}
     )
-    gateway = build_gateway(settings, authenticate=dev_user)
+    gateway = build_gateway(settings, auth=AuthSettings(auth_mode="dev"))
     app = FastAPI()
     mount(app, gateway)
+    app.dependency_overrides[gateway.authenticate] = dev_user
     paths = set(app.openapi()["paths"])
     assert {
         "/household",
@@ -48,9 +50,10 @@ async def test_kitchen_routes_use_injected_client_without_database_queries() -> 
     settings = GatewaySettings.model_validate(
         {"database": {"dsn": "postgresql://u:p@localhost:1/db"}}
     )
-    gateway = build_gateway(settings, authenticate=dev_user, skill_client=client)
+    gateway = build_gateway(settings, auth=AuthSettings(auth_mode="dev"), skill_client=client)
     app = FastAPI()
     mount(app, gateway)
+    app.dependency_overrides[gateway.authenticate] = dev_user
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://gw"
@@ -79,9 +82,10 @@ async def test_composition_uses_configured_a2a_url_and_timeout_and_closes_http()
             "kitchen_agent_url": "http://configured-kitchen/",
         }
     )
-    gateway = build_gateway(settings, authenticate=dev_user, http=http)
+    gateway = build_gateway(settings, auth=AuthSettings(auth_mode="dev"), http=http)
     app = FastAPI()
     mount(app, gateway)
+    app.dependency_overrides[gateway.authenticate] = dev_user
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://gw"
@@ -112,9 +116,10 @@ async def test_voice_route_uses_configured_stt_http_client_and_limit() -> None:
             "voice_max_bytes": 5,
         }
     )
-    gateway = build_gateway(settings, authenticate=dev_user, http=http)
+    gateway = build_gateway(settings, auth=AuthSettings(auth_mode="dev"), http=http)
     app = FastAPI()
     mount(app, gateway)
+    app.dependency_overrides[gateway.authenticate] = dev_user
     try:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://gw"
@@ -135,3 +140,21 @@ async def test_voice_route_uses_configured_stt_http_client_and_limit() -> None:
     finally:
         await gateway.aclose()
     assert http.is_closed
+
+
+@pytest.mark.parametrize("from_env", [False, True])
+def test_invalid_auth_settings_never_expose_secret(monkeypatch, from_env, caplog):
+    import logging
+    import traceback
+
+    credential = "synthetic-private-secret"
+    monkeypatch.setenv("DATABASE__DSN", "postgresql://u:p@localhost/db")
+    monkeypatch.setenv("AUTH_JWT_SECRET", credential)
+    build = build_gateway_from_env if from_env else lambda: build_gateway(GatewaySettings())
+    with pytest.raises(RuntimeError, match="auth_configuration_invalid") as error:
+        build()
+    rendered = "".join(traceback.format_exception(error.value))
+    logging.getLogger(__name__).error("startup_failed", exc_info=error.value)
+    assert credential not in rendered
+    assert credential not in caplog.text
+    assert error.value.__suppress_context__ is True

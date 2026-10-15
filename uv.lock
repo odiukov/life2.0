@@ -1221,6 +1221,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "household" },
     { name = "httpx" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "python-multipart" },
     { name = "shared" },
 ]
@@ -1230,6 +1231,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.111" },
     { name = "household", editable = "household" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "shared", editable = "shared" },
 ]

@@ -24,7 +24,7 @@ def _dev_auth(monkeypatch):
     from orchestrator.app import auth
 
     # Auth is imported during collection, before module-level env defaults apply.
-    monkeypatch.setattr(auth, "AUTH_MODE", "dev")
+    monkeypatch.setattr(auth, "_gateway", dev_gateway())
 
 
 @pytest.fixture(autouse=True)
@@ -94,3 +94,18 @@ async def test_sync_rejects_huge_batch():
         huge = {"samples": [_SAMPLE] * 501}
         r = await c.post("/sync/health", json=huge, headers=AUTH_HEADER)
     assert r.status_code == 422  # pydantic validation
+
+
+def dev_gateway():
+    from types import SimpleNamespace
+    from gateway.auth.authenticate import Authenticator
+    from gateway.auth.settings import AuthSettings
+    from gateway.auth.store import AuthStore, InMemoryAuthStore
+    from shared.testing.fakes import InMemoryUnitOfWorkFactory
+
+    return SimpleNamespace(
+        authenticate=Authenticator(
+            AuthSettings(auth_mode="dev"),
+            InMemoryUnitOfWorkFactory({AuthStore: InMemoryAuthStore()}),
+        )
+    )

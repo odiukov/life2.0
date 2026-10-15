@@ -19,7 +19,7 @@ async def test_sync_trigger_posts_the_user_to_sync_user(monkeypatch):
     from orchestrator.app import auth
     from orchestrator.app.main import app
 
-    monkeypatch.setattr(auth, "AUTH_MODE", "dev")
+    monkeypatch.setattr(auth, "_gateway", dev_gateway())
 
     posted: list[tuple[str, dict]] = []
 
@@ -44,3 +44,18 @@ async def test_sync_trigger_posts_the_user_to_sync_user(monkeypatch):
     from orchestrator.app.main import _SYNC_SERVICE_BASE
 
     assert posted == [(f"{_SYNC_SERVICE_BASE}/sync/user", {"user_id": USER})]
+
+
+def dev_gateway():
+    from types import SimpleNamespace
+    from gateway.auth.authenticate import Authenticator
+    from gateway.auth.settings import AuthSettings
+    from gateway.auth.store import AuthStore, InMemoryAuthStore
+    from shared.testing.fakes import InMemoryUnitOfWorkFactory
+
+    return SimpleNamespace(
+        authenticate=Authenticator(
+            AuthSettings(auth_mode="dev"),
+            InMemoryUnitOfWorkFactory({AuthStore: InMemoryAuthStore()}),
+        )
+    )

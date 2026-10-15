@@ -26,9 +26,8 @@ from pydantic_settings import SettingsError
 from typing import Literal
 
 from . import vault
-from .auth import AUTH_MODE, current_user
-from .direct_auth import app_secret
-from .auth_routes import router as auth_router
+from .auth import current_user
+from gateway.auth.settings import AuthSettings
 from .db import (
     clear_activity,
     fetch_body_logs,
@@ -46,8 +45,9 @@ from .registry import check_agent_health, discover_agents, get_registry
 async def lifespan(app: FastAPI):
     try:
         vault.ensure_ready()
-        if AUTH_MODE != "dev":
-            app_secret()
+        auth_settings = AuthSettings()
+        if auth_settings.auth_mode != "dev" and auth_settings.secret() is None:
+            raise RuntimeError("auth_not_configured")
     except (ValidationError, SettingsError):
         # ASGI logs startup exceptions; suppress validation inputs and their chain.
         raise RuntimeError("orchestrator_configuration_invalid") from None
@@ -92,24 +92,22 @@ app.add_middleware(
     expose_headers=["content-type"],
 )
 app.include_router(integrations_router)
-app.include_router(auth_router)
 from .agent_passthrough import router as agent_passthrough_router
 
 app.include_router(agent_passthrough_router)
 
-from gateway.composition import GatewayNotConfigured, build_gateway_from_env
+from gateway.composition import GatewayNotConfigured
 from gateway.composition import mount as mount_gateway
 
-from .auth import POST_AUTH_HOOKS
+from .auth import gateway
 
 try:
-    _gateway = build_gateway_from_env(authenticate=current_user)
+    _gateway = gateway()
 except GatewayNotConfigured:
     _gateway = None
     logging.getLogger(__name__).warning("gateway_disabled_without_database_settings")
 if _gateway is not None:
     mount_gateway(app, _gateway)
-    POST_AUTH_HOOKS.append(_gateway.post_auth_hook)
 
 
 # Temporary verbose logger for pydantic validation errors — helps track down

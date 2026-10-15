@@ -12,6 +12,7 @@ from uuid import UUID
 from fastapi import FastAPI, Header
 from shared.testing.fakes import FakeSkillClient, FakeSpeechToText
 
+from gateway.auth.settings import AuthSettings
 from gateway.composition import build_gateway
 from gateway.settings import GatewaySettings
 
@@ -26,7 +27,7 @@ async def _openapi_document() -> dict[str, Any]:
     )
     gateway = build_gateway(
         settings,
-        authenticate=_documented_user,
+        auth=AuthSettings(auth_jwt_secret=None),
         skill_client=FakeSkillClient(lambda *args: NotImplementedError()),
         stt=FakeSpeechToText(),
     )
@@ -34,6 +35,7 @@ async def _openapi_document() -> dict[str, Any]:
         app = FastAPI(title="life-agents gateway", version="1")
         for router in gateway.routers:
             app.include_router(router)
+        app.dependency_overrides[gateway.authenticate] = _documented_user
         return app.openapi()
     finally:
         await gateway.aclose()

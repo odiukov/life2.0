@@ -6,7 +6,7 @@ import pytest
 
 
 def test_google_url_uses_state_nonce_and_pkce():
-    from orchestrator.app.direct_auth import provider_authorization_url
+    from gateway.auth.tokens import provider_authorization_url
 
     url = provider_authorization_url(
         "google", "client-id", "https://app.test/auth/google/callback", "state", "nonce", "verifier"
@@ -18,7 +18,7 @@ def test_google_url_uses_state_nonce_and_pkce():
 
 
 def test_apple_url_requests_form_post():
-    from orchestrator.app.direct_auth import provider_authorization_url
+    from gateway.auth.tokens import provider_authorization_url
 
     url = provider_authorization_url(
         "apple", "service-id", "https://app.test/auth/apple/callback", "state", "nonce", "verifier"
@@ -29,7 +29,7 @@ def test_apple_url_requests_form_post():
 
 
 def test_access_token_requires_issuer_audience_and_session():
-    from orchestrator.app.direct_auth import issue_access, decode_access
+    from gateway.auth.tokens import decode_access, issue_access
 
     secret = "x" * 32
     user = UUID("11111111-1111-1111-1111-111111111111")
@@ -46,16 +46,16 @@ def test_access_token_requires_issuer_audience_and_session():
 
 
 def test_provider_token_rejects_wrong_nonce():
-    from orchestrator.app.direct_auth import decode_provider_identity
-    from tests.fixtures.jwt_factory import build, jwks
+    from gateway.auth.tokens import decode_provider_identity
+    from jwt_factory import build, jwks
 
     with pytest.raises(jwt.InvalidTokenError):
         decode_provider_identity("google", build("123"), "test-client", "expected", jwks())
 
 
 def test_google_accepts_both_documented_issuer_forms():
-    from orchestrator.app.direct_auth import decode_provider_identity
-    from tests.fixtures.jwt_factory import build, jwks
+    from gateway.auth.tokens import decode_provider_identity
+    from jwt_factory import build, jwks
 
     identity = decode_provider_identity(
         "google",

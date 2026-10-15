@@ -46,7 +46,7 @@ async def legacy_app(clean_db, monkeypatch):
         await conn.execute(text(SHADOW_NOW))
         await g.seed_postgres(conn)
     monkeypatch.setenv("POSTGRES_DSN", clean_db.legacy_plain + "?search_path=public%2Cpg_catalog")
-    monkeypatch.setattr("orchestrator.app.auth.AUTH_MODE", "dev")
+    monkeypatch.setattr("orchestrator.app.auth._gateway", dev_gateway())
     monkeypatch.setattr("orchestrator.app.google_calendar_api.list_events", _list_events)
     await _reset_legacy_pools()
     from orchestrator.app.main import app
@@ -96,3 +96,18 @@ async def test_legacy_outputs_match_the_goldens(legacy_app, request) -> None:
         return
     for name, value in outputs.items():
         assert value == g.golden(name), name
+
+
+def dev_gateway():
+    from types import SimpleNamespace
+    from gateway.auth.authenticate import Authenticator
+    from gateway.auth.settings import AuthSettings
+    from gateway.auth.store import AuthStore, InMemoryAuthStore
+    from shared.testing.fakes import InMemoryUnitOfWorkFactory
+
+    return SimpleNamespace(
+        authenticate=Authenticator(
+            AuthSettings(auth_mode="dev"),
+            InMemoryUnitOfWorkFactory({AuthStore: InMemoryAuthStore()}),
+        )
+    )

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import os
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
@@ -76,7 +75,7 @@ def decode_provider_identity(
         raise jwt.InvalidTokenError("unknown provider key")
     claims = jwt.decode(
         id_token,
-        RSAAlgorithm.from_jwk(key),
+        RSAAlgorithm.from_jwk(key),  # type: ignore[arg-type]
         algorithms=["RS256"],
         audience=client_id,
         issuer=[ISSUERS[provider], "accounts.google.com"]
@@ -102,7 +101,7 @@ def issue_access(
             "iss": "lifeagents",
             "aud": "lifeagents",
             "iat": issued,
-            "exp": issued + timedelta(minutes=15),
+            "exp": issued + ACCESS_TTL,
         },
         secret,
         algorithm="HS256",
@@ -124,8 +123,44 @@ def decode_access(token: str, secret: str) -> tuple[UUID, UUID]:
         raise jwt.InvalidTokenError("malformed subject or session") from error
 
 
-def app_secret() -> str:
-    value = os.environ.get("AUTH_JWT_SECRET", "")
-    if len(value) < 32:
-        raise RuntimeError("AUTH_JWT_SECRET must contain at least 32 characters")
-    return value
+ACCESS_TTL = timedelta(minutes=15)
+REFRESH_TTL = timedelta(days=30)
+FLOW_TTL = timedelta(minutes=10)
+TICKET_TTL = timedelta(minutes=2)
+
+
+class InvalidRefreshToken(Exception):
+    pass
+
+
+def new_refresh_token(session_id: UUID) -> str:
+    return f"{session_id}.{random_token()}"
+
+
+def parse_refresh_token(token: str) -> tuple[UUID, str]:
+    try:
+        sid_text, secret = token.split(".", 1)
+        sid = UUID(sid_text)
+    except (ValueError, AttributeError):
+        raise InvalidRefreshToken from None
+    if len(secret) < 32:
+        raise InvalidRefreshToken
+    return sid, secret
+
+
+def apple_client_secret(
+    *, team_id: str, key_id: str, private_key: str, client_id: str, now: datetime | None = None
+) -> str:
+    issued = now or datetime.now(UTC)
+    return jwt.encode(
+        {
+            "iss": team_id,
+            "iat": issued,
+            "exp": issued + timedelta(days=30),
+            "aud": "https://appleid.apple.com",
+            "sub": client_id,
+        },
+        private_key.replace("\\n", "\n"),
+        algorithm="ES256",
+        headers={"kid": key_id},
+    )

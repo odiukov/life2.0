@@ -19,6 +19,12 @@ def test_committed_schema_matches_the_routes() -> None:
 def test_schema_has_every_gateway_route() -> None:
     paths = set(openapi_document()["paths"])
     assert {
+        "/auth/{provider}/start",
+        "/auth/google/callback",
+        "/auth/apple/callback",
+        "/auth/exchange",
+        "/auth/refresh",
+        "/auth/sign-out",
         "/household",
         "/household/invites",
         "/household/join",
@@ -43,6 +49,7 @@ def test_export_closes_gateway_if_schema_generation_fails() -> None:
         def __init__(self) -> None:
             self.routers: list[object] = []
             self.closed = False
+            self.authenticate = lambda: None
 
         async def aclose(self) -> None:
             self.closed = True
