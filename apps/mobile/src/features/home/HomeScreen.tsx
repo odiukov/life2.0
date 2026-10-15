@@ -1,5 +1,14 @@
+import { UnavailableNote } from './UnavailableNote';
 import React, { useEffect, useMemo, useState } from 'react';
-import { AppState, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AppState,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   AgentMark,
   Icon,
@@ -510,12 +519,30 @@ export function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('inbox.title')}
             onPress={() => router.push('/inbox')}
-            style={[styles.settingsBtn, { backgroundColor: colors.bg2, borderColor: colors.border, marginRight: 8 }]}
+            style={[
+              styles.settingsBtn,
+              { backgroundColor: colors.bg2, borderColor: colors.border, marginRight: 8 },
+            ]}
           >
             <Icon name="Bell" size={17} color={colors.fg2} />
             {unreadBadge && (
-              <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
-                <Text style={{ color: colors.accentInk, fontSize: 10, fontWeight: '700' }}>{unreadBadge}</Text>
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: colors.danger,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 3,
+                }}
+              >
+                <Text style={{ color: colors.accentInk, fontSize: 10, fontWeight: '700' }}>
+                  {unreadBadge}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -638,22 +665,25 @@ export function HomeScreen() {
             </Text>
           </View>
           <View style={styles.grid}>
-            {sortedAgentIds.map((id) => {
-              const row = rowsByAgent.get(id);
-              const agent = agentMap.get(id);
-              return (
-                <View key={id} style={styles.gridCell}>
-                  <AgentTile
-                    id={id}
-                    value={agent?.metric ?? '—'}
-                    hint={agent?.detail ?? ''}
-                    row={row}
-                    onPress={pushAgent}
-                  />
-                </View>
-              );
-            })}
+            {sortedAgentIds
+              .filter((id) => !data?.unavailable?.includes(id))
+              .map((id) => {
+                const row = rowsByAgent.get(id);
+                const agent = agentMap.get(id);
+                return (
+                  <View key={id} style={styles.gridCell}>
+                    <AgentTile
+                      id={id}
+                      value={agent?.metric ?? '—'}
+                      hint={agent?.detail ?? ''}
+                      row={row}
+                      onPress={pushAgent}
+                    />
+                  </View>
+                );
+              })}
           </View>
+          <UnavailableNote agents={data?.unavailable ?? []} />
         </View>
       </ScrollView>
 

@@ -19,6 +19,7 @@ const CHART_TYPE: Record<AgentId, ChartType> = {
   finance: 'bar',
   calendar: 'bar',
   home: 'bar',
+  kitchen: 'bar',
   body: 'line',
 };
 

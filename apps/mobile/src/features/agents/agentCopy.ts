@@ -8,6 +8,7 @@ import type { AgentId } from '@life-agents/ui';
  * key order here.
  */
 export const AGENT_COPY = {
+  kitchen: { label: 'Kitchen', description: 'Shared pantry and meals' },
   sleep: { label: 'Sleep', description: 'Tracks bedtime, duration, HRV' },
   workout: { label: 'Training', description: 'Workouts, load, recovery' },
   nutrition: { label: 'Nutrition', description: 'Calories, macros, meals' },

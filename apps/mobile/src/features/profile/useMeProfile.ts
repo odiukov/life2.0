@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/api/client';
+import { gateway } from '@/api/gateway';
 
 export type MeProfile = {
   height_cm: number | null;
@@ -14,7 +14,7 @@ export function useMeProfile() {
   return useQuery<MeProfile | null>({
     queryKey: ['me-profile'],
     queryFn: async () => {
-      const { data } = await api.GET('/me/profile');
+      const { data } = await gateway.GET('/me/profile');
       if (!data) return null;
       return {
         height_cm: data.height_cm ?? null,

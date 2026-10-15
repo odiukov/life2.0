@@ -3,9 +3,18 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../theme';
 
 export type AgentId =
-  | 'sleep' | 'workout' | 'nutrition' | 'mood'
-  | 'habits' | 'recovery' | 'medication' | 'finance'
-  | 'calendar' | 'home' | 'body';
+  | 'sleep'
+  | 'workout'
+  | 'nutrition'
+  | 'mood'
+  | 'habits'
+  | 'recovery'
+  | 'medication'
+  | 'finance'
+  | 'calendar'
+  | 'home'
+  | 'body'
+  | 'kitchen';
 
 export function AgentBadge({ agent }: { agent: AgentId }) {
   const { colors, typography, radius, spacing } = useTheme();

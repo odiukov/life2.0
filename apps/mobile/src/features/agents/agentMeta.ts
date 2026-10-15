@@ -20,6 +20,7 @@ export type AgentMeta = {
 
 /** Accent color per agent — used for ring stroke, pill bg (10% opacity), primary action. */
 export const AGENT_COLOR: Record<AgentId, string> = {
+  kitchen: '#4ec47a',
   sleep:      '#0ea5e9',
   workout:    '#10b981',
   nutrition:  '#f59e0b',
@@ -34,6 +35,7 @@ export const AGENT_COLOR: Record<AgentId, string> = {
 };
 
 export const AGENT_META: Record<AgentId, AgentMeta> = {
+  kitchen: { name: 'Kitchen', role: 'Shared pantry and meals', actions: [] },
   sleep: {
     name: 'Sleep',
     role: 'Rest quality, HRV, and sleep stages',

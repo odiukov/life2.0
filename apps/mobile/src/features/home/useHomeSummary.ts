@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import { isAgentId } from '../agents/agentStatusRules';
 import type { AgentId } from '@life-agents/ui';
-import { api, apiBaseUrl } from '@/api/client';
+import { apiBaseUrl } from '@/api/client';
+import { gateway } from '@/api/gateway';
 import { useSyncTimestamp } from '@/features/sync/syncTimestamp';
 
 export type AgentTint = 'success' | 'warn' | 'danger' | 'neutral';
@@ -85,6 +87,7 @@ export type FeaturedBody = {
 };
 
 export type HomeSummary = {
+  unavailable: AgentId[];
   agents: HomeAgent[];
   briefingText?: string | null;
   alerts?: HomeAlert[];
@@ -187,9 +190,11 @@ export function useHomeSummary() {
   const query = useQuery({
     queryKey: ['home-summary'],
     queryFn: async (): Promise<HomeSummary> => {
-      const { data, error } = await api.GET('/dashboard/summary');
+      const { data, error } = await gateway.GET('/dashboard/summary');
       if (error) throw error;
-      const agents: HomeAgent[] = (data?.agents ?? []).map((a) => ({
+      const agents: HomeAgent[] = (
+        (data?.agents ?? []) as Array<HomeAgent & { workout_type?: string }>
+      ).map((a) => ({
         agent: a.agent as AgentId,
         label: a.label,
         metric: a.metric,
@@ -202,6 +207,7 @@ export function useHomeSummary() {
       const [hkStepsPct, hkHrv] = await Promise.all([getTodayStepsPct(), getLast30DHrv()]);
       return {
         agents,
+        unavailable: (Array.isArray(data?.unavailable) ? data.unavailable : []).filter(isAgentId),
         briefingText: raw?.briefingText ?? null,
         alerts: raw?.alerts ?? [],
         recovery: raw?.recovery ?? null,

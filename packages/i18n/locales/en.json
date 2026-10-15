@@ -89,14 +89,48 @@
   },
   "kitchen": {
     "screen": {
-      "title": "Kitchen", "fridge": "Fridge", "freezer": "Freezer", "pantry": "Pantry",
-      "empty": "Nothing here. Say in chat: “bought milk”.", "open_chat": "Open chat",
-      "unavailable": "The kitchen is temporarily unavailable.", "retry": "Retry", "estimated": "≈",
-      "days": { "expired": "expired", "today": "today", "tomorrow": "tomorrow", "in": { "one": "in {count} day", "other": "in {count} days" } },
-      "actions": { "title": "{name}", "consumed": "Eaten", "discarded": "Thrown away", "opened": "Opened", "move": "Move", "set_expiry": "Change expiry", "set_quantity": "Change quantity", "cancel": "Cancel", "save": "Save" },
-      "done": { "consumed": "Eaten: {name}", "discarded": "Thrown away: {name}", "opened": "Opened: {name}", "move": "Moved: {name}", "set_expiry": "New expiry: {name}", "set_quantity": "Quantity: {name}" },
-      "undo": "Undo", "undone": "Undone", "gone": "This item was already changed — the list is refreshed.",
-      "quantity_prompt": "How much is left ({unit})?", "actions_hint": "Swipe or hold for actions"
+      "title": "Kitchen",
+      "fridge": "Fridge",
+      "freezer": "Freezer",
+      "pantry": "Pantry",
+      "empty": "Nothing here. Say in chat: “bought milk”.",
+      "open_chat": "Open chat",
+      "unavailable": "The kitchen is temporarily unavailable.",
+      "retry": "Retry",
+      "estimated": "≈",
+      "days": {
+        "expired": "expired",
+        "today": "today",
+        "tomorrow": "tomorrow",
+        "in": {
+          "one": "in {count} day",
+          "other": "in {count} days"
+        }
+      },
+      "actions": {
+        "title": "{name}",
+        "consumed": "Eaten",
+        "discarded": "Thrown away",
+        "opened": "Opened",
+        "move": "Move",
+        "set_expiry": "Change expiry",
+        "set_quantity": "Change quantity",
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "done": {
+        "consumed": "Eaten: {name}",
+        "discarded": "Thrown away: {name}",
+        "opened": "Opened: {name}",
+        "move": "Moved: {name}",
+        "set_expiry": "New expiry: {name}",
+        "set_quantity": "Quantity: {name}"
+      },
+      "undo": "Undo",
+      "undone": "Undone",
+      "gone": "This item was already changed — the list is refreshed.",
+      "quantity_prompt": "How much is left ({unit})?",
+      "actions_hint": "Swipe or hold for actions"
     },
     "added_header": "Added:",
     "updated_header": "Updated:",
@@ -125,8 +159,16 @@
     "digest": {
       "title": "Time to check the food",
       "item": "{name} ({when})",
-      "more": { "one": "and {count} more item", "other": "and {count} more items" },
-      "when": { "expired": "expired", "today": "today", "tomorrow": "tomorrow", "check": "check it" }
+      "more": {
+        "one": "and {count} more item",
+        "other": "and {count} more items"
+      },
+      "when": {
+        "expired": "expired",
+        "today": "today",
+        "tomorrow": "tomorrow",
+        "check": "check it"
+      }
     },
     "units": {
       "pcs": "pcs",
@@ -291,7 +333,9 @@
       "top": "Top categories: {items}",
       "empty": "The PDF has no transactions (skipped while reading: {skipped})."
     },
-    "ask": { "empty": "No transactions yet — send a Payoneer statement PDF in the chat." }
+    "ask": {
+      "empty": "No transactions yet — send a Payoneer statement PDF in the chat."
+    }
   },
   "calendar": {
     "proposal": {
@@ -344,6 +388,33 @@
       "unsupported": "I can't tell what “{name}” is. Use /body for a ViHealth report or /finance for a Payoneer statement.",
       "unreadable": "I couldn't read “{name}”.",
       "failed": "Importing “{name}” failed."
+    },
+    "action": {
+      "confirm": "Yes",
+      "reject": "No",
+      "expires_in": "Confirm within {time}",
+      "status": {
+        "applied": "Done",
+        "rejected": "Cancelled",
+        "expired": "Confirmation time ran out",
+        "failed": "That didn't work",
+        "applying": "Applying…"
+      }
+    },
+    "client": {
+      "generic": "Something went wrong. Try again.",
+      "network": "No connection to the server.",
+      "task_busy": "I'm still answering the previous message.",
+      "attachment_too_large": "The files are too large (25 MB in total at most).",
+      "unsupported_attachment": "This file type is not supported.",
+      "close_failed": "Couldn't end the conversation. Try again.",
+      "reply_missing": "The reply didn't arrive — ask again.",
+      "new_task": "New conversation started ✨"
+    },
+    "mock": {
+      "light_summary": "Turn off the light?",
+      "applied": "Done.",
+      "rejected": "Cancelled."
     }
   },
   "actions": {
@@ -363,6 +434,33 @@
       "rejected_by_google": "Google refused the change.",
       "not_found": "That event no longer exists.",
       "agent_unavailable": "The service is unavailable right now."
+    }
+  },
+  "dashboard": {
+    "unavailable": {
+      "one": "{agents} is unavailable right now — its card is hidden.",
+      "other": "{agents} are unavailable right now — their cards are hidden."
+    },
+    "agent_labels": {
+      "sleep": "Sleep",
+      "workout": "Workout",
+      "nutrition": "Nutrition",
+      "mood": "Mood",
+      "habits": "Habits",
+      "recovery": "Recovery",
+      "medication": "Medication",
+      "finance": "Finance",
+      "calendar": "Calendar",
+      "home": "Home",
+      "body": "Body",
+      "kitchen": "Kitchen"
+    }
+  },
+  "integrations": {
+    "ha": {
+      "family_note": "One Home Assistant connection is shared by the whole family.",
+      "connected_by": "Connected by {name} on {date}",
+      "status_failed": "Could not load the Home Assistant connection."
     }
   }
 }

@@ -1,8 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { ThemeProvider } from '@life-agents/ui';
 import { GoogleCalendarPanel } from './GoogleCalendarPanel';
 import { HaPanel } from './HaPanel';
+
+jest.mock('@/api/gateway', () => ({
+  gateway: { GET: jest.fn().mockResolvedValue({ data: { connected: false } }) },
+}));
 
 jest.mock('@/api/client', () => ({ apiBaseUrl: 'http://test' }));
 jest.mock('@/features/auth/getAuthHeaders', () => ({
@@ -24,9 +28,10 @@ test('Google Calendar panel forwards scroll events for sheet swipe coordination'
   expect(onScroll).toHaveBeenCalled();
 });
 
-test('Home Assistant panel forwards scroll events for sheet swipe coordination', () => {
+test('Home Assistant panel forwards scroll events for sheet swipe coordination', async () => {
   const onScroll = jest.fn();
   wrap(<HaPanel onScroll={onScroll} />);
+  await waitFor(() => expect(screen.getByTestId('ha-connect')).toBeEnabled());
 
   fireEvent.scroll(screen.getByTestId('ha-scroll'), {
     nativeEvent: { contentOffset: { y: 80 } },

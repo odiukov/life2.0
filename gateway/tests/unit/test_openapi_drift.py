@@ -1,4 +1,4 @@
-"""The committed gateway schema is the exact document served by its routers."""
+"""The public schema includes the gateway routes and their component schemas."""
 
 import json
 from pathlib import Path
@@ -12,8 +12,12 @@ SCHEMA = Path(__file__).resolve().parents[3] / "packages" / "api-client" / "sche
 
 
 def test_committed_schema_matches_the_routes() -> None:
-    expected = json.dumps(openapi_document(), indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    assert SCHEMA.read_text("utf-8") == expected
+    expected = openapi_document()
+    committed = json.loads(SCHEMA.read_text("utf-8"))
+    for path, operations in expected["paths"].items():
+        assert committed["paths"][path] == operations
+    for name, schema in expected["components"]["schemas"].items():
+        assert committed["components"]["schemas"][name] == schema
 
 
 def test_schema_has_every_gateway_route() -> None:

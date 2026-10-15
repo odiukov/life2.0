@@ -14,10 +14,14 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
-import { useChat, type SendInput } from './useChat';
+import { useTask, type ChatMessage } from './useTask';
+import { ActionCard } from './ActionCard';
+import { ErrorBubble } from './ErrorBubble';
+import { useT } from '@life-agents/i18n';
+import { appLocale } from '@/lib/locale';
 import { ChatHeader } from './ChatHeader';
 import { CommandPalette } from './CommandPalette';
-import { matchCommands } from './commands';
+import { matchCommands, splitLeadingTag } from './commands';
 import { useConnectedIntegrations } from '../integrations/store';
 import { blockedAgents } from './agentRequirements';
 import { isAgentId } from '../agents/agentStatusRules';
@@ -27,10 +31,32 @@ import { parseAgentTags } from './parseAgentTags';
 import { useVoiceInput } from '../voice/useVoiceInput';
 import { mergeTranscript } from '../voice/voiceState';
 
-type PendingFile = { uri: string; name: string };
+type PendingFile = { uri: string; name: string; size: number };
+type SendInput = { tag?: AgentId; text: string };
 
 export function ChatScreen() {
-  const { messages, send: sendMessage, sendFile, resetThread } = useChat();
+  const chat = useTask();
+  const { messages, send: sendMessage, restore, startNew, setLead } = chat;
+  const t = useT(appLocale());
+  const [taskNotice, setTaskNotice] = useState<string | null>(null);
+  const clientError = (code: string) => {
+    const key = `chat.client.${code}`;
+    const translated = t(key);
+    return translated === key ? t('chat.client.generic') : translated;
+  };
+  const restored = useRef<Promise<void> | null>(null);
+  useEffect(() => {
+    restored.current ??= restore().catch(() => setTaskNotice(t('chat.client.network')));
+  }, [restore, t]);
+  const resetThread = useCallback(async () => {
+    try {
+      await startNew();
+      setTaskNotice(t('chat.client.new_task'));
+      setDraft({ text: '' });
+    } catch {
+      setTaskNotice(t('chat.client.close_failed'));
+    }
+  }, [startNew, t]);
   const { spacing, colors } = useTheme();
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
@@ -67,11 +93,7 @@ export function ChatScreen() {
   }>();
   const listRef = useRef<FlatList>(null);
   const askBarRef = useRef<AskBarHandle>(null);
-
-  const isStreaming = useMemo(
-    () => messages.some((m) => m.kind === 'assistant' && m.streaming),
-    [messages],
-  );
+  const submitted = useRef(false);
 
   useEffect(() => {
     const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
@@ -81,7 +103,11 @@ export function ChatScreen() {
   useFocusEffect(
     useCallback(() => {
       if (autoSend) {
-        sendMessage(autoSend);
+        void (restored.current ?? Promise.resolve()).then(async () => {
+          if (autoSend.trim() === '/new') return resetThread();
+          const input = splitLeadingTag(autoSend);
+          if (!(await sendMessage({ ...input, attachments: [] }))) setDraft(input);
+        });
         router.setParams({ send: undefined });
       } else if (prefill !== undefined || tag) {
         const safeTag = isAgentId(tag) ? tag : undefined;
@@ -91,14 +117,19 @@ export function ChatScreen() {
         // ChatHeader.onPrefill callback so the keyboard opens reliably.
         setTimeout(() => askBarRef.current?.focus(), 250);
       }
-    }, [autoSend, prefill, tag, router, sendMessage]),
+    }, [autoSend, prefill, tag, router, sendMessage, resetThread]),
   );
 
   const applyShareUrl = useCallback((url: string) => {
     const { queryParams } = Linking.parse(url);
     const fileURL = queryParams?.shareFileURL as string | undefined;
     const fileName = queryParams?.shareFileName as string | undefined;
-    if (fileURL && fileName) setPendingFile({ uri: fileURL, name: fileName });
+    if (fileURL && fileName)
+      setPendingFile({
+        uri: fileURL,
+        name: fileName,
+        size: Number(queryParams?.shareFileSize) || 0,
+      });
   }, []);
 
   useFocusEffect(
@@ -120,22 +151,39 @@ export function ChatScreen() {
     });
     const asset = result.assets?.[0];
     if (result.canceled || !asset) return;
-    setPendingFile({ uri: asset.uri, name: asset.name });
+    setPendingFile({ uri: asset.uri, name: asset.name, size: asset.size ?? 0 });
   }, []);
 
   const handleSend = useCallback(
-    (next: SendInput) => {
+    async (next: SendInput) => {
       Keyboard.dismiss();
-      if (pendingFile) {
-        const hint = next.tag;
-        sendFile(pendingFile.uri, pendingFile.name, hint);
-        setPendingFile(null);
-      } else {
-        sendMessage(next);
+      submitted.current = true;
+      if (next.text.trim() === '/new') {
+        await resetThread();
+        return;
       }
-      setDraft({ tag: undefined, text: '' });
+      const input = next.tag ? next : splitLeadingTag(next.text);
+      setTaskNotice(null);
+      // AskBar emits an empty draft after onSubmit; retain input until accepted.
+      setDraft(next);
+      try {
+        if (input.tag && !input.text.trim() && !pendingFile) {
+          await setLead(input.tag);
+          return;
+        }
+        const sent = await sendMessage({
+          ...input,
+          attachments: pendingFile ? [{ ...pendingFile, mime: 'application/pdf' }] : [],
+        });
+        if (sent) {
+          setPendingFile(null);
+          setDraft({ tag: undefined, text: '' });
+        }
+      } catch {
+        setTaskNotice(t('chat.client.network'));
+      }
     },
-    [pendingFile, sendFile, sendMessage],
+    [pendingFile, sendMessage, resetThread, setLead, t],
   );
 
   return (
@@ -146,32 +194,50 @@ export function ChatScreen() {
         keyboardVerticalOffset={tabBarHeight}
       >
         <ChatHeader />
-        <FlatList
+        <FlatList<ChatMessage>
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
           contentContainerStyle={{ padding: spacing.s3, gap: spacing.s2 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           renderItem={({ item }) =>
-            item.kind === 'user' ? (
-              <Bubble
-                variant="user"
-                segments={
-                  item.tag
-                    ? [{ tag: item.tag } as const, ` ${item.text}`]
-                    : parseAgentTags(item.text)
-                }
-              />
+            item.kind === 'error' ? (
+              <ErrorBubble message={item.message || clientError(item.code)} />
+            ) : item.kind === 'user' ? (
+              <View>
+                <Bubble
+                  variant="user"
+                  segments={[
+                    ...(item.tag
+                      ? [{ tag: item.tag } as const, ` ${item.text}`]
+                      : parseAgentTags(item.text)),
+                    ...(item.attachments ?? []).map((a) => `\n📎 ${a.name}`),
+                  ]}
+                />
+                {chat.interrupted &&
+                  item.id === messages.filter((m) => m.kind === 'user').at(-1)?.id && (
+                    <Text style={{ color: colors.fg3 }}>{t('chat.client.reply_missing')}</Text>
+                  )}
+              </View>
             ) : (
               <View style={{ gap: spacing.s1, alignItems: 'flex-start' }}>
                 {item.agent && (
                   <AgentHeader primary={item.agent} consulted={item.consulted ?? []} />
                 )}
-                <Bubble
-                  variant="assistant"
-                  loading={item.streaming && !item.text}
-                  segments={item.text ? parseAgentTags(item.text) : undefined}
-                />
+                {(item.text || item.streaming) && (
+                  <Bubble
+                    variant="assistant"
+                    loading={item.streaming && !item.text}
+                    segments={item.text ? parseAgentTags(item.text) : undefined}
+                  />
+                )}
+                {item.action && (
+                  <ActionCard
+                    action={item.action}
+                    onConfirm={() => chat.confirm(item.action!.id)}
+                    onReject={() => chat.reject(item.action!.id)}
+                  />
+                )}
               </View>
             )
           }
@@ -187,12 +253,14 @@ export function ChatScreen() {
                 return;
               }
               setDraft({ tag: c.agent, text: '' });
+              void setLead(c.agent).catch(() => setTaskNotice(t('chat.client.network')));
             }}
           />
         )}
         {pendingFile && (
           <FilePreviewChip fileName={pendingFile.name} onDismiss={() => setPendingFile(null)} />
         )}
+        {taskNotice && <Text style={{ color: colors.fg3, textAlign: 'center' }}>{taskNotice}</Text>}
         {voiceNotice && (
           <Text style={{ color: colors.fg3, textAlign: 'center', marginBottom: 4 }}>
             {voiceNotice}
@@ -201,8 +269,17 @@ export function ChatScreen() {
         <AskBar
           ref={askBarRef}
           value={draft.text}
-          tag={draft.tag}
-          onChangeText={(next) => setDraft(next)}
+          tag={draft.tag ?? chat.leadAgent ?? undefined}
+          onChangeText={(next) => {
+            if (submitted.current) {
+              submitted.current = false;
+              return;
+            }
+            if (!next.tag && (draft.tag || chat.leadAgent))
+              void setLead(null).catch(() => setTaskNotice(t('chat.client.network')));
+            submitted.current = false;
+            setDraft(next);
+          }}
           onSubmit={handleSend}
           onAttach={handleAttach}
           onVoiceStart={() => {
@@ -214,7 +291,7 @@ export function ChatScreen() {
           voiceState={voice.state}
           recordingSeconds={voice.seconds}
           hasAttachment={!!pendingFile}
-          disabled={isStreaming}
+          disabled={chat.phase !== 'idle'}
           blockedAgents={blocked}
         />
       </KeyboardAvoidingView>

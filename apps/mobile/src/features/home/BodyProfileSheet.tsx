@@ -5,7 +5,7 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import { useTheme } from '@life-agents/ui';
 import { useSheetAnimation } from '@/lib/sheetAnimation';
 import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
-import { api } from '@/api/client';
+import { gateway } from '@/api/gateway';
 import * as DocumentPicker from 'expo-document-picker';
 import { getAuthHeaders } from '@/features/auth/getAuthHeaders';
 import { apiBaseUrl } from '@/api/client';
@@ -46,7 +46,7 @@ export function BodyProfileSheet({ visible, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!visible) return;
-    api.GET('/me/profile').then(({ data }) => {
+    gateway.GET('/me/profile').then(({ data }) => {
       if (!data) return;
       if (data.height_cm != null) setHeightCm(String(data.height_cm));
       if (data.weight_kg != null) setWeightKg(String(data.weight_kg));
@@ -62,7 +62,7 @@ export function BodyProfileSheet({ visible, onClose, onSaved }: Props) {
     setSaving(true);
     setError(null);
     try {
-      await api.PATCH('/me/profile', {
+      await gateway.PATCH('/me/profile', {
         body: {
           height_cm: heightCm ? parseFloat(heightCm) : undefined,
           weight_kg: weightKg ? parseFloat(weightKg) : undefined,

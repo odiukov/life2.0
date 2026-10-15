@@ -37,3 +37,11 @@ test('"/" returns all base + connected gated commands', () => {
 test('non-slash text matches nothing', () => {
   expect(matchCommands('hello', new Set(['payoneer']))).toHaveLength(0);
 });
+
+import { splitLeadingTag } from './commands';
+test.each([
+  ['/workout analyze', { tag: 'workout', text: 'analyze' }],
+  ['/sleep first\nsecond', { tag: 'sleep', text: 'first\nsecond' }],
+  ['/unknown hello', { text: '/unknown hello' }],
+  ['/new', { text: '/new' }],
+])('splits leading tag %s', (input, result) => expect(splitLeadingTag(input)).toEqual(result));

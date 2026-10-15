@@ -1,13 +1,15 @@
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { gateway } from '@/api/gateway';
 import { useHomeSummary } from './useHomeSummary';
 
 // expo-router is already mocked via jest.config.ts moduleNameMapper →
 // src/__mocks__/expo-router.tsx which calls useFocusEffect once on mount.
 
-jest.mock('@/api/client', () => ({
-  api: {
+jest.mock('@/api/client', () => ({ apiBaseUrl: 'http://localhost:8000' }));
+jest.mock('@/api/gateway', () => ({
+  gateway: {
     GET: jest.fn().mockResolvedValue({
       data: { agents: [], rings: null },
       error: null,
@@ -34,15 +36,21 @@ jest.mock(
 const mockFetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
 global.fetch = mockFetch as unknown as typeof fetch;
 
+const queryClients: QueryClient[] = [];
+afterEach(() => {
+  queryClients.splice(0).forEach((client) => client.clear());
+});
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  queryClients.push(qc);
   return React.createElement(QueryClientProvider, { client: qc }, children);
 }
 
 describe('useHomeSummary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: { agents: [], rings: null },
       error: null,
     });
@@ -96,7 +104,7 @@ describe('useHomeSummary', () => {
   });
 
   it('maps new ring fields from API response', async () => {
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: { readyPct: 65, hrvPct: 50, stepsPct: 40, moodPct: 70 },
@@ -119,7 +127,7 @@ describe('useHomeSummary', () => {
     // HealthKit mock returns 6000 (samples[0]) — this is what Garmin Connect
     // syncs into Apple Health (sleep-DTO averageHRV, a different metric).
     // Backend must win.
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: { readyPct: 65, hrvPct: 42, hrvMs: 38, stepsPct: 30, moodPct: 70 },
@@ -133,7 +141,7 @@ describe('useHomeSummary', () => {
   });
 
   it('HRV ring falls back to HealthKit when API has no HRV', async () => {
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: { readyPct: 65, hrvPct: null, hrvMs: null, stepsPct: 30, moodPct: 70 },
@@ -148,7 +156,7 @@ describe('useHomeSummary', () => {
   });
 
   it('steps ring prefers HealthKit (6000+2000=8000 → 80%)', async () => {
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: { readyPct: 65, hrvPct: 50, stepsPct: 30, moodPct: 70 },
@@ -163,7 +171,7 @@ describe('useHomeSummary', () => {
   it('steps ring falls back to API when HealthKit unavailable', async () => {
     const hk = require('@kingstinct/react-native-healthkit');
     (hk.isHealthDataAvailable as jest.Mock).mockReturnValue(false);
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: { readyPct: 65, hrvPct: 50, stepsPct: 30, moodPct: 70 },
@@ -176,7 +184,7 @@ describe('useHomeSummary', () => {
   });
 
   it('maps featured_body field from API response', async () => {
-    (require('@/api/client').api.GET as jest.Mock).mockResolvedValue({
+    (gateway.GET as jest.Mock).mockResolvedValue({
       data: {
         agents: [],
         rings: null,
@@ -220,4 +228,13 @@ describe('useHomeSummary', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.data?.featuredBody ?? null).toBeNull();
   });
+});
+
+test('summary filters unavailable agents to supported identifiers', async () => {
+  (gateway.GET as jest.Mock).mockResolvedValue({
+    data: { agents: [], unavailable: ['sleep', 'unknown', 'kitchen'] },
+  });
+  const { result } = renderHook(() => useHomeSummary(), { wrapper });
+  await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  expect(result.current.data?.unavailable).toEqual(['sleep', 'kitchen']);
 });

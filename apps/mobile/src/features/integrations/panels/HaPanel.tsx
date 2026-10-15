@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import * as SecureStore from 'expo-secure-store';
+import { useT } from '@life-agents/i18n';
+import { appLocale } from '@/lib/locale';
+import { useIntegrationsStore } from '../store';
 import { Card, useTheme } from '@life-agents/ui';
-import { apiBaseUrl } from '@/api/client';
-import { getAuthHeaders } from '@/features/auth/getAuthHeaders';
-
-const HA_KEY = 'ha_connected';
+import { gateway, errorCode } from '@/api/gateway';
 
 type Props = {
   onConnected?: () => void;
@@ -19,13 +18,40 @@ export function HaPanel({ onConnected, onDisconnected, onScroll, scrollEventThro
   const { colors, spacing, typography, radius } = useTheme();
   const [baseUrl, setBaseUrl] = useState('');
   const [token, setToken] = useState('');
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const t = useT(appLocale());
+  const [status, setStatus] = useState<{
+    connected: boolean;
+    connected_by: string | null;
+    connected_at: string | null;
+  }>({ connected: false, connected_by: null, connected_at: null });
+  const mounted = useRef(true);
+  const connected = status.connected;
+  const [loading, setLoading] = useState(true);
+
+  async function refreshStatus() {
+    const { data, error } = await gateway.GET('/integrations/ha/status');
+    if (!mounted.current) return;
+    if (error || !data) throw new Error(errorCode(error) ?? t('integrations.ha.status_failed'));
+    setStatus({
+      connected: data.connected,
+      connected_by: data.connected_by ?? null,
+      connected_at: data.connected_at ?? null,
+    });
+    useIntegrationsStore.getState().set('ha', data.connected ? 'connected' : 'not-connected');
+  }
 
   useEffect(() => {
-    SecureStore.getItemAsync(HA_KEY).then((v) => {
-      if (v) setConnected(true);
-    });
+    mounted.current = true;
+    void refreshStatus()
+      .catch(() => {
+        if (mounted.current) Alert.alert('Error', t('integrations.ha.status_failed'));
+      })
+      .finally(() => {
+        if (mounted.current) setLoading(false);
+      });
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   async function handleConnect() {
@@ -35,21 +61,17 @@ export function HaPanel({ onConnected, onDisconnected, onScroll, scrollEventThro
     }
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${apiBaseUrl}/integrations/ha/connect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ base_url: baseUrl.trim(), token: token.trim() }),
+      const { error } = await gateway.POST('/integrations/ha/connect', {
+        body: { base_url: baseUrl.trim(), token: token.trim() },
       });
-      if (res.ok) {
-        await SecureStore.setItemAsync(HA_KEY, '1');
-        setConnected(true);
-        onConnected?.();
-        Alert.alert('Connected', 'Home Assistant connected successfully.');
-      } else {
-        const body = await res.json().catch(() => ({}));
-        Alert.alert('Error', body?.detail ?? `Connection failed (${res.status}).`);
+      if (error) {
+        Alert.alert('Error', errorCode(error) ?? t('chat.client.generic'));
+        return;
       }
+      await refreshStatus();
+      setToken('');
+      onConnected?.();
+      Alert.alert('Connected', 'Home Assistant connected successfully.');
     } catch {
       Alert.alert('Error', 'Network error. Check your connection.');
     } finally {
@@ -60,16 +82,13 @@ export function HaPanel({ onConnected, onDisconnected, onScroll, scrollEventThro
   async function handleTest() {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${apiBaseUrl}/integrations/ha/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-      });
-      if (res.ok) {
-        Alert.alert('Success', 'Home Assistant connection is working.');
-      } else {
-        Alert.alert('Failed', 'Could not reach Home Assistant. Check your settings.');
-      }
+      const { error } = await gateway.POST('/integrations/ha/test');
+      if (error)
+        Alert.alert(
+          'Failed',
+          errorCode(error) ?? 'Could not reach Home Assistant. Check your settings.',
+        );
+      else Alert.alert('Success', 'Home Assistant connection is working.');
     } catch {
       Alert.alert('Error', 'Network error.');
     } finally {
@@ -80,21 +99,16 @@ export function HaPanel({ onConnected, onDisconnected, onScroll, scrollEventThro
   async function handleDisconnect() {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${apiBaseUrl}/integrations/ha/disconnect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-      });
-      if (res.ok) {
-        await SecureStore.deleteItemAsync(HA_KEY);
-        setConnected(false);
-        setBaseUrl('');
-        setToken('');
-        onDisconnected?.();
-        Alert.alert('Disconnected', 'Home Assistant has been disconnected.');
-      } else {
-        Alert.alert('Error', 'Failed to disconnect.');
+      const { error } = await gateway.POST('/integrations/ha/disconnect');
+      if (error) {
+        Alert.alert('Error', errorCode(error) ?? 'Failed to disconnect.');
+        return;
       }
+      await refreshStatus();
+      setBaseUrl('');
+      setToken('');
+      onDisconnected?.();
+      Alert.alert('Disconnected', 'Home Assistant has been disconnected.');
     } catch {
       Alert.alert('Error', 'Network error.');
     } finally {
@@ -138,45 +152,58 @@ export function HaPanel({ onConnected, onDisconnected, onScroll, scrollEventThro
           Home Assistant
         </Text>
         <Text style={[typography.caption, { color: colors.fg2, marginBottom: spacing.s3 }]}>
-          Enter your Home Assistant URL and a Long-Lived Access Token.
+          {t('integrations.ha.family_note')}
         </Text>
 
-        <Text style={[typography.caption, { color: colors.fg2, marginBottom: spacing.s1 }]}>
-          Base URL
-        </Text>
-        <TextInput
-          testID="ha-base-url-input"
-          style={inputStyle}
-          value={baseUrl}
-          onChangeText={setBaseUrl}
-          placeholder="http://homeassistant.local:8123"
-          placeholderTextColor={colors.fg3}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          editable={!connected}
-        />
+        {connected ? (
+          <Text style={[typography.caption, { color: colors.fg2 }]}>
+            {t('integrations.ha.connected_by', {
+              name: status.connected_by ?? '—',
+              date: status.connected_at
+                ? new Date(status.connected_at).toLocaleDateString(appLocale())
+                : '—',
+            })}
+          </Text>
+        ) : (
+          <>
+            <Text style={[typography.caption, { color: colors.fg2, marginBottom: spacing.s1 }]}>
+              Base URL
+            </Text>
+            <TextInput
+              testID="ha-base-url-input"
+              style={inputStyle}
+              value={baseUrl}
+              onChangeText={setBaseUrl}
+              placeholder="http://homeassistant.local:8123"
+              placeholderTextColor={colors.fg3}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              editable={!loading}
+            />
 
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.fg2, marginBottom: spacing.s1, marginTop: spacing.s2 },
-          ]}
-        >
-          Long-Lived Access Token
-        </Text>
-        <TextInput
-          testID="ha-token-input"
-          style={inputStyle}
-          value={token}
-          onChangeText={setToken}
-          placeholder="eyJ0eXAi..."
-          placeholderTextColor={colors.fg3}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!connected}
-        />
+            <Text
+              style={[
+                typography.caption,
+                { color: colors.fg2, marginBottom: spacing.s1, marginTop: spacing.s2 },
+              ]}
+            >
+              Long-Lived Access Token
+            </Text>
+            <TextInput
+              testID="ha-token-input"
+              style={inputStyle}
+              value={token}
+              onChangeText={setToken}
+              placeholder="eyJ0eXAi..."
+              placeholderTextColor={colors.fg3}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!loading}
+            />
+          </>
+        )}
       </Card>
 
       <View style={{ gap: spacing.s2 }}>

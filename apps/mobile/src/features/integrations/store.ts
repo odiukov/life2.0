@@ -1,3 +1,4 @@
+import { gateway } from '@/api/gateway';
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect } from 'react';
@@ -21,7 +22,7 @@ export const INTEGRATION_SECURE_KEYS: Record<IntegrationId, string | null> = {
   garmin: 'garmin_connected',
   yazio: 'yazio_connected',
   calendar: 'gcal_connected',
-  ha: 'ha_connected',
+  ha: null,
   strava: null,
   payoneer: null,
 };
@@ -73,13 +74,22 @@ export function useConnectedIntegrations(): Set<IntegrationId> {
 export async function hydrateIntegrationsFromSecureStore(): Promise<void> {
   const setStatus = useIntegrationsStore.getState().set;
   const entries = Object.entries(INTEGRATION_SECURE_KEYS) as [IntegrationId, string | null][];
-  await Promise.all(
-    entries.map(async ([id, key]) => {
+  await Promise.all([
+    SecureStore.deleteItemAsync('ha_connected'),
+    (async () => {
+      try {
+        const { data } = await gateway.GET('/integrations/ha/status');
+        setStatus('ha', data?.connected ? 'connected' : 'not-connected');
+      } catch {
+        setStatus('ha', 'not-connected');
+      }
+    })(),
+    ...entries.map(async ([id, key]) => {
       if (!key) return;
       const value = await SecureStore.getItemAsync(key);
       setStatus(id, value !== null ? 'connected' : 'not-connected');
     }),
-  );
+  ]);
 }
 
 export function useHydrateIntegrations(enabled: boolean): void {

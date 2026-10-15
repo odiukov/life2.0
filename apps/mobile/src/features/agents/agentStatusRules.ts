@@ -46,10 +46,10 @@ export const AGENT_DISPLAY_ORDER: readonly AgentId[] = [
   'finance',
 ];
 
-const VALID_AGENT_IDS: ReadonlySet<AgentId> = new Set<AgentId>(AGENT_DISPLAY_ORDER);
+const VALID_AGENT_IDS: ReadonlySet<AgentId> = new Set<AgentId>([...AGENT_DISPLAY_ORDER, 'kitchen']);
 
-export function isAgentId(value: string | undefined): value is AgentId {
-  return !!value && VALID_AGENT_IDS.has(value as AgentId);
+export function isAgentId(value: unknown): value is AgentId {
+  return typeof value === 'string' && VALID_AGENT_IDS.has(value as AgentId);
 }
 
 const ready = (): { status: AgentStatus; hint: string | null; cta: CtaTarget | null } => ({
@@ -69,6 +69,8 @@ export function computeAgentStatus(
   s: RuleSources,
 ): { status: AgentStatus; hint: string | null; cta: CtaTarget | null } {
   switch (id) {
+    case 'kitchen':
+      return ready();
     case 'home':
       return s.integrations.has('ha')
         ? ready()

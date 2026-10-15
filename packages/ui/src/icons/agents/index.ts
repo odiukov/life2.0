@@ -22,4 +22,5 @@ export const agentIcons = {
   calendar: Calendar,
   home: Home,
   body: Body,
+  kitchen: Nutrition,
 } as const;

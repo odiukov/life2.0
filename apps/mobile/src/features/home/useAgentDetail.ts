@@ -1,9 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { AgentId } from '@life-agents/ui';
-import { api } from '@/api/client';
-import type { paths } from '@life-agents/api-client';
-
-type BackendAgentId = paths['/agents/{agent_id}/detail']['get']['parameters']['path']['agent_id'];
+import { gateway } from '@/api/gateway';
 
 // Mirrors orchestrator/app/agent_detail.py:VALID_AGENT_IDS — agents without a
 // backend detail builder skip the request to avoid a 404.
@@ -48,8 +45,8 @@ export function useAgentDetail(agentId: AgentId | null, enabled: boolean) {
   return useQuery<AgentDetail>({
     queryKey: ['agent-detail', agentId],
     queryFn: async () => {
-      const { data, error, response } = await api.GET('/agents/{agent_id}/detail', {
-        params: { path: { agent_id: agentId! as BackendAgentId } },
+      const { data, error, response } = await gateway.GET('/agents/{agent_id}/detail', {
+        params: { path: { agent_id: agentId! } },
       });
       if (error) {
         console.error('[useAgentDetail] error', agentId, response?.status, JSON.stringify(error));

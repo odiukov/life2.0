@@ -88,14 +88,50 @@
   },
   "kitchen": {
     "screen": {
-      "title": "Кухня", "fridge": "Холодильник", "freezer": "Морозилка", "pantry": "Шкаф",
-      "empty": "Здесь пусто. Скажи в чат: «купил молоко».", "open_chat": "Открыть чат",
-      "unavailable": "Кухня временно недоступна.", "retry": "Повторить", "estimated": "≈",
-      "days": { "expired": "просрочено", "today": "сегодня", "tomorrow": "завтра", "in": { "one": "через {count} день", "few": "через {count} дня", "many": "через {count} дней", "other": "через {count} дня" } },
-      "actions": { "title": "{name}", "consumed": "Съели", "discarded": "Выбросили", "opened": "Открыли", "move": "Переложить", "set_expiry": "Изменить срок", "set_quantity": "Изменить количество", "cancel": "Отмена", "save": "Сохранить" },
-      "done": { "consumed": "Съели: {name}", "discarded": "Выбросили: {name}", "opened": "Открыли: {name}", "move": "Переложили: {name}", "set_expiry": "Новый срок: {name}", "set_quantity": "Количество: {name}" },
-      "undo": "Отменить", "undone": "Отменено", "gone": "Этот продукт уже изменили — обновил список.",
-      "quantity_prompt": "Сколько осталось ({unit})?", "actions_hint": "Смахните или удерживайте для действий"
+      "title": "Кухня",
+      "fridge": "Холодильник",
+      "freezer": "Морозилка",
+      "pantry": "Шкаф",
+      "empty": "Здесь пусто. Скажи в чат: «купил молоко».",
+      "open_chat": "Открыть чат",
+      "unavailable": "Кухня временно недоступна.",
+      "retry": "Повторить",
+      "estimated": "≈",
+      "days": {
+        "expired": "просрочено",
+        "today": "сегодня",
+        "tomorrow": "завтра",
+        "in": {
+          "one": "через {count} день",
+          "few": "через {count} дня",
+          "many": "через {count} дней",
+          "other": "через {count} дня"
+        }
+      },
+      "actions": {
+        "title": "{name}",
+        "consumed": "Съели",
+        "discarded": "Выбросили",
+        "opened": "Открыли",
+        "move": "Переложить",
+        "set_expiry": "Изменить срок",
+        "set_quantity": "Изменить количество",
+        "cancel": "Отмена",
+        "save": "Сохранить"
+      },
+      "done": {
+        "consumed": "Съели: {name}",
+        "discarded": "Выбросили: {name}",
+        "opened": "Открыли: {name}",
+        "move": "Переложили: {name}",
+        "set_expiry": "Новый срок: {name}",
+        "set_quantity": "Количество: {name}"
+      },
+      "undo": "Отменить",
+      "undone": "Отменено",
+      "gone": "Этот продукт уже изменили — обновил список.",
+      "quantity_prompt": "Сколько осталось ({unit})?",
+      "actions_hint": "Смахните или удерживайте для действий"
     },
     "added_header": "Записал:",
     "updated_header": "Обновил:",
@@ -124,8 +160,18 @@
     "digest": {
       "title": "Пора проверить продукты",
       "item": "{name} ({when})",
-      "more": { "one": "и ещё {count} продукт", "few": "и ещё {count} продукта", "many": "и ещё {count} продуктов", "other": "и ещё {count} продукта" },
-      "when": { "expired": "просрочено", "today": "сегодня", "tomorrow": "завтра", "check": "проверить" }
+      "more": {
+        "one": "и ещё {count} продукт",
+        "few": "и ещё {count} продукта",
+        "many": "и ещё {count} продуктов",
+        "other": "и ещё {count} продукта"
+      },
+      "when": {
+        "expired": "просрочено",
+        "today": "сегодня",
+        "tomorrow": "завтра",
+        "check": "проверить"
+      }
     },
     "units": {
       "pcs": "шт",
@@ -296,7 +342,9 @@
       "top": "Топ категории: {items}",
       "empty": "В PDF нет транзакций (пропущено при чтении: {skipped})."
     },
-    "ask": { "empty": "Транзакций пока нет — пришли PDF-выписку Payoneer в чат." }
+    "ask": {
+      "empty": "Транзакций пока нет — пришли PDF-выписку Payoneer в чат."
+    }
   },
   "calendar": {
     "proposal": {
@@ -351,6 +399,33 @@
       "unsupported": "Не понимаю, что за файл «{name}». Для отчёта ViHealth укажи /body, для выписки Payoneer — /finance.",
       "unreadable": "Не смог прочитать «{name}».",
       "failed": "Не получилось импортировать «{name}»."
+    },
+    "action": {
+      "confirm": "Да",
+      "reject": "Нет",
+      "expires_in": "Подтвердить в течение {time}",
+      "status": {
+        "applied": "Готово",
+        "rejected": "Отменено",
+        "expired": "Время на подтверждение вышло",
+        "failed": "Не получилось",
+        "applying": "Выполняется…"
+      }
+    },
+    "client": {
+      "generic": "Что-то пошло не так. Попробуй ещё раз.",
+      "network": "Нет связи с сервером.",
+      "task_busy": "Я ещё отвечаю на предыдущее сообщение.",
+      "attachment_too_large": "Файлы слишком большие (не больше 25 МБ вместе).",
+      "unsupported_attachment": "Такой тип файла не поддерживается.",
+      "close_failed": "Не получилось завершить разговор. Попробуй ещё раз.",
+      "reply_missing": "Ответ не пришёл — спроси ещё раз.",
+      "new_task": "Новый разговор ✨"
+    },
+    "mock": {
+      "light_summary": "Выключить свет?",
+      "applied": "Готово.",
+      "rejected": "Отменено."
     }
   },
   "actions": {
@@ -370,6 +445,35 @@
       "rejected_by_google": "Google отказался вносить изменение.",
       "not_found": "Этого события больше нет.",
       "agent_unavailable": "Сервис сейчас недоступен."
+    }
+  },
+  "dashboard": {
+    "unavailable": {
+      "one": "{agents} сейчас недоступен — карточка скрыта.",
+      "few": "{agents} сейчас недоступны — карточки скрыты.",
+      "many": "{agents} сейчас недоступны — карточки скрыты.",
+      "other": "{agents} сейчас недоступны — карточки скрыты."
+    },
+    "agent_labels": {
+      "sleep": "Сон",
+      "workout": "Тренировки",
+      "nutrition": "Питание",
+      "mood": "Настроение",
+      "habits": "Привычки",
+      "recovery": "Восстановление",
+      "medication": "Лекарства",
+      "finance": "Финансы",
+      "calendar": "Календарь",
+      "home": "Дом",
+      "body": "Тело",
+      "kitchen": "Кухня"
+    }
+  },
+  "integrations": {
+    "ha": {
+      "family_note": "Одно подключение Home Assistant на всю семью.",
+      "connected_by": "Подключил(а) {name}, {date}",
+      "status_failed": "Не удалось загрузить подключение Home Assistant."
     }
   }
 }

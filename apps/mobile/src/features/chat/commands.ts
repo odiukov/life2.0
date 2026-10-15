@@ -1,3 +1,4 @@
+import { isAgentId } from '../agents/agentStatusRules';
 import type { AgentId } from '@life-agents/ui';
 import type { IntegrationId } from '../integrations/store';
 
@@ -46,4 +47,10 @@ export function matchCommands(
   return COMMANDS.filter(
     (c) => c.name.startsWith(word) && (c.requires === undefined || connected.has(c.requires)),
   );
+}
+
+/** Promote a leading agent name while preserving unknown slash commands. */
+export function splitLeadingTag(text: string): { tag?: AgentId; text: string } {
+  const match = /^\/([a-z]+)\s(.*)$/s.exec(text);
+  return match && isAgentId(match[1]) ? { tag: match[1], text: match[2] ?? '' } : { text };
 }

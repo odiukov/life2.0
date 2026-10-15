@@ -1,5 +1,3 @@
-import type { paths } from '@life-agents/api-client';
-
 type Fetch = typeof fetch;
 type MockItem = {
   id: string;
@@ -123,10 +121,11 @@ export function mockFetch(today: Date = new Date()): Fetch {
     }
 
     // Preserve the original app's mock endpoints.
-    if (key === 'GET /chat/threads')
-      return json([{ id: 't1', title: 'Today', updated_at: today.toISOString() }]);
+    if (key === 'GET /integrations/ha/status')
+      return json({ connected: false, connected_by: null, connected_at: null });
     if (key === 'GET /dashboard' || key === 'GET /dashboard/summary')
       return json({
+        unavailable: [],
         agents: [
           { agent: 'sleep', label: 'Sleep', metric: '7h12m', tint: 'success' },
           { agent: 'recovery', label: 'Recovery', metric: 'Recovered', tint: 'success' },
@@ -310,5 +309,3 @@ export function mockFetch(today: Date = new Date()): Fetch {
     return new Response('not mocked: ' + key, { status: 501 });
   };
 }
-
-export type _paths = paths;
