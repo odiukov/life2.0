@@ -10,15 +10,17 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.dashboard import DashboardSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
-from shared.skill_ids import Finance
+from shared.skill_ids import Dashboard, Finance
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from finance.adapters.a2a.card import build_agent_card
 from finance.adapters.db import finance_repositories
 from finance.adapters.pdf import PymupdfText
 from finance.application.categorize import Categorizer
+from finance.application.dashboard import detail
 from finance.application.data import FinanceData
 from finance.application.import_statement import ImportStatement
 from finance.application.ports import PdfText
@@ -79,6 +81,9 @@ def build_runtime(
             default_locale=base.default_locale,
         ),
     }
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
     return FinanceRuntime(
         executor=SkillExecutor(
             agent=AGENT,

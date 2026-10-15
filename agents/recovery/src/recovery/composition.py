@@ -10,14 +10,16 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.dashboard import DashboardSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Recovery
+from shared.skill_ids import Dashboard, Recovery
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from recovery.adapters.a2a.card import PEER_SKILLS, build_agent_card
+from recovery.application.dashboard import card, detail
 from recovery.application.data import RecoveryData
 from recovery.settings import RecoverySettings
 
@@ -78,10 +80,18 @@ def build_runtime(
         )
         for skill in (Recovery.READINESS, Recovery.ANALYZE_TREND, Recovery.RECOMMENDATIONS)
     }
+    routable = tuple(handlers)
+    handlers[Dashboard.CARD] = DashboardSkill(
+        uow=uow, clock=base.clock, build=card, name=Dashboard.CARD
+    )
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
     return RecoveryRuntime(
         executor=SkillExecutor(
             agent=AGENT,
             handlers=handlers,
+            routable=routable,
             peers=list(PEER_SKILLS),
             llm=base.llm,
             task_records=base.task_records,

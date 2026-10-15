@@ -1,7 +1,19 @@
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Recovery
+from shared.skill_ids import Dashboard, Recovery
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Dashboard.CARD,
+        name="Dashboard Card",
+        description="Structured dashboard card.",
+        tags=["dashboard", "structured"],
+    ),
+    AgentSkill(
+        id=Dashboard.DETAIL,
+        name="Dashboard Detail",
+        description="Structured dashboard detail.",
+        tags=["dashboard", "structured"],
+    ),
     AgentSkill(
         id=Recovery.READINESS,
         name="Get Today's Readiness",

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Finance
+from shared.skill_ids import Dashboard, Finance
 
 SKILLS = [
+    AgentSkill(
+        id=Dashboard.DETAIL,
+        name="Dashboard Detail",
+        description="Structured dashboard detail.",
+        tags=["dashboard", "structured"],
+    ),
     AgentSkill(
         id=Finance.ASK,
         name="Answer Finance Questions",

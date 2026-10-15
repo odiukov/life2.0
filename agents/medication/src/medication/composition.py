@@ -10,16 +10,19 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.dashboard import DashboardSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
+from shared.skill_ids import Dashboard
 from shared.skill_ids import Medication as MedicationSkill
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from medication.adapters.a2a.card import PEER_SKILLS, build_agent_card
 from medication.adapters.db import medication_repositories
 from medication.application.archive import ArchiveMedication
+from medication.application.dashboard import card, detail
 from medication.application.data import AdherenceData
 from medication.application.define import DefineMedication
 from medication.application.intake import LogIntake
@@ -100,10 +103,18 @@ def build_runtime(
             default_locale=base.default_locale,
         ),
     }
+    routable = tuple(handlers)
+    handlers[Dashboard.CARD] = DashboardSkill(
+        uow=uow, clock=base.clock, build=card, name=Dashboard.CARD
+    )
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
     return MedicationRuntime(
         executor=SkillExecutor(
             agent=AGENT,
             handlers=handlers,
+            routable=routable,
             peers=list(PEER_SKILLS),
             llm=base.llm,
             task_records=base.task_records,

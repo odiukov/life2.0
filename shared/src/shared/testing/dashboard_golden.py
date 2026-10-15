@@ -9,6 +9,7 @@ code still exists.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -456,3 +457,25 @@ def memory_settings() -> InMemoryUserSettings:
 def as_json(value: Any) -> Any:
     """What the gateway would send: the same normalization the goldens went through."""
     return json.loads(json.dumps(value, sort_keys=True, ensure_ascii=False, default=str))
+
+
+async def golden_call(
+    build: Any, skill_id: str, repositories: Mapping[type[Any], Any] | None = None
+) -> Any:
+    """Run one dashboard builder on the golden week (Kyiv user, FROZEN_NOW) and return JSON."""
+    from shared.a2a.request import SkillRequest
+    from shared.dashboard import DashboardSkill
+    from shared.ports.health_logs import HealthLogRepository
+    from shared.ports.users import UserSettingsRepository
+    from shared.testing.fakes import FixedClock, InMemoryUnitOfWorkFactory
+
+    uow = InMemoryUnitOfWorkFactory(
+        {
+            HealthLogRepository: memory_logs(),
+            UserSettingsRepository: memory_settings(),
+            **(repositories or {}),
+        }
+    )
+    skill = DashboardSkill(uow=uow, clock=FixedClock(FROZEN_NOW), build=build, name=skill_id)
+    result = await skill(SkillRequest("t", "c", "", USER_ID, skill_id, None, False), ())
+    return as_json(result.data)

@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Body
+from shared.skill_ids import Body, Dashboard
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Dashboard.CARD,
+        name="Dashboard Card",
+        description="Structured dashboard card.",
+        tags=["dashboard", "structured"],
+    ),
     AgentSkill(
         id=Body.GET_LATEST,
         name="Get Latest Body Composition",

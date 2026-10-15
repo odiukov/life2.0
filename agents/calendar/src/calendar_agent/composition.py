@@ -20,11 +20,13 @@ from shared.observability.logging import configure_logging
 from shared.ports.clock import Clock
 from shared.ports.credentials import CredentialStore
 from shared.ports.users import UserSettingsRepository
+from shared.skill_ids import Dashboard
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from calendar_agent.adapters.a2a.card import build_agent_card
 from calendar_agent.adapters.google import HttpGoogleCalendar, HttpGoogleOAuth
 from calendar_agent.adapters.no_llm import NoLLM
+from calendar_agent.application.dashboard import CalendarCard, CalendarDetail
 from calendar_agent.application.ports import GoogleCalendar, GoogleOAuth
 from calendar_agent.application.skills import build_skills
 from calendar_agent.settings import CalendarSettings
@@ -58,20 +60,23 @@ def build_runtime(
     clock = clock or SystemClock()
     http = httpx.AsyncClient()
     secret = settings.google_calendar_oauth_client_secret
+    google = google or HttpGoogleCalendar(http)
+    oauth = oauth or HttpGoogleOAuth(
+        http,
+        client_id=settings.google_calendar_oauth_client_id,
+        client_secret=secret.get_secret_value() if secret else None,
+        redirect_uri=settings.google_calendar_oauth_redirect_uri,
+    )
     skills = build_skills(
         uow=uow,
-        google=google or HttpGoogleCalendar(http),
-        oauth=oauth
-        or HttpGoogleOAuth(
-            http,
-            client_id=settings.google_calendar_oauth_client_id,
-            client_secret=secret.get_secret_value() if secret else None,
-            redirect_uri=settings.google_calendar_oauth_redirect_uri,
-        ),
+        google=google,
+        oauth=oauth,
         clock=clock,
         translator=JsonTranslator.from_dir(settings.i18n_locales_dir),
         default_locale=settings.default_locale,
     )
+    skills[Dashboard.CARD] = CalendarCard(uow=uow, google=google, oauth=oauth, clock=clock)
+    skills[Dashboard.DETAIL] = CalendarDetail(uow=uow, google=google, oauth=oauth, clock=clock)
     return CalendarRuntime(
         executor=SkillExecutor(
             agent=AGENT,

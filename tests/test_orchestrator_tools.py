@@ -135,7 +135,7 @@ def test_every_peer_in_agent_from_tool_has_tool():
 
 def test_medication_tool_accepts_all_skill_ids():
     """The Literal in ask_medication_agent must list every skill ID
-    declared in agents.medication.app.skills.SKILLS."""
+    declared in the medication card, excluding structured dashboard skills."""
     from orchestrator.app import health_agent
     from medication.adapters.a2a.card import SKILLS
     import typing
@@ -147,7 +147,9 @@ def test_medication_tool_accepts_all_skill_ids():
     sig = typing.get_type_hints(underlying)
     skill_type = sig["skill"]
     allowed = set(typing.get_args(skill_type))
-    declared = {s.id for s in SKILLS}
+    from shared.skill_ids import Dashboard
+
+    declared = {s.id for s in SKILLS if s.id not in {Dashboard.CARD, Dashboard.DETAIL}}
     assert allowed == declared, (
         f"medication tool Literal mismatch: tool={allowed}, skills.py={declared}"
     )

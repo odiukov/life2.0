@@ -1,11 +1,11 @@
 from habits.adapters.a2a.card import PEER_SKILLS, SKILLS, build_agent_card
-from shared.skill_ids import Habits
+from shared.skill_ids import Dashboard, Habits
 
 
 def test_card_is_unchanged() -> None:
     card = build_agent_card("http://agent-habits:8006/")
     assert card.name == "habits-agent"
-    assert {s.id for s in SKILLS} == {
+    assert {s.id for s in SKILLS if s.id not in {Dashboard.CARD, Dashboard.DETAIL}} == {
         Habits.DEFINE,
         Habits.LOG_CHECK,
         Habits.ANALYZE,
@@ -17,3 +17,7 @@ def test_card_is_unchanged() -> None:
         "sleep": "analyze_sleep",
         "workout": "analyze_workout",
     }
+
+
+def test_card_declares_dashboard_skills() -> None:
+    assert {s.id for s in SKILLS if "dashboard" in s.tags} == {Dashboard.CARD, Dashboard.DETAIL}
