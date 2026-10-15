@@ -56,10 +56,14 @@ export function removePendingDelete(id: string): Promise<void> {
 }
 
 /** Single-flight network retries do not hold the storage lock across HTTP calls. */
-export function flushPendingDeletes(close: (id: string) => Promise<void>): Promise<void> {
+export function flushPendingDeletes(
+  close: (id: string) => Promise<void>,
+  shouldContinue: () => boolean = () => true,
+): Promise<void> {
   if (flushing) return flushing;
   flushing = (async () => {
     for (const id of await loadPendingDeletes()) {
+      if (!shouldContinue()) break;
       try {
         await close(id);
       } catch (error) {

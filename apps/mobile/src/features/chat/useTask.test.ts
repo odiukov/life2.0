@@ -744,3 +744,63 @@ test('a queue read failure during restore retains the saved-task barrier on send
   expect(api.open).not.toHaveBeenCalled();
   expect(await SecureStore.getItemAsync('open_task_id')).toBe('saved');
 });
+
+test('durably closed identity stays barred when saved-id removal fails', async () => {
+  let change!: (state: AppStateStatus) => void;
+  jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => {
+    change = callback;
+    return { remove: jest.fn() };
+  });
+  const api = fakeApi({ close: jest.fn().mockRejectedValueOnce(new TypeError('offline')) });
+  const { result } = renderHook(() => useTask(api));
+  await act(() => result.current.send({ text: 'hello' }));
+  jest.spyOn(SecureStore, 'deleteItemAsync').mockRejectedValueOnce(new Error('disk'));
+  await act(async () => {
+    await expect(result.current.close()).rejects.toThrow('disk');
+  });
+  expect(await loadPendingDeletes()).toEqual(['t1']);
+  expect(await SecureStore.getItemAsync('open_task_id')).toBe('t1');
+  expect(result.current.taskId).toBeNull();
+  api.post.mockClear();
+  await act(async () => {
+    expect(await result.current.send({ text: 'new work' })).toBe(false);
+    await expect(result.current.setLead('sleep')).rejects.toBeInstanceOf(TaskBusyError);
+  });
+  expect(api.post).not.toHaveBeenCalled();
+  expect(api.setLead).not.toHaveBeenCalled();
+  await act(async () => {
+    change('active');
+  });
+  expect(await loadPendingDeletes()).toEqual([]);
+  await act(() => result.current.restore());
+  expect(api.read).not.toHaveBeenCalled();
+  expect(await SecureStore.getItemAsync('open_task_id')).toBeNull();
+});
+
+test.each(['background', 'unmount'] as const)(
+  '%s stops starting deletes after the in-flight one',
+  async (shutdown) => {
+    let change!: (state: AppStateStatus) => void;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => {
+      change = callback;
+      return { remove: jest.fn() };
+    });
+    await addPendingDelete('a');
+    await addPendingDelete('b');
+    const first = deferred<void>();
+    const api = fakeApi({ close: jest.fn().mockReturnValueOnce(first.promise) });
+    const hook = renderHook(() => useTask(api));
+    await act(async () => {
+      change('active');
+    });
+    expect(api.close).toHaveBeenCalledWith('a');
+    await act(async () => {
+      if (shutdown === 'background') change('background');
+      else hook.unmount();
+      first.resolve();
+      await Promise.resolve();
+    });
+    expect(api.close.mock.calls).toEqual([['a']]);
+    expect(await loadPendingDeletes()).toEqual(['b']);
+  },
+);

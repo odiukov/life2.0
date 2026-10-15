@@ -70,6 +70,7 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
   const resolving = useRef(new Set<string>());
   const busy = useRef(false);
   const closing = useRef(false);
+  const endedTask = useRef<string | null>(null);
   const unreadTask = useRef<string | null>(null);
   const generation = useRef(0);
   const operations = useRef<Promise<void>>(Promise.resolve());
@@ -137,6 +138,12 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
     setPhase('restoring');
     try {
       await serialize(async () => {
+        if (endedTask.current) {
+          await clearOpenTaskId();
+          endedTask.current = null;
+          unreadTask.current = null;
+          reset();
+        }
         // Establish the saved-task barrier even if queue storage or flushing fails.
         unreadTask.current = unreadTask.current ?? (await loadOpenTaskId());
         await flushPendingDeletes((id) => api.close(id));
@@ -146,7 +153,7 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
       busy.current = false;
       setPhase('idle');
     }
-  }, [api, readSavedTask, serialize]);
+  }, [api, readSavedTask, reset, serialize]);
 
   // Only identity operations in the queue call this helper.
   const ensureTask = useCallback(
@@ -170,7 +177,7 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
 
   const setLead = useCallback(
     async (lead: AgentId | null) => {
-      if (closing.current) throw new TaskBusyError('task_busy');
+      if (closing.current || endedTask.current) throw new TaskBusyError('task_busy');
       const version = generation.current;
       await serialize(async () => {
         if (version !== generation.current) return;
@@ -182,7 +189,12 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
 
   const send = useCallback(
     async ({ text, tag, attachments = [] }: SendInput) => {
-      if (closing.current || busy.current || (!text.trim() && attachments.length === 0))
+      if (
+        closing.current ||
+        endedTask.current ||
+        busy.current ||
+        (!text.trim() && attachments.length === 0)
+      )
         return false;
       const version = generation.current;
       let completed = false;
@@ -296,7 +308,7 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
   const decide = useCallback(
     async (actionId: string, decision: 'confirm' | 'reject') => {
       const id = task.current.id;
-      if (!id || closing.current || resolving.current.has(actionId)) return;
+      if (!id || closing.current || endedTask.current || resolving.current.has(actionId)) return;
       const version = generation.current;
       resolving.current.add(actionId);
       try {
@@ -344,9 +356,13 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
             }
           }
         }
-        await clearOpenTaskId();
+        // The server closed it or the delete is durable. Saved-ID cleanup can fail,
+        // but this identity must never accept writes while a retry can delete it.
+        if (id) endedTask.current = id;
         unreadTask.current = null;
         reset();
+        await clearOpenTaskId();
+        endedTask.current = null;
       });
     } finally {
       closing.current = false;
@@ -379,7 +395,10 @@ export function useTask(api: TasksApi = defaultTasksApi()) {
     const retry = async () => {
       if (disposed || !active) return;
       try {
-        await flushPendingDeletes((id) => api.close(id));
+        await flushPendingDeletes(
+          (id) => api.close(id),
+          () => active && !disposed,
+        );
       } catch {
         /* Keep durable identities for the next retry. */
       }
