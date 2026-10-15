@@ -618,5 +618,42 @@
       "connected": "One connection for the family · {name}",
       "connect": "Connect Home Assistant"
     }
+  },
+  "me": {
+    "greeting": {
+      "night": "Good night, {name}",
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "prev_day": "Previous day",
+    "next_day": "Next day",
+    "rings": {
+      "ready": "Ready",
+      "hrv": "HRV",
+      "steps": "Steps",
+      "mood": "Mood"
+    },
+    "all": "⋯ all",
+    "all_agents": "All agents",
+    "insight": "INSIGHT",
+    "feed": {
+      "empty": "Quiet so far — tap the button below to log something.",
+      "error": "Couldn't load the day.",
+      "retry": "Retry",
+      "unavailable": {
+        "one": "{agents} is unavailable right now.",
+        "other": "{agents} are unavailable right now."
+      }
+    },
+    "attention": "Needs attention",
+    "body_profile": "⚠︎ Set up body profile →",
+    "mock_feed": {
+      "meal": "Lunch: 640 kcal, protein 32 g",
+      "insight": "Deep sleep 1 h 50 min — best this week",
+      "sleep": "Slept 7 h 40 min · deep 1 h 50 min"
+    }
   }
 }

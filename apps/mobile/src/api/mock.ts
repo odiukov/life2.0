@@ -1,3 +1,6 @@
+import en from '@life-agents/i18n/locales/en.json';
+import ru from '@life-agents/i18n/locales/ru.json';
+import { appLocale } from '@/lib/locale';
 type Fetch = typeof fetch;
 type MockItem = {
   id: string;
@@ -121,6 +124,38 @@ export function mockFetch(today: Date = new Date()): Fetch {
     }
 
     // Preserve the original app's mock endpoints.
+    if (key === 'GET /me/feed') {
+      const day = parsed.searchParams.get('date') ?? householdDate(today, household.timezone, 0);
+      const feedText = (appLocale() === 'ru' ? ru : en).me.mock_feed;
+      return json({
+        date: day,
+        items: [
+          {
+            agent: 'nutrition',
+            id: 'nutrition:meal:chat:1',
+            at: `${day}T12:30:00+03:00`,
+            kind: 'event',
+            text: feedText.meal,
+          },
+          {
+            agent: 'sleep',
+            id: 'sleep:insight',
+            at: `${day}T08:00:00+03:00`,
+            kind: 'insight',
+            text: feedText.insight,
+          },
+          {
+            agent: 'sleep',
+            id: 'sleep:sleep_session:garmin:1',
+            at: `${day}T07:40:00+03:00`,
+            kind: 'event',
+            text: feedText.sleep,
+          },
+        ],
+        unavailable: [],
+      });
+    }
+
     if (key === 'GET /integrations/ha/status')
       return json({ connected: false, connected_by: null, connected_at: null });
     if (key === 'GET /dashboard' || key === 'GET /dashboard/summary')
