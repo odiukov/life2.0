@@ -475,5 +475,11 @@
       "connected_by": "Подключил(а) {name}, {date}",
       "status_failed": "Не удалось загрузить подключение Home Assistant."
     }
+  },
+  "feed": {
+    "duration": {
+      "hm": "{h} ч {m} мин",
+      "m": "{m} мин"
+    }
   }
 }

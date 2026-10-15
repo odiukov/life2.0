@@ -462,5 +462,11 @@
       "connected_by": "Connected by {name} on {date}",
       "status_failed": "Could not load the Home Assistant connection."
     }
+  },
+  "feed": {
+    "duration": {
+      "hm": "{h} h {m} min",
+      "m": "{m} min"
+    }
   }
 }

@@ -166,3 +166,9 @@ class Home:
 
 
 HomeSkillId = Literal["home.ask"]
+
+
+class Feed:
+    """Structured skill each personal agent serves for the app's day feed (no LLM)."""
+
+    EVENTS: Final = "feed.events"
