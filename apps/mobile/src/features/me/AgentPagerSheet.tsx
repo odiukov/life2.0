@@ -79,14 +79,21 @@ export function AgentPagerSheet({ start, onClose, onPickOther, summary, rows }: 
   const list = useRef<FlatList<PagerStart>>(null);
   const [index, setIndex] = useState(() => Math.max(0, PAGES.indexOf(start ?? 'all')));
   const target = Math.max(0, PAGES.indexOf(start ?? 'all'));
+  const position = useRef({ index, width });
+  position.current = { index, width };
   const syncPosition = () => {
     if (visible) list.current?.scrollToOffset({ offset: index * width, animated: false });
   };
   useEffect(() => {
     if (!visible) return;
+    position.current.index = target;
     setIndex(target);
-    list.current?.scrollToOffset({ offset: target * width, animated: false });
-  }, [visible, target, width, mounted]);
+    list.current?.scrollToOffset({ offset: target * position.current.width, animated: false });
+  }, [visible, target]);
+  useEffect(() => {
+    if (!visible || !mounted) return;
+    list.current?.scrollToOffset({ offset: position.current.index * width, animated: false });
+  }, [visible, width, mounted]);
   const goTo = (i: number) => {
     const next = Math.max(0, Math.min(PAGES.length - 1, i));
     list.current?.scrollToOffset({ offset: next * width, animated: true });

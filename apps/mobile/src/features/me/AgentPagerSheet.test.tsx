@@ -4,6 +4,11 @@ import { ThemeProvider } from '@life-agents/ui';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AgentPagerSheet, PAGES } from './AgentPagerSheet';
 import { useTaskSheet } from '../task/sheetStore';
+let mockWidth = 400;
+jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
+  __esModule: true,
+  default: () => ({ width: mockWidth, height: 800, scale: 1, fontScale: 1 }),
+}));
 jest.mock('@/lib/locale', () => ({ appLocale: () => 'en' }));
 jest.mock('../home/AgentDetailContent', () => ({
   AgentDetailContent: ({
@@ -93,3 +98,31 @@ test('actual scroll position follows changes, layout and reopen', () => {
   });
   scroll.mockRestore();
 });
+
+test.each(['arrow', 'swipe'] as const)(
+  'width changes preserve the page selected by %s',
+  (navigation) => {
+    mockWidth = 400;
+    const scroll = jest.spyOn(FlatList.prototype, 'scrollToOffset').mockImplementation(() => {});
+    try {
+      const result = render(wrap('sleep'));
+      if (navigation === 'arrow') fireEvent.press(screen.getByLabelText('Next agent'));
+      else
+        fireEvent(screen.getByTestId('agent-pager'), 'momentumScrollEnd', {
+          nativeEvent: { contentOffset: { x: PAGES.indexOf('workout') * 400 } },
+        });
+      expect(screen.getByText('detail:workout:true')).toBeTruthy();
+      mockWidth = 800;
+      result.rerender(wrap('sleep'));
+      expect(screen.getByText('detail:workout:true')).toBeTruthy();
+      expect(screen.getByText('detail:sleep:false')).toBeTruthy();
+      expect(scroll).toHaveBeenLastCalledWith({
+        offset: PAGES.indexOf('workout') * 800,
+        animated: false,
+      });
+    } finally {
+      mockWidth = 400;
+      scroll.mockRestore();
+    }
+  },
+);
