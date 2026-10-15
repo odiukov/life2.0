@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
@@ -9,6 +11,10 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from a2a.server.agent_execution import RequestContext
+
+from shared.ports.skills import Attachment
+
+MAX_ATTACHMENT_BYTES = 20_000_000
 
 _KNOWN_KEYS = ("skillId", "focus_sources", "is_peer_call", "for_date", "user_id", "params")
 
@@ -23,6 +29,7 @@ class Envelope:
     context_id: str
     text: str
     metadata: Mapping[str, Any]
+    files: tuple[tuple[str | None, str | None, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,12 +42,15 @@ class SkillRequest:
     for_date: date | None
     is_peer_call: bool
     params: Mapping[str, object] = field(default_factory=dict)
+    attachments: tuple[Attachment, ...] = ()
 
     def audit(self) -> dict[str, object]:
         """What the legacy executors stored as `tasks.input`."""
         out: dict[str, object] = {**self.params, "message": self.text, "user_id": str(self.user_id)}
         if self.for_date is not None:
             out["for_date"] = self.for_date.isoformat()
+        if self.attachments:
+            out["attachments"] = len(self.attachments)
         return out
 
 
@@ -64,6 +74,42 @@ def _text(message: Any) -> str:
     return "\n".join(texts)
 
 
+def _files(message: Any) -> tuple[tuple[str | None, str | None, str], ...]:
+    out = []
+    for part in getattr(message, "parts", None) or []:
+        root = getattr(part, "root", part)
+        file = getattr(root, "file", None)
+        raw = getattr(file, "bytes", None)
+        if isinstance(raw, str):
+            name = getattr(file, "name", None)
+            mime = getattr(file, "mime_type", None)
+            out.append(
+                (
+                    name if isinstance(name, str) else None,
+                    mime if isinstance(mime, str) else None,
+                    raw,
+                )
+            )
+    return tuple(out)
+
+
+def _attachments(files: tuple[tuple[str | None, str | None, str], ...]) -> tuple[Attachment, ...]:
+    out: list[Attachment] = []
+    total = 0
+    for name, mime, raw in files:
+        try:
+            data = base64.b64decode(raw, validate=True)
+        except (binascii.Error, ValueError):
+            raise InvalidRequest("invalid_attachment") from None
+        total += len(data)
+        if total > MAX_ATTACHMENT_BYTES:
+            raise InvalidRequest("attachment_too_large")
+        out.append(
+            Attachment(name=name or "file", mime=mime or "application/octet-stream", data=data)
+        )
+    return tuple(out)
+
+
 def read_envelope(context: RequestContext) -> Envelope:
     message = context.message
     return Envelope(
@@ -71,6 +117,7 @@ def read_envelope(context: RequestContext) -> Envelope:
         context_id=context.context_id or str(uuid4()),
         text=_text(message) if message is not None else "",
         metadata=_metadata(message) if message is not None else {},
+        files=_files(message) if message is not None else (),
     )
 
 
@@ -117,4 +164,5 @@ def to_request(envelope: Envelope, *, skill_id: str) -> SkillRequest:
         # Strict identity with True: wire-level "true" or stale flags must not activate it.
         is_peer_call=envelope.metadata.get("is_peer_call") is True,
         params=dict(params) if isinstance(params, Mapping) else {},
+        attachments=_attachments(envelope.files),
     )

@@ -1,4 +1,4 @@
-"""Sanity-check the personas module: identity present for all 8 agents, contains
+"""Sanity-check the personas module: identity present for all 9 agents, contains
 the mandatory phrases that downstream tests rely on (domain-expert role,
 'redirect', 'calm authority'), and vocabulary anchors are non-empty."""
 
@@ -18,16 +18,16 @@ AGENTS = [
 ]
 
 
-def test_identity_keys_match_eight_agents():
+def test_identity_keys_match_nine_agents():
     from shared.personas import IDENTITY
 
-    assert set(IDENTITY.keys()) == set(AGENTS)
+    assert set(IDENTITY.keys()) == {*AGENTS, "finance"}
 
 
-def test_vocab_keys_match_eight_agents():
+def test_vocab_keys_match_nine_agents():
     from shared.personas import VOCAB
 
-    assert set(VOCAB.keys()) == set(AGENTS)
+    assert set(VOCAB.keys()) == {*AGENTS, "finance"}
 
 
 @pytest.mark.parametrize("agent", AGENTS)

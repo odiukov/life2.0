@@ -4,8 +4,7 @@ Two consumers import from this module:
 
 1. Peer agents (`agents/*/app/skills.py`) — for `AgentSkill(id=...)` and
    `SKILL_PROMPTS` keys.
-2. Orchestrator (`orchestrator/app/health_agent.py`) — for `Literal[...]`
-   tool signatures and `metadata={"skillId": ...}`.
+2. Orchestrator (`orchestrator.domain.catalog`) — for tool `Literal[...]` signatures.
 
 Each agent has a class with `Final` string constants AND a corresponding
 `Literal[...]` alias. mypy/Pylance do not narrow types through class
@@ -52,6 +51,7 @@ NutritionSkillId = Literal[
 
 
 class Body:
+    IMPORT_VIHEALTH: Final = "body.import_vihealth"
     GET_LATEST: Final = "get_latest_body"
     ANALYZE_TREND: Final = "analyze_body_trend"
 
@@ -128,3 +128,41 @@ class Kitchen:
 
 # Conversational skills only; the gateway calls structured skills directly.
 KitchenSkillId = Literal["kitchen.update_inventory", "kitchen.query"]
+
+
+class Dashboard:
+    """Structured skills every health agent serves for the app's dashboard (no LLM)."""
+
+    CARD: Final = "dashboard.card"
+    DETAIL: Final = "dashboard.detail"
+
+
+class Finance:
+    ASK: Final = "finance.ask"
+    IMPORT_STATEMENT: Final = "finance.import_statement"
+
+
+FinanceSkillId = Literal["finance.ask"]
+
+
+class Calendar:
+    """Structured only: the calendar agent has no LLM."""
+
+    CONNECT: Final = "calendar.connect"
+    DISCONNECT: Final = "calendar.disconnect"
+    STATUS: Final = "calendar.status"
+    LIST: Final = "calendar.list"
+    PROPOSE: Final = "calendar.propose_change"
+    APPLY: Final = "calendar.apply_change"
+
+
+class Home:
+    CONNECT: Final = "home.connect"
+    DISCONNECT: Final = "home.disconnect"
+    STATUS: Final = "home.status"
+    TEST: Final = "home.test"
+    ASK: Final = "home.ask"
+    APPLY: Final = "home.apply_action"
+
+
+HomeSkillId = Literal["home.ask"]

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import base64
+from collections.abc import Mapping, Sequence
 from uuid import UUID, uuid4
 
 import httpx
 from a2a.types import DataPart, Task, TaskState, TextPart
 from pydantic import ValidationError
 
-from shared.ports.skills import SkillCallError, SkillReply, SkillUnavailable
+from shared.ports.skills import Attachment, SkillCallError, SkillReply, SkillUnavailable
 
 
 class A2ASkillClient:
@@ -25,7 +26,20 @@ class A2ASkillClient:
         user_id: UUID,
         params: Mapping[str, object],
         text: str = "",
+        attachments: Sequence[Attachment] = (),
     ) -> SkillReply:
+        parts: list[dict[str, object]] = [{"kind": "text", "text": text}]
+        parts.extend(
+            {
+                "kind": "file",
+                "file": {
+                    "name": a.name,
+                    "mimeType": a.mime,
+                    "bytes": base64.b64encode(a.data).decode("ascii"),
+                },
+            }
+            for a in attachments
+        )
         payload = {
             "jsonrpc": "2.0",
             "id": str(uuid4()),
@@ -35,7 +49,7 @@ class A2ASkillClient:
                     "kind": "message",
                     "role": "user",
                     "messageId": str(uuid4()),
-                    "parts": [{"kind": "text", "text": text}],
+                    "parts": parts,
                     "metadata": {
                         "skillId": skill_id,
                         "user_id": str(user_id),

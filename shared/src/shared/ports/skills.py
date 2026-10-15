@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
+
+
+@dataclass(frozen=True, slots=True)
+class Attachment:
+    """A file sent along with a skill call (A2A FilePart with inline bytes). Never logged."""
+
+    name: str
+    mime: str
+    data: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,4 +43,5 @@ class SkillClient(Protocol):
         user_id: UUID,
         params: Mapping[str, object],
         text: str = "",
+        attachments: Sequence[Attachment] = (),
     ) -> SkillReply: ...

@@ -44,6 +44,9 @@ def test_agent_card_skill_ids(agent_name, class_name):
 
     cls = getattr(ids_mod, class_name)
     expected = _expected_ids_from_class(cls)
+    if agent_name == "body":
+        # Task 6 advertises this import skill after implementing its handler.
+        expected -= {ids_mod.Body.IMPORT_VIHEALTH}
     declared = {s.id for s in skills_mod.SKILLS}
 
     assert expected <= declared, (

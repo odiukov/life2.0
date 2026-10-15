@@ -18,7 +18,7 @@ from shared.ports.users import SUPPORTED_LOCALES, UserSettings, resolve_zone
 from shared.ports.llm import LLMInvalidOutput, LLMTask
 from shared.ports.notifications import InboxItem, Notification
 from shared.ports.scheduler import Job
-from shared.ports.skills import SkillReply
+from shared.ports.skills import Attachment, SkillReply
 from shared.ports.stt import Transcript
 from shared.ports.vector_memory import Memory
 
@@ -322,6 +322,7 @@ class FakeSkillClient:
     def __init__(self, responder: SkillResponder) -> None:
         self._responder = responder
         self.calls: list[tuple[str, UUID, dict[str, object], str]] = []
+        self.attachments: list[tuple[Attachment, ...]] = []
 
     async def call(
         self,
@@ -330,8 +331,10 @@ class FakeSkillClient:
         user_id: UUID,
         params: Mapping[str, object],
         text: str = "",
+        attachments: Sequence[Attachment] = (),
     ) -> SkillReply:
         self.calls.append((skill_id, user_id, dict(params), text))
+        self.attachments.append(tuple(attachments))
         outcome = self._responder(skill_id, user_id, params, text)
         if isinstance(outcome, Exception):
             raise outcome
