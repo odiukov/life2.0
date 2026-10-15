@@ -19,7 +19,7 @@ export const COMMANDS: readonly ChatCommand[] = [
   { name: '/habits', agent: 'habits', hint: 'List active habits' },
   { name: '/med', agent: 'medication', hint: 'Log medication taken' },
   { name: '/recovery', agent: 'recovery', hint: "Get today's recovery readiness" },
-  { name: '/new', agent: 'home', hint: 'Start a new chat thread' },
+  { name: '/kitchen', agent: 'kitchen', hint: 'Fridge, freezer and pantry' },
 
   // Integration-gated
   {
@@ -51,6 +51,6 @@ export function matchCommands(
 
 /** Promote a leading agent name while preserving unknown slash commands. */
 export function splitLeadingTag(text: string): { tag?: AgentId; text: string } {
-  const match = /^\/([a-z]+)\s(.*)$/s.exec(text);
+  const match = /^\/([a-z]+)(?:\s(.*))?$/s.exec(text);
   return match && isAgentId(match[1]) ? { tag: match[1], text: match[2] ?? '' } : { text };
 }

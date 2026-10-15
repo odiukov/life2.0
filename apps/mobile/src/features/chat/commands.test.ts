@@ -45,3 +45,15 @@ test.each([
   ['/unknown hello', { text: '/unknown hello' }],
   ['/new', { text: '/new' }],
 ])('splits leading tag %s', (input, result) => expect(splitLeadingTag(input)).toEqual(result));
+
+test('/new is gone and /kitchen exists', () => {
+  expect(matchCommands('/ne').map((c) => c.name)).toEqual([]);
+  expect(matchCommands('/kit').map((c) => c.name)).toEqual(['/kitchen']);
+  expect(splitLeadingTag('/kitchen выкинь йогурт')).toEqual({
+    tag: 'kitchen',
+    text: 'выкинь йогурт',
+  });
+});
+
+test('exact lead commands parse after composer trimming', () =>
+  expect(splitLeadingTag('/sleep')).toEqual({ tag: 'sleep', text: '' }));

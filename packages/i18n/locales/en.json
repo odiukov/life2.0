@@ -558,5 +558,42 @@
         "neutral": "Recovery metrics near baseline. Moderate training ok."
       }
     }
+  },
+  "task": {
+    "title": "New task",
+    "close": {
+      "title": "End task?",
+      "body": "The conversation will be forgotten. Changes it made stay.",
+      "end": "End",
+      "continue": "Continue",
+      "busy": "Still answering — try again in a second"
+    },
+    "attach": {
+      "title": "Attach",
+      "camera": "Camera",
+      "gallery": "Photo library",
+      "file": "File (PDF)",
+      "cancel": "Cancel",
+      "camera_denied": "Camera access is off. Turn it on in Settings.",
+      "too_many": "Up to 4 files per message.",
+      "type": "Only JPEG, PNG, WebP photos and PDF files.",
+      "image_too_big": "A photo can be up to 10 MB.",
+      "pdf_too_big": "A PDF can be up to 20 MB.",
+      "total_too_big": "Files can be up to 25 MB together."
+    },
+    "chip": {
+      "nutrition": "🍽 Food",
+      "kitchen": "🧊 Kitchen",
+      "sleep": "🌙 Sleep",
+      "workout": "💪 Workout",
+      "medication": "💊 Medication",
+      "mood": "😊 Mood",
+      "calendar": "📅 Calendar",
+      "home": "🏠 Home"
+    },
+    "lead_remove": "Remove lead agent",
+    "retry": "⟳ Retry",
+    "no_household": "Join or create a home first — see the House tab.",
+    "voice_note": "🎙 {duration}"
   }
 }

@@ -26,6 +26,8 @@ export type AskBarChange = { tag: AgentId | undefined; text: string };
 export type AskBarHandle = { focus: () => void };
 
 type AskBarProps = {
+  clearOnSubmit?: boolean;
+  promoteTags?: boolean;
   value?: string;
   tag?: AgentId;
   onChangeText?: (next: AskBarChange) => void;
@@ -43,6 +45,8 @@ type AskBarProps = {
 
 export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
   {
+    clearOnSubmit = true,
+    promoteTags = true,
     value: controlledValue,
     tag: controlledTag,
     onChangeText,
@@ -83,7 +87,7 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
 
   const handleChangeText = useCallback(
     (text: string) => {
-      if (!tag) {
+      if (!tag && promoteTags) {
         const match = LEADING_TAG_RE.exec(text);
         if (match) {
           const candidate = match[1] as AgentId;
@@ -95,7 +99,7 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
       }
       emit({ tag, text });
     },
-    [emit, tag, blockedAgents],
+    [emit, tag, blockedAgents, promoteTags],
   );
 
   const handleKeyPress = useCallback(
@@ -112,7 +116,7 @@ export const AskBar = forwardRef<AskBarHandle, AskBarProps>(function AskBar(
   const send = () => {
     if (!canSend || disabled) return;
     onSubmit({ tag, text: value.trim() });
-    emit({ tag: undefined, text: '' });
+    if (clearOnSubmit) emit({ tag: undefined, text: '' });
   };
 
   const circleSize = 36;
