@@ -330,3 +330,53 @@ test('closing during delayed restoration cannot reopen the sheet', async () => {
   expect(mockApi.post).not.toHaveBeenCalled();
   expect(useTaskSheet.getState().pending).toBeNull();
 });
+
+test('a busy close during delayed restore exposes a working restore retry for the same task', async () => {
+  await saveOpenTaskId('saved');
+  let finish!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const snapshot = {
+    task: { id: 'saved', leadAgent: null },
+    messages: [{ role: 'user' as const, seq: 1, text: 'restored turn', attachments: [] }],
+    pendingAction: null,
+  };
+  mockApi = fakeTasksApi({
+    read: jest
+      .fn()
+      .mockImplementationOnce(async () => {
+        await waiting;
+        return snapshot;
+      })
+      .mockResolvedValue(snapshot),
+    close: jest.fn(async () => {
+      throw new TaskBusyError('task_busy');
+    }),
+  });
+  jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation((_t, _m, buttons) =>
+      buttons?.find((b) => b.style === 'destructive')?.onPress?.(),
+    );
+  render(
+    <ThemeProvider>
+      <TaskSheet />
+    </ThemeProvider>,
+  );
+  act(() => openTask());
+  await waitFor(() => expect(mockApi.read).toHaveBeenCalled());
+  fireEvent.press(screen.getByTestId('task-restore-close'));
+  await act(async () => finish());
+  await screen.findByText('Still answering — try again in a second', {}, { timeout: 3000 });
+  expect(useTaskSheet.getState().visible).toBe(true);
+  expect(await SecureStore.getItemAsync('open_task_id')).toBe('saved');
+  if (!screen.queryByText('restored turn')) fireEvent.press(screen.getByText('Retry'));
+  expect(await screen.findByText('restored turn')).toBeTruthy();
+  expect(screen.getByTestId('task-close')).toBeTruthy();
+  expect(mockApi.open).not.toHaveBeenCalled();
+  act(() => openTask({ send: 'continue' }));
+  await waitFor(() =>
+    expect(mockApi.post).toHaveBeenCalledWith('saved', { text: 'continue', attachments: [] }),
+  );
+});

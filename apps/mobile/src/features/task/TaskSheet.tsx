@@ -179,6 +179,9 @@ export function TaskSheet() {
       setSeed(undefined);
       hide();
     } catch (e) {
+      // Closing invalidated the in-flight restore completion. A failed close
+      // retains the saved identity, so expose a new restore attempt for it.
+      if (!restored) setRestoreFailed(true);
       if (useTaskSheet.getState().pending) setRequestFailed(true);
       if (e instanceof TaskBusyError) flash(t('task.close.busy'));
       else flash(t('chat.client.generic'));
@@ -186,7 +189,7 @@ export function TaskSheet() {
       closing.current = false;
       setRevision((r) => r + 1);
     }
-  }, [flash, hide, t]);
+  }, [flash, hide, restored, t]);
 
   const requestClose = useCallback(() => {
     if (
@@ -292,7 +295,7 @@ export function TaskSheet() {
             </Pressable>
           </View>
         )}
-        {requestFailed && (
+        {restored && requestFailed && (
           <Pressable accessibilityRole="button" onPress={() => setRequestFailed(false)}>
             <Text>{t('task.sheet_retry')}</Text>
           </Pressable>

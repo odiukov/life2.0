@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments, router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,7 +24,13 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function AuthGuard() {
+function AuthGuard({
+  shareNavigationPending,
+  onShareHandled,
+}: {
+  shareNavigationPending: boolean;
+  onShareHandled: () => void;
+}) {
   const { session, ready } = useSession();
   const segments = useSegments();
   const router = useRouter();
@@ -45,6 +51,16 @@ function AuthGuard() {
     }
   }, [session, ready, segments, router]);
 
+  // The root Stack and authentication must settle before a share changes routes.
+  // The attachment itself was already queued, including when sign-in is needed.
+  useEffect(() => {
+    if (!shareNavigationPending || !ready || !session || (segments as string[]).length === 0)
+      return;
+    if (segments[0] !== '(auth)' && segments[0] !== '(tabs)') router.push('/(tabs)');
+    // The existing auth redirect handles the auth group; tabs already owns the sheet.
+    onShareHandled();
+  }, [shareNavigationPending, ready, session, segments, router, onShareHandled]);
+
   useEffect(() => {
     if (session) {
       import('@/features/healthkit/background')
@@ -61,14 +77,16 @@ function AuthGuard() {
 export default function RootLayout() {
   const { ready } = useSession();
   usePushRegistration();
+  const [shareNavigationPending, setShareNavigationPending] = useState(false);
+  const onShareHandled = useCallback(() => setShareNavigationPending(false), []);
 
   // Share Extension deep link
   useEffect(() => {
     const handleShareUrl = (url: string) => {
       const attachment = shareAttachment(url);
       if (!attachment) return;
-      router.push('/(tabs)');
       openTask({ attachments: [attachment] });
+      setShareNavigationPending(true);
     };
     const sub = Linking.addEventListener('url', ({ url }) => handleShareUrl(url));
     Linking.getInitialURL().then((url) => {
@@ -100,7 +118,10 @@ export default function RootLayout() {
           <ThemeProvider>
             <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0f0f13' }}>
               <StatusBar style="light" />
-              <AuthGuard />
+              <AuthGuard
+                shareNavigationPending={shareNavigationPending}
+                onShareHandled={onShareHandled}
+              />
               <Stack
                 screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0f0f13' } }}
               >
