@@ -15,7 +15,7 @@ export default function AuthCallbackScreen() {
         const ticket = parsed.searchParams.get('ticket');
         if (!ticket) return;
         await useSession.getState().completeSignIn(ticket);
-        router.replace('/(tabs)/chat');
+        router.replace('/(tabs)');
       } catch {
         // Never log callback data, which can include a one-time ticket.
         console.warn('[auth-callback] exchange_failed'); // eslint-disable-line no-console

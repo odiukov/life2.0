@@ -1,13 +1,14 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, type ReactNode } from 'react';
 // eslint-disable-next-line react-native/split-platform-components
 import { ActionSheetIOS, Alert, FlatList, Modal, PanResponder, Platform, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { Screen, useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { errorCode } from '@/api/gateway';
 import { useHousehold } from '@/features/household/useHousehold';
 import { appLocale } from '@/lib/locale';
+import { openTask } from '../task/sheetStore';
 import { daysLeft, expiryLabel, expiryTone } from './expiry';
 import { UndoSnackbar } from './UndoSnackbar';
 import { type ItemAction, type KitchenItem, type Location, useInventory, useKitchenActions } from './useKitchen';
@@ -17,10 +18,10 @@ const ACTIONS: ItemAction['action'][] = ['consumed', 'discarded', 'opened', 'mov
 const pad = (n: number) => String(n).padStart(2, '0');
 const localIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-export function KitchenScreen() {
+export function KitchenScreen({ header }: { header?: ReactNode }) {
   const { colors, spacing, typography } = useTheme();
   const t = useT(appLocale());
-  const router = useRouter();
+
   const household = useHousehold();
   const [location, setLocation] = useState<Location>('fridge');
   const inventory = useInventory(location, household.data?.id);
@@ -80,6 +81,7 @@ export function KitchenScreen() {
 
   return (
     <Screen edges={['top']}>
+      {header}
       <Text style={[typography.display, { color: colors.fg1, padding: spacing.s4 }]}>{t('kitchen.screen.title')}</Text>
       <View style={{ flexDirection: 'row', gap: spacing.s2, paddingHorizontal: spacing.s4 }}>
         {LOCATIONS.map((l) => (
@@ -102,7 +104,7 @@ export function KitchenScreen() {
           ListEmptyComponent={loading ? null : (
             <View style={{ gap: spacing.s3 }}>
               <Text style={{ color: colors.fg3 }}>{t('kitchen.screen.empty')}</Text>
-              <Pressable onPress={() => router.push('/(tabs)/chat')} accessibilityRole="button" accessibilityLabel={t('kitchen.screen.open_chat')}><Text style={{ color: colors.accentHi }}>{t('kitchen.screen.open_chat')}</Text></Pressable>
+              <Pressable onPress={() => openTask({ lead: 'kitchen' })} accessibilityRole="button" accessibilityLabel={t('kitchen.screen.open_chat')}><Text style={{ color: colors.accentHi }}>{t('kitchen.screen.open_chat')}</Text></Pressable>
             </View>
           )}
           renderItem={({ item }) => {

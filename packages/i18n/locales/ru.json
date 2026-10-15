@@ -26,7 +26,9 @@
     "chat": "Чат",
     "today": "Сегодня",
     "dash": "Панель",
-    "more": "Ещё"
+    "more": "Ещё",
+    "me": "Я",
+    "house": "Дом"
   },
   "more": {
     "integrations": "Интеграции",
@@ -610,6 +612,19 @@
     "voice_note": "🎙 {duration}",
     "command": {
       "kitchen": "Холодильник, морозилка и кладовая"
+    },
+    "button": "Новая задача",
+    "button_hint": "Нажми — написать, удерживай — сказать",
+    "restore_failed": "Не удалось восстановить задачу",
+    "sheet_retry": "Повторить"
+  },
+  "house": {
+    "title": "Дом",
+    "invite": "Пригласить",
+    "smart_home": {
+      "title": "Умный дом",
+      "connected": "Одно подключение на семью · {name}",
+      "connect": "Подключить Home Assistant"
     }
   }
 }

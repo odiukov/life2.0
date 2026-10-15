@@ -26,7 +26,9 @@
     "chat": "Chat",
     "today": "Today",
     "dash": "Dash",
-    "more": "More"
+    "more": "More",
+    "me": "Me",
+    "house": "House"
   },
   "more": {
     "integrations": "Integrations",
@@ -597,6 +599,19 @@
     "voice_note": "🎙 {duration}",
     "command": {
       "kitchen": "Fridge, freezer and pantry"
+    },
+    "button": "New task",
+    "button_hint": "Tap to write, hold to talk",
+    "restore_failed": "Could not restore task",
+    "sheet_retry": "Retry"
+  },
+  "house": {
+    "title": "Home",
+    "invite": "Invite",
+    "smart_home": {
+      "title": "Smart home",
+      "connected": "One connection for the family · {name}",
+      "connect": "Connect Home Assistant"
     }
   }
 }

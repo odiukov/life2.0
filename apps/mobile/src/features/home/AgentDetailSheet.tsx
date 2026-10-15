@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useRouter } from 'expo-router';
+import { openTask } from '../task/sheetStore';
 import { useTheme } from '@life-agents/ui';
 import type { AgentId } from '@life-agents/ui';
 import { useSheetAnimation } from '@/lib/sheetAnimation';
@@ -19,7 +19,6 @@ const BACKDROP_COLOR = 'rgba(0,0,0,0.6)';
 
 export function AgentDetailSheet({ visible, agentId, onClose }: Props) {
   const { colors } = useTheme();
-  const router = useRouter();
 
   // Keep last agentId alive across the exit animation: when the parent sets
   // visible=false it usually nulls agentId in the same render, but the sheet
@@ -40,10 +39,7 @@ export function AgentDetailSheet({ visible, agentId, onClose }: Props) {
 
   function handleAction(message: string) {
     onClose();
-    const tagged = `/${activeAgentId} ${message}`;
-    setTimeout(() => {
-      router.push({ pathname: '/(tabs)/chat', params: { send: tagged } } as never);
-    }, 150);
+    setTimeout(() => openTask({ lead: activeAgentId ?? undefined, send: message }), 150);
   }
 
   return (

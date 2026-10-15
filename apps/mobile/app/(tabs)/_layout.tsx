@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon, useTheme } from '@life-agents/ui';
-import { DevBanner } from '@/api/DevBanner';
+import { useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
+import { DevBanner } from '@/api/DevBanner';
 import { appLocale } from '@/lib/locale';
+import { TaskSheet } from '@/features/task/TaskSheet';
+import { TaskTabBar } from '@/features/task/TaskTabBar';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -13,29 +15,17 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
-        screenOptions={{
-          sceneStyle: { backgroundColor: colors.bg0 },
-          headerShown: false,
-          tabBarStyle: { backgroundColor: colors.bg1, borderTopColor: colors.border },
-          tabBarActiveTintColor: colors.accentHi,
-          tabBarInactiveTintColor: colors.fg3,
-        }}
+        tabBar={(props) => <TaskTabBar {...props} />}
+        screenOptions={{ sceneStyle: { backgroundColor: colors.bg0 }, headerShown: false }}
       >
-        {/* Visible tabs */}
-        <Tabs.Screen
-          name="index"
-          options={{ title: 'Home', tabBarIcon: ({ color }) => <Icon name="House" size={22} color={color} /> }}
-        />
-        <Tabs.Screen
-          name="kitchen"
-          options={{ title: t('kitchen.screen.title'), tabBarIcon: ({ color }) => <Icon name="ForkKnife" size={22} color={color} /> }}
-        />
-        <Tabs.Screen
-          name="chat"
-          options={{ title: 'Chat', tabBarIcon: ({ color }) => <Icon name="ChatCircle" size={22} color={color} /> }}
-        />
+        <Tabs.Screen name="index" options={{ title: t('tabs.me') }} />
+        <Tabs.Screen name="house" options={{ title: t('tabs.house') }} />
       </Tabs>
-      <View style={{ position: 'absolute', top: insets.top, left: 0, right: 0 }}>
+      <TaskSheet />
+      <View
+        style={{ position: 'absolute', top: insets.top, left: 0, right: 0 }}
+        pointerEvents="box-none"
+      >
         <DevBanner />
       </View>
     </View>

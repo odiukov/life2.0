@@ -86,6 +86,9 @@ const Animated = {
 module.exports = {
   default: Animated,
   useSharedValue,
+  useAnimatedScrollHandler: (handlers: unknown) => handlers,
+  useEvent: (handler: unknown) => handler,
+  useHandler: () => ({ context: {}, doDependenciesDiffer: false, useWeb: false }),
   useReducedMotion: () => false,
   interpolate: ID,
   useAnimatedStyle,

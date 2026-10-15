@@ -48,6 +48,8 @@ export type UseSwipeToDismissOptions = {
   ignoreScroll?: boolean;
   /** When false, the gesture is disabled. Default: true. */
   enabled?: boolean;
+  dismissBlocked?: SharedValue<boolean>;
+  onDismissBlocked?: () => void;
 };
 
 export type UseSwipeToDismissResult = {
@@ -64,9 +66,19 @@ export type UseSwipeToDismissResult = {
  * Upward drags / velocities never close.
  */
 export function shouldDismiss({ translationY, velocityY }: DismissInputs): boolean {
+  'worklet';
   if (translationY > DISMISS_DISTANCE_PX) return true;
   if (translationY > 0 && velocityY > DISMISS_VELOCITY_PX_S) return true;
   return false;
+}
+
+export function releaseOutcome(
+  inputs: DismissInputs,
+  blocked: boolean,
+): 'close' | 'blocked' | 'stay' {
+  'worklet';
+  if (!shouldDismiss(inputs)) return 'stay';
+  return blocked ? 'blocked' : 'close';
 }
 
 export type ScrollSyncState = {
@@ -127,6 +139,8 @@ export function useSwipeToDismiss(opts: UseSwipeToDismissOptions): UseSwipeToDis
     onCloseStart,
     ignoreScroll = false,
     enabled = true,
+    dismissBlocked,
+    onDismissBlocked,
   } = opts;
 
   const scrollY = useSharedValue(0);
@@ -196,10 +210,15 @@ export function useSwipeToDismiss(opts: UseSwipeToDismissOptions): UseSwipeToDis
         return;
       }
       const effective = e.translationY - translationOffsetY.value;
-      const close =
-        effective > DISMISS_DISTANCE_PX || (effective > 0 && e.velocityY > DISMISS_VELOCITY_PX_S);
-      if (close) dismiss();
-      else springBack();
+      const outcome = releaseOutcome(
+        { translationY: effective, velocityY: e.velocityY },
+        dismissBlocked?.value ?? false,
+      );
+      if (outcome === 'close') dismiss();
+      else {
+        springBack();
+        if (outcome === 'blocked' && onDismissBlocked) runOnJS(onDismissBlocked)();
+      }
     })
     .onFinalize((_e, success) => {
       'worklet';

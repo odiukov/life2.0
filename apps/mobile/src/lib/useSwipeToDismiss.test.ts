@@ -98,3 +98,10 @@ describe('nextScrollSyncState', () => {
     expect(shouldDismiss({ translationY: r.effectiveTranslationY, velocityY: 0 })).toBe(false);
   });
 });
+
+import { releaseOutcome } from './useSwipeToDismiss';
+test('a dismissing release can request confirmation', () => {
+  expect(releaseOutcome({ translationY: 200, velocityY: 0 }, false)).toBe('close');
+  expect(releaseOutcome({ translationY: 200, velocityY: 0 }, true)).toBe('blocked');
+  expect(releaseOutcome({ translationY: 20, velocityY: 0 }, true)).toBe('stay');
+});

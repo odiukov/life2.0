@@ -9,7 +9,8 @@ import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
 import { QueryProvider } from '@/api/QueryProvider';
 import { useSession } from '@/features/auth/useSession';
-import { storePendingShareUrl } from '@/features/chat/pendingShare';
+import { shareAttachment } from '@/features/task/share';
+import { openTask } from '@/features/task/sheetStore';
 import { useHydrateIntegrations } from '@/features/integrations/store';
 import { NOTIFICATION_ROUTES } from '@/features/inbox/InboxScreen';
 import { usePushRegistration } from '@/features/inbox/registerPush';
@@ -40,7 +41,6 @@ function AuthGuard() {
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
     } else if (session && inAuthGroup) {
-      // TODO: redirect to /(tabs)/chat when app is opened via share intent
       router.replace('/(tabs)');
     }
   }, [session, ready, segments, router]);
@@ -65,10 +65,10 @@ export default function RootLayout() {
   // Share Extension deep link
   useEffect(() => {
     const handleShareUrl = (url: string) => {
-      const { queryParams } = Linking.parse(url);
-      if (!queryParams?.shareFileURL) return;
-      storePendingShareUrl(url);
-      router.push('/(tabs)/chat');
+      const attachment = shareAttachment(url);
+      if (!attachment) return;
+      router.push('/(tabs)');
+      openTask({ attachments: [attachment] });
     };
     const sub = Linking.addEventListener('url', ({ url }) => handleShareUrl(url));
     Linking.getInitialURL().then((url) => {
@@ -106,7 +106,6 @@ export default function RootLayout() {
               >
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
-                <Stack.Screen name="quick-log" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="inbox" />
               </Stack>
             </GestureHandlerRootView>

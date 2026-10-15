@@ -1,3 +1,4 @@
+import { openTask } from '../task/sheetStore';
 import type { Router } from 'expo-router';
 import type { AgentId } from '@life-agents/ui';
 import type { IntegrationId } from '@/features/integrations/store';
@@ -21,10 +22,9 @@ export function dispatchTilePress(row: AgentRow, ctx: TileDispatchContext): void
       if (row.cta.panel) ctx.openIntegration(row.cta.panel);
       return;
     case 'chat-prefill':
-      ctx.router.push({
-        pathname: '/(tabs)/chat',
-        params: row.cta.tag ? { prefill: '', tag: row.cta.tag } : { prefill: '' },
-      });
+      openTask(
+        row.cta.tag ? { lead: row.cta.tag, prefill: row.cta.text } : { prefill: row.cta.text },
+      );
       return;
     case 'finance-upload':
       ctx.openIntegrationsList();

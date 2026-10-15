@@ -7,30 +7,7 @@ import type { TasksApi } from './tasksApi';
 import { TaskBusyError } from './tasksApi';
 import { useTask } from './useTask';
 
-async function* gen(...items: object[]) {
-  for (const i of items) yield i as never;
-}
-
-function fakeApi(overrides: Partial<TasksApi> = {}): jest.Mocked<TasksApi> {
-  return {
-    open: jest.fn(async (lead) => ({ id: 't1', leadAgent: lead ?? null })),
-    read: jest.fn(async () => null),
-    setLead: jest.fn(async (id, lead) => ({ id, leadAgent: lead })),
-    close: jest.fn(async () => undefined),
-    resolve: jest.fn(async () => ({ status: 'applied' as const, message: 'Готово.' })),
-    post: jest.fn(() => ({
-      events: gen(
-        { type: 'routed', primary: 'sleep' },
-        { type: 'text', delta: 'Спал ' },
-        { type: 'text', delta: '7 ч.' },
-        { type: 'consulted', peers: ['nutrition'] },
-        { type: 'finished' },
-      ),
-      abort: jest.fn(),
-    })),
-    ...overrides,
-  } as jest.Mocked<TasksApi>;
-}
+import { gen, fakeTasksApi as fakeApi } from './fakeTasksApi';
 
 beforeEach(async () => {
   jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });

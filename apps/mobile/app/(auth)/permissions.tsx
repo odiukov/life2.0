@@ -34,7 +34,7 @@ export default function PermissionsScreen() {
       setStatus('done');
 
       // Navigate to main app
-      router.replace('/(tabs)/chat');
+      router.replace('/(tabs)');
     }
 
     run();

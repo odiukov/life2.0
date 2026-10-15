@@ -15,6 +15,7 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   testMatch: ['**/*.test.ts?(x)'],
   moduleNameMapper: {
+    '^expo-linear-gradient$': '<rootDir>/src/__mocks__/expo-linear-gradient.tsx',
     '^expo-haptics$': '<rootDir>/src/__mocks__/expo-haptics.ts',
     '^expo-image-picker$': '<rootDir>/src/__mocks__/expo-image-picker.ts',
     '^@/(.*)$': '<rootDir>/src/$1',

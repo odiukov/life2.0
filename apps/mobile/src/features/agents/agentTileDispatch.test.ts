@@ -1,3 +1,5 @@
+import { useTaskSheet } from '../task/sheetStore';
+beforeEach(() => useTaskSheet.getState().hide());
 import { dispatchTilePress } from './agentTileDispatch';
 import type { AgentRow } from './agentStatusRules';
 
@@ -43,7 +45,7 @@ describe('dispatchTilePress', () => {
     expect(c.router.push).not.toHaveBeenCalled();
   });
 
-  it('navigates to /(tabs)/chat with prefill+tag for kind=chat-prefill', () => {
+  it('opens the task sheet with prefill+lead for kind=chat-prefill', () => {
     const c = ctx();
     dispatchTilePress(
       makeRow({
@@ -53,10 +55,8 @@ describe('dispatchTilePress', () => {
       }),
       c,
     );
-    expect(c.router.push).toHaveBeenCalledWith({
-      pathname: '/(tabs)/chat',
-      params: { prefill: '', tag: 'mood' },
-    });
+    expect(useTaskSheet.getState().pending).toEqual({ prefill: '', lead: 'mood' });
+    expect(c.router.push).not.toHaveBeenCalled();
     expect(c.openDetail).not.toHaveBeenCalled();
     expect(c.openIntegration).not.toHaveBeenCalled();
   });
@@ -102,10 +102,7 @@ describe('dispatchTilePress', () => {
       }),
       c,
     );
-    expect(c.router.push).toHaveBeenCalledWith({
-      pathname: '/(tabs)/chat',
-      params: { prefill: '' },
-    });
+    expect(useTaskSheet.getState().pending).toEqual({ prefill: '' });
     expect(c.openDetail).not.toHaveBeenCalled();
     expect(c.openIntegration).not.toHaveBeenCalled();
   });
