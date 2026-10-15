@@ -371,6 +371,127 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HealthSample": {
+        "properties": {
+          "activityTypeName": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activitytypename"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "stages": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stages"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 80,
+            "title": "Type",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "type",
+          "start"
+        ],
+        "title": "HealthSample",
+        "type": "object"
+      },
+      "HealthSyncResult": {
+        "properties": {
+          "aggregated": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Aggregated",
+            "type": "object"
+          },
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "received": {
+            "title": "Received",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inserted",
+          "received",
+          "aggregated"
+        ],
+        "title": "HealthSyncResult",
+        "type": "object"
+      },
       "HomeConnect": {
         "properties": {
           "base_url": {
@@ -928,6 +1049,23 @@
           "refresh_token"
         ],
         "title": "RefreshBody",
+        "type": "object"
+      },
+      "SyncHealthBody": {
+        "properties": {
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSample"
+            },
+            "maxItems": 500,
+            "title": "Samples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "samples"
+        ],
+        "title": "SyncHealthBody",
         "type": "object"
       },
       "TicketBody": {
@@ -3422,6 +3560,81 @@
         "summary": "Read",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/sync/health": {
+      "post": {
+        "operationId": "sync_health_sync_health_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-User-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncHealthBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSyncResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Health",
+        "tags": [
+          "sync"
         ]
       }
     },

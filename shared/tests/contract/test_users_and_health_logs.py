@@ -183,3 +183,76 @@ async def test_upsert_inserts_replaces_changed_and_skips_identical(backend: Back
             is True
         )
         assert len(await repo.recent(user, types=["activity"])) == 2
+
+
+async def test_health_log_window_has_inclusive_start_and_exclusive_end(backend: Backend) -> None:
+    user = uuid4()
+    await backend.seed_user(user, None, {})
+    async with backend.uow.for_user(user) as tx:
+        logs = tx.repo(HealthLogRepository)
+        for offset in (-1, 0, 1):
+            await logs.upsert(
+                user,
+                HealthLogRow(
+                    type="stepCount",
+                    recorded_at=T0 + timedelta(days=offset),
+                    data={"value": offset},
+                ),
+            )
+        rows = await logs.recent(user, types=["stepCount"], since=T0, until=T0 + timedelta(days=1))
+        assert [r.recorded_at for r in rows] == [T0]
+
+
+@pytest.mark.parametrize(
+    ("row_type", "agent"),
+    [
+        ("sleep_session", "sleep"),
+        ("daily_stats", "system"),
+        ("activity", "workout"),
+        ("meal", "nutrition"),
+    ],
+)
+async def test_upsert_repairs_agent_even_when_payload_is_unchanged(
+    backend: Backend, row_type: str, agent: str
+) -> None:
+    user = uuid4()
+    await backend.seed_user(user, None, {})
+    async with backend.uow.for_user(user) as tx:
+        logs = tx.repo(HealthLogRepository)
+        await logs.upsert(
+            user,
+            HealthLogRow(
+                type=row_type,
+                recorded_at=T0,
+                source="HealthKit",
+                agent="",
+                data={"duration_seconds": 3600},
+            ),
+        )
+        assert await logs.upsert(
+            user,
+            HealthLogRow(
+                type=row_type,
+                recorded_at=T0,
+                source="HealthKit",
+                agent=agent,
+                data={"duration_seconds": 3600},
+            ),
+        )
+        rows = await logs.recent(user, types=[row_type], agent=agent)
+        assert len(rows) == 1
+
+
+async def test_insert_once_keeps_original_sample_and_count(backend: Backend) -> None:
+    user = uuid4()
+    await backend.seed_user(user, None, {})
+    async with backend.uow.for_user(user) as tx:
+        logs = tx.repo(HealthLogRepository)
+        assert await logs.insert_once(
+            user, HealthLogRow(type="stepCount", recorded_at=T0, data={"value": 100})
+        )
+        assert not await logs.insert_once(
+            user, HealthLogRow(type="stepCount", recorded_at=T0, data={"value": 200})
+        )
+        rows = await logs.recent(user, types=["stepCount"])
+        assert rows[0].data == {"value": 100}

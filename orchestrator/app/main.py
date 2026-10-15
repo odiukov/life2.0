@@ -21,7 +21,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from langchain_core.messages import AIMessage, HumanMessage
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ValidationError
 from pydantic_settings import SettingsError
 from typing import Literal
 
@@ -103,106 +103,6 @@ except GatewayNotConfigured:
     logging.getLogger(__name__).warning("gateway_disabled_without_database_settings")
 if _gateway is not None:
     mount_gateway(app, _gateway)
-
-
-# Temporary verbose logger for pydantic validation errors — helps track down
-# the shape of failing /sync/health batches. Remove when the HealthKit sample
-# shape is fully locked.
-_logging = logging
-from fastapi.exceptions import RequestValidationError as _RVE
-from fastapi.responses import JSONResponse as _JR
-
-_val_logger = _logging.getLogger("orchestrator.validation")
-
-
-@app.exception_handler(_RVE)
-async def _log_validation_error(request, exc: _RVE):
-    if request.url.path.startswith(("/integrations/", "/me/profile")):
-        _val_logger.warning("invalid_gateway_request")
-        return _JR(
-            status_code=422,
-            content={
-                "detail": "Check the request fields and try again.",
-                "code": "invalid_request",
-            },
-        )
-    if request.url.path.startswith("/auth/"):
-        _val_logger.warning("422 %s %s", request.method, request.url.path)
-        return _JR(status_code=422, content={"detail": "invalid_auth_request"})
-    body = await request.body()
-    _val_logger.warning(
-        "422 %s %s errors=%r body=%r",
-        request.method,
-        request.url.path,
-        exc.errors()[:5],
-        body[:500],
-    )
-    return _JR(status_code=422, content={"detail": exc.errors()})
-
-
-# -------- HealthKit sync endpoint (Plan Task 19) --------
-
-
-class HealthSample(BaseModel):
-    """One HealthKit sample as the mobile app pushes it."""
-
-    type: str
-    start: datetime
-    end: datetime | None = None
-    value: float | None = None
-    unit: str | None = None
-    stages: list[dict] | None = None
-    source: str | None = None
-    activityTypeName: str | None = None
-
-
-class SyncHealthBody(BaseModel):
-    samples: list[HealthSample] = Field(..., max_length=500)
-
-
-_SYNC_SERVICE_BASE = os.environ.get("SYNC_SERVICE_URL", "http://sync-service:8080")
-
-
-@app.post("/sync/health")
-async def sync_health(body: SyncHealthBody, user_id: UUID = Depends(current_user)):
-    """Accept a batch of HealthKit samples; idempotent by (user_id, source, type, recorded_at).
-
-    Rejects payloads with more than 500 samples — mobile chunks before POST.
-    """
-    from shared.db import get_pool
-
-    pool = await get_pool()
-    inserted = 0
-    async with pool.acquire() as c:
-        async with c.transaction():
-            for s in body.samples:
-                data = s.model_dump(
-                    mode="json",
-                    exclude={"type", "start", "source"},
-                    exclude_none=True,
-                )
-                res = await c.execute(
-                    """
-                    INSERT INTO health_logs (user_id, agent, type, recorded_at, data, source)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT (user_id, source, type, recorded_at) DO NOTHING
-                    """,
-                    user_id,
-                    "apple-health",
-                    s.type,
-                    s.start,
-                    data,
-                    s.source or "apple-health",
-                )
-                if res.split()[-1] == "1":
-                    inserted += 1
-    # Collapse raw HealthKit samples into per-night sleep_session + per-day
-    # daily_stats rows so the sleep / recovery agents see their
-    # expected schema. Idempotent — safe to run even when nothing inserted.
-    from .healthkit_aggregator import aggregate_for_user
-
-    agg = await aggregate_for_user(user_id)
-    return {"inserted": inserted, "received": len(body.samples), "aggregated": agg}
 
 
 class StreamChatRequest(BaseModel):
@@ -343,7 +243,7 @@ _AGENT_FROM_TOOL = {
 }
 
 
-_routing_logger = _logging.getLogger("orchestrator.routing")
+_routing_logger = logging.getLogger("orchestrator.routing")
 
 
 async def _run_graph_with_routing(

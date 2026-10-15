@@ -19,6 +19,14 @@ class HealthLogRow:
 
 
 class HealthLogRepository(Protocol):
+    async def lock_user(self, user_id: UUID) -> None:
+        """Serialize compound health-log writes for this user until transaction exit."""
+        ...
+
+    async def insert_once(self, user_id: UUID, row: HealthLogRow) -> bool:
+        """Insert without changing an existing dedup key; True only for a new row."""
+        ...
+
     async def recent(
         self,
         user_id: UUID,
@@ -26,10 +34,11 @@ class HealthLogRepository(Protocol):
         types: Sequence[str],
         limit: int | None = None,
         since: datetime | None = None,
+        until: datetime | None = None,
         agent: str | None = None,
         data_equals: Mapping[str, str] | None = None,
     ) -> list[HealthLogRow]:
-        """Newest first. `since` is inclusive; `data_equals` matches data->>key = value."""
+        """Newest first. `since` is inclusive and `until` exclusive; `data_equals` matches data->>key = value."""
         ...
 
     async def add(self, user_id: UUID, row: HealthLogRow) -> datetime:
@@ -37,5 +46,5 @@ class HealthLogRepository(Protocol):
         ...
 
     async def upsert(self, user_id: UUID, row: HealthLogRow) -> bool:
-        """Insert, or replace data on a (user, source, type, recorded_at) clash when it differs; True if written."""
+        """Insert, or replace data and agent on a (user, source, type, recorded_at) clash when it differs; True if written."""
         ...

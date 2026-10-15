@@ -567,6 +567,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sync/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Health */
+        post: operations["sync_health_sync_health_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sync/trigger": {
         parameters: {
             query?: never;
@@ -706,6 +723,41 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HealthSample */
+        HealthSample: {
+            /** Activitytypename */
+            activityTypeName?: string | null;
+            /** End */
+            end?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Stages */
+            stages?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Type */
+            type: string;
+            /** Unit */
+            unit?: string | null;
+            /** Value */
+            value?: number | null;
+        };
+        /** HealthSyncResult */
+        HealthSyncResult: {
+            /** Aggregated */
+            aggregated: {
+                [key: string]: number;
+            };
+            /** Inserted */
+            inserted: number;
+            /** Received */
+            received: number;
         };
         /** HomeConnect */
         HomeConnect: {
@@ -923,6 +975,11 @@ export interface components {
         RefreshBody: {
             /** Refresh Token */
             refresh_token: string;
+        };
+        /** SyncHealthBody */
+        SyncHealthBody: {
+            /** Samples */
+            samples: components["schemas"]["HealthSample"][];
         };
         /** TicketBody */
         TicketBody: {
@@ -2147,6 +2204,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_health_sync_health_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncHealthBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthSyncResult"];
+                };
             };
             /** @description Validation Error */
             422: {

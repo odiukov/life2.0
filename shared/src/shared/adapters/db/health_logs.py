@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -19,6 +19,29 @@ class SqlHealthLogs:
     def __init__(self, conn: AsyncConnection) -> None:
         self._conn = conn
 
+    async def lock_user(self, user_id: UUID) -> None:
+        await self._conn.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"health_logs:{user_id}"},
+        )
+
+    async def insert_once(self, user_id: UUID, row: HealthLogRow) -> bool:
+        c = health_logs.c
+        statement = (
+            insert(health_logs)
+            .values(
+                user_id=user_id,
+                agent=row.agent,
+                type=row.type,
+                source=row.source,
+                recorded_at=row.recorded_at.astimezone(UTC),
+                data=dict(row.data),
+            )
+            .on_conflict_do_nothing(index_elements=[c.user_id, c.source, c.type, c.recorded_at])
+            .returning(c.id)
+        )
+        return (await self._conn.execute(statement)).first() is not None
+
     async def recent(
         self,
         user_id: UUID,
@@ -26,6 +49,7 @@ class SqlHealthLogs:
         types: Sequence[str],
         limit: int | None = None,
         since: datetime | None = None,
+        until: datetime | None = None,
         agent: str | None = None,
         data_equals: Mapping[str, str] | None = None,
     ) -> list[HealthLogRow]:
@@ -35,6 +59,8 @@ class SqlHealthLogs:
         )
         if since is not None:
             query = query.where(c.recorded_at >= since)
+        if until is not None:
+            query = query.where(c.recorded_at < until)
         if agent is not None:
             query = query.where(c.agent == agent)
         for key, value in (data_equals or {}).items():
@@ -87,7 +113,10 @@ class SqlHealthLogs:
         )
         upsert = statement.on_conflict_do_update(
             index_elements=[c.user_id, c.source, c.type, c.recorded_at],
-            set_={"data": statement.excluded.data},
-            where=c.data.is_distinct_from(statement.excluded.data),
+            set_={"data": statement.excluded.data, "agent": statement.excluded.agent},
+            where=or_(
+                c.data.is_distinct_from(statement.excluded.data),
+                c.agent.is_distinct_from(statement.excluded.agent),
+            ),
         ).returning(c.id)
         return (await self._conn.execute(upsert)).first() is not None

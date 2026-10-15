@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import AwareDatetime, BaseModel, Field, SecretStr
 from shared.observability.logging import get_logger
 
 from sync.application.check_credentials import CheckCredentials
 from sync.application.ingest_body import IngestBody
+from sync.application.ingest_healthkit import IngestHealthKit
 from sync.application.ports import SERVICES, Credentials, Service
 from sync.application.sync_due import SyncDue
 from sync.application.sync_user import SyncUser
+from sync.domain.healthkit import Sample
 
 logger = get_logger(__name__)
 
@@ -49,14 +52,51 @@ class CredentialsRequest(BaseModel):
     password: SecretStr = Field(min_length=1, max_length=512)
 
 
+class HealthSampleIn(BaseModel):
+    type: str = Field(max_length=80)
+    start: AwareDatetime
+    end: AwareDatetime | None = None
+    value: float | None = Field(default=None, allow_inf_nan=False)
+    unit: str | None = Field(default=None, max_length=100)
+    stages: list[dict[str, Any]] | None = Field(default=None, max_length=200)
+    source: str | None = Field(default=None, max_length=100)
+    activityTypeName: str | None = Field(default=None, max_length=100)
+
+
+class HealthKitRequest(BaseModel):
+    user_id: UUID
+    samples: list[HealthSampleIn] = Field(max_length=500)
+
+
 def build_router(
     *,
     sync_user: SyncUser,
     sync_due: SyncDue,
     ingest_body: IngestBody,
+    ingest_healthkit: IngestHealthKit,
     check_credentials: CheckCredentials,
 ) -> APIRouter:
     router = APIRouter()
+
+    @router.post("/sync/healthkit")
+    async def healthkit(request: HealthKitRequest) -> dict[str, object]:
+        result = await ingest_healthkit(
+            request.user_id,
+            [
+                Sample(
+                    type=s.type,
+                    start=s.start,
+                    end=s.end,
+                    value=s.value,
+                    unit=s.unit,
+                    stages=list(s.stages) if s.stages is not None else None,
+                    source=s.source,
+                    activity_type_name=s.activityTypeName,
+                )
+                for s in request.samples
+            ],
+        )
+        return asdict(result)
 
     @router.post("/sync/user")
     async def sync_one(request: SyncUserRequest) -> dict[str, object]:

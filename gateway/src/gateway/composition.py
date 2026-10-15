@@ -48,7 +48,7 @@ from gateway.kitchen import build_router as build_kitchen_router
 from gateway.notifications import build_router as build_notifications_router
 from gateway.profile import build_router as build_profile_router
 from gateway.settings import GatewaySettings
-from gateway.sync import SyncTrigger, build_trigger_router
+from gateway.sync import SyncTrigger, build_health_router, build_trigger_router
 from gateway.voice import build_router as build_voice_router
 
 
@@ -137,6 +137,7 @@ def build_gateway(
             state_key=state_secret.encode() if state_secret else None,
         ),
         build_trigger_router(trigger, authenticate),
+        build_health_router(http, settings.sync_url, authenticate),
     ]
     return Gateway(
         routers=routers,

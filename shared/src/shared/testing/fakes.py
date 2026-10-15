@@ -364,6 +364,18 @@ class InMemoryHealthLogs:
     def seed(self, user_id: UUID, row: HealthLogRow) -> None:
         self.rows.setdefault(user_id, []).append(row)
 
+    async def lock_user(self, user_id: UUID) -> None:
+        # Memory operations never yield; one ingestion already runs atomically.
+        pass
+
+    async def insert_once(self, user_id: UUID, row: HealthLogRow) -> bool:
+        when = row.recorded_at.astimezone(UTC)
+        rows = self.rows.setdefault(user_id, [])
+        if any((r.source, r.type, r.recorded_at) == (row.source, row.type, when) for r in rows):
+            return False
+        rows.append(replace(row, recorded_at=when))
+        return True
+
     async def recent(
         self,
         user_id: UUID,
@@ -371,6 +383,7 @@ class InMemoryHealthLogs:
         types: Sequence[str],
         limit: int | None = None,
         since: datetime | None = None,
+        until: datetime | None = None,
         agent: str | None = None,
         data_equals: Mapping[str, str] | None = None,
     ) -> list[HealthLogRow]:
@@ -379,6 +392,7 @@ class InMemoryHealthLogs:
             for r in self.rows.get(user_id, [])
             if r.type in types
             and (since is None or r.recorded_at >= since)
+            and (until is None or r.recorded_at < until)
             and (agent is None or r.agent == agent)
             and all(str(r.data.get(k)) == v for k, v in (data_equals or {}).items())
         ]
@@ -402,9 +416,9 @@ class InMemoryHealthLogs:
                 row.type,
                 when,
             ):
-                if dict(existing.data) == dict(row.data):
+                if dict(existing.data) == dict(row.data) and existing.agent == row.agent:
                     return False
-                rows[index] = replace(existing, data=dict(row.data))
+                rows[index] = replace(existing, data=dict(row.data), agent=row.agent)
                 return True
         rows.append(replace(row, recorded_at=when))
         return True

@@ -20,6 +20,7 @@ from sync.adapters.garmin_client import GarminConnectClient
 from sync.adapters.yazio_client import YazioHttpClient
 from sync.application.check_credentials import CheckCredentials
 from sync.application.ingest_body import IngestBody
+from sync.application.ingest_healthkit import IngestHealthKit
 from sync.application.ports import GarminClient, YazioClient
 from sync.application.sync_due import SyncDue
 from sync.application.sync_user import SyncUser
@@ -31,6 +32,7 @@ class SyncRuntime:
     sync_user: SyncUser
     sync_due: SyncDue
     ingest_body: IngestBody
+    ingest_healthkit: IngestHealthKit
     check_credentials: CheckCredentials
     scheduler: Scheduler
     engine: AsyncEngine
@@ -71,6 +73,7 @@ def build_runtime(
         sync_user=sync_user,
         sync_due=SyncDue(uow=uow, sync_user=sync_user, clock=clock, hour=options.hour),
         ingest_body=IngestBody(uow=uow),
+        ingest_healthkit=IngestHealthKit(uow=uow),
         check_credentials=CheckCredentials(garmin=garmin, yazio=yazio),
         scheduler=scheduler if scheduler is not None else ApschedulerScheduler(),
         engine=engine,

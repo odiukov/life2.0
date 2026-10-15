@@ -46,6 +46,7 @@ def create_app(runtime: SyncRuntime | None = None) -> FastAPI:
             sync_user=built.sync_user,
             sync_due=built.sync_due,
             ingest_body=built.ingest_body,
+            ingest_healthkit=built.ingest_healthkit,
             check_credentials=built.check_credentials,
         )
     )

@@ -1,27 +1,11 @@
-"""The transitional host does not expose moved route inputs during validation."""
+"""The transitional host no longer overrides private route validation."""
 
-import logging
-
-import pytest
+from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from starlette.requests import Request
-
 from orchestrator.app import main
 
 
-@pytest.mark.parametrize("path", ["/integrations/garmin/connect", "/me/profile"])
-async def test_moved_routes_validation_never_logs_or_echoes_input(path, caplog):
-    private = "private-test-credential"
-
-    async def receive():
-        return {"type": "http.request", "body": private.encode(), "more_body": False}
-
-    request = Request({"type": "http", "method": "POST", "path": path, "headers": []}, receive)
-    error = RequestValidationError(
-        [{"type": "value_error", "loc": ("body", "password"), "input": private}]
+def test_legacy_body_logging_handler_is_removed():
+    assert (
+        main.app.exception_handlers[RequestValidationError] is request_validation_exception_handler
     )
-    with caplog.at_level(logging.WARNING):
-        response = await main._log_validation_error(request, error)
-    assert response.status_code == 422
-    assert private not in caplog.text
-    assert private.encode() not in response.body
