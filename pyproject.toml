@@ -38,6 +38,7 @@ dev = [
     "testcontainers[postgres]>=4.15",
     "types-pyyaml>=6.0",
     "opentelemetry-test-utils==0.66b0",
+    "time-machine>=2.16",
 ]
 
 [tool.pytest.ini_options]

@@ -1,0 +1,47 @@
+{
+  "agent": "workout",
+  "history": [
+    {
+      "date": "2026-10-08",
+      "label": "—",
+      "value": 0.0
+    },
+    {
+      "date": "2026-10-09",
+      "label": "60 min",
+      "value": 60.0
+    },
+    {
+      "date": "2026-10-10",
+      "label": "—",
+      "value": 0.0
+    },
+    {
+      "date": "2026-10-11",
+      "label": "50 min",
+      "value": 50.0
+    },
+    {
+      "date": "2026-10-12",
+      "label": "—",
+      "value": 0.0
+    },
+    {
+      "date": "2026-10-13",
+      "label": "45 min",
+      "value": 45.0
+    },
+    {
+      "date": "2026-10-14",
+      "label": "—",
+      "value": 0.0
+    }
+  ],
+  "insight": "3 workouts this week.",
+  "metrics": {
+    "distance_km": 8.0,
+    "duration_min": 45,
+    "kcal": 600,
+    "workout_type": "running"
+  }
+}

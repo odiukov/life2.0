@@ -1,0 +1,46 @@
+{
+  "agent": "sleep",
+  "history": [
+    {
+      "date": "2026-10-08",
+      "label": "7h 30m",
+      "value": 7.5
+    },
+    {
+      "date": "2026-10-09",
+      "label": "8h",
+      "value": 8.0
+    },
+    {
+      "date": "2026-10-10",
+      "label": "7h",
+      "value": 7.0
+    },
+    {
+      "date": "2026-10-11",
+      "label": "7h 30m",
+      "value": 7.5
+    },
+    {
+      "date": "2026-10-12",
+      "label": "8h",
+      "value": 8.0
+    },
+    {
+      "date": "2026-10-13",
+      "label": "7h",
+      "value": 7.0
+    },
+    {
+      "date": "2026-10-14",
+      "label": "7h 30m",
+      "value": 7.5
+    }
+  ],
+  "insight": "",
+  "metrics": {
+    "deep_hours": 1.67,
+    "efficiency_pct": 22,
+    "hrv": 63
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "agent": "mood",
+  "history": [
+    {
+      "date": "2026-10-08",
+      "label": "5.0",
+      "value": 5.0
+    },
+    {
+      "date": "2026-10-09",
+      "label": "6.0",
+      "value": 6.0
+    },
+    {
+      "date": "2026-10-10",
+      "label": "7.0",
+      "value": 7.0
+    },
+    {
+      "date": "2026-10-11",
+      "label": "8.0",
+      "value": 8.0
+    },
+    {
+      "date": "2026-10-12",
+      "label": "5.0",
+      "value": 5.0
+    },
+    {
+      "date": "2026-10-13",
+      "label": "7.0",
+      "value": 7.0
+    },
+    {
+      "date": "2026-10-14",
+      "label": "—",
+      "value": 0.0
+    }
+  ],
+  "insight": "Score trending up +0.7 pts over the last 6 days.",
+  "metrics": {
+    "energy": 6.5,
+    "score": 7.0,
+    "stress": 3.5,
+    "top_tag": "family",
+    "valence": "positive"
+  }
+}

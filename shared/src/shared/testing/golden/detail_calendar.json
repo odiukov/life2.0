@@ -1,0 +1,43 @@
+{
+  "agent": "calendar",
+  "history": [],
+  "insight": "First free block starts at 09:30 for 30 minutes.",
+  "metrics": {
+    "busy_minutes": 180,
+    "events": [
+      {
+        "all_day": false,
+        "dur": "30m",
+        "end": "2026-10-14T10:30:00+03:00",
+        "name": "Standup",
+        "start": "2026-10-14T10:00:00+03:00",
+        "time": "10:00"
+      },
+      {
+        "all_day": false,
+        "dur": "90m",
+        "end": "2026-10-14T15:30:00+03:00",
+        "name": "Design review",
+        "start": "2026-10-14T14:00:00+03:00",
+        "time": "14:00"
+      },
+      {
+        "all_day": false,
+        "dur": "1h",
+        "end": "2026-10-14T20:00:00+03:00",
+        "name": "Gym",
+        "start": "2026-10-14T19:00:00+03:00",
+        "time": "19:00"
+      },
+      {
+        "all_day": true,
+        "dur": "",
+        "name": "Mom's birthday",
+        "time": "All day"
+      }
+    ],
+    "events_count": 4,
+    "first_free_slot_len_min": 30,
+    "first_free_slot_start": "09:30"
+  }
+}

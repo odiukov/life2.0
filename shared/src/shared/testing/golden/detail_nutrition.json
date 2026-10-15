@@ -1,0 +1,58 @@
+{
+  "agent": "nutrition",
+  "history": [
+    {
+      "date": "2026-10-08",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-09",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-10",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-11",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-12",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-13",
+      "label": "2000 kcal",
+      "value": 2000.0
+    },
+    {
+      "date": "2026-10-14",
+      "label": "450 kcal",
+      "value": 450.0
+    }
+  ],
+  "insight": "On track 6 of 7 days.",
+  "meals": [
+    {
+      "items": [
+        "Yogurt"
+      ],
+      "kcal": 450,
+      "label": "Breakfast",
+      "meal_type": "breakfast",
+      "recorded_at": "2026-10-14T05:00:00+00:00"
+    }
+  ],
+  "metrics": {
+    "carbs_g": 55,
+    "fat_g": 14,
+    "kcal": 450,
+    "protein_g": 25
+  }
+}

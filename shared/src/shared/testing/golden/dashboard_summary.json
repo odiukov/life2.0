@@ -1,0 +1,144 @@
+{
+  "agents": [
+    {
+      "agent": "sleep",
+      "detail": "Deep 1h 40m · HRV 61 · Score 83",
+      "label": "Sleep",
+      "metric": "7h 30m",
+      "progress": 0.9375,
+      "tint": "success"
+    },
+    {
+      "agent": "recovery",
+      "detail": "sleep h ↓-7% · HRV ↑+5% · RHR ·",
+      "label": "Recovery",
+      "metric": "Neutral",
+      "progress": 0.55,
+      "tint": "warn"
+    },
+    {
+      "agent": "workout",
+      "detail": "600 kcal",
+      "label": "Workout",
+      "metric": "Evening run · 8.0km",
+      "progress": null,
+      "tint": "neutral",
+      "workout_type": "running"
+    },
+    {
+      "agent": "nutrition",
+      "detail": "P 25g · C 55g · F 14g · Goal 2742 kcal",
+      "label": "Nutrition",
+      "metric": "450 kcal",
+      "progress": 0.16411378555798686,
+      "tint": "neutral"
+    },
+    {
+      "agent": "mood",
+      "detail": "Stress 3.5 · Energy 6.5 · 2 entries",
+      "label": "Mood",
+      "metric": "7.0/10",
+      "progress": 0.7,
+      "tint": "success"
+    },
+    {
+      "agent": "habits",
+      "detail": null,
+      "label": "Habits",
+      "metric": "2/2",
+      "progress": 1.0,
+      "tint": "success"
+    },
+    {
+      "agent": "medication",
+      "detail": "−3d Magnesium",
+      "label": "Medication",
+      "metric": "Vitamin D · Magnesium",
+      "progress": 0.5,
+      "tint": "warn"
+    },
+    {
+      "agent": "calendar",
+      "detail": "Free 09:30 · 30m · All-day: Mom's birthday",
+      "label": "Calendar",
+      "metric": "3 events",
+      "progress": 0.375,
+      "tint": "neutral"
+    },
+    {
+      "agent": "body",
+      "detail": "-1.2kg 30d · Fat 18.2%",
+      "label": "Body",
+      "metric": "81.4 kg",
+      "progress": null,
+      "tint": "neutral"
+    }
+  ],
+  "featured_body": {
+    "ageDaysLabel": "2 days ago",
+    "fatPct": 18.2,
+    "fatPctDelta30d": -0.8,
+    "leanKg": 66.6,
+    "leanKgDelta30d": -0.3,
+    "muscleKg": 63.1,
+    "muscleKgDelta30d": 0.4,
+    "source": "vihealth",
+    "sparkWeights": [
+      83.0,
+      82.6,
+      81.4
+    ],
+    "weightDelta30d": -1.2,
+    "weightDeltaPrev": -1.2,
+    "weightKg": 81.4
+  },
+  "featured_nutrition": {
+    "carbsG": 55,
+    "carbsGoalG": 300,
+    "fatG": 14,
+    "fatGoalG": 75,
+    "kcalConsumed": 450,
+    "kcalGoal": 2643,
+    "nutritionDate": "today",
+    "proteinG": 25,
+    "proteinGoalG": 135,
+    "source": "Yazio"
+  },
+  "featured_sleep": {
+    "avgHr": 53,
+    "deepLabel": "1h 40m",
+    "deepPct": 22,
+    "durationLabel": "7h 30m",
+    "durationPct": 94,
+    "hrv": 61,
+    "hrvDelta": "—",
+    "insight": null,
+    "source": "Garmin"
+  },
+  "featured_workout": {
+    "avgHr": 150,
+    "distanceKm": 8.0,
+    "extraCount": 0,
+    "kcal": 600,
+    "loadHistory": [
+      0,
+      60,
+      0,
+      50,
+      0,
+      45,
+      0
+    ],
+    "sessionName": "Evening run",
+    "source": "Garmin",
+    "workoutAt": "2026-10-13T15:00:00+00:00",
+    "workoutDate": "yesterday"
+  },
+  "rings": {
+    "hrvMs": 58,
+    "hrvPct": 65,
+    "moodPct": 70,
+    "readyPct": 55,
+    "stepsPct": 93
+  }
+}

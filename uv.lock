@@ -1804,6 +1804,7 @@ dev = [
     { name = "respx" },
     { name = "ruff" },
     { name = "testcontainers" },
+    { name = "time-machine" },
     { name = "types-pyyaml" },
 ]
 
@@ -1820,6 +1821,7 @@ dev = [
     { name = "respx", specifier = ">=0.22" },
     { name = "ruff", specifier = ">=0.17" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.15" },
+    { name = "time-machine", specifier = ">=2.16" },
     { name = "types-pyyaml", specifier = ">=6.0" },
 ]
 
@@ -3791,6 +3793,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d4/9c/7035b0bcfaa68d1ee4803fc5be5214ad865669b05bd20e7105ae8a18afc6/tiktoken-0.14.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:b950248272f1b303dc32986396e2dccfa10cf6d1e83ec8f0bba1776660305482", size = 1250635, upload-time = "2026-08-17T19:48:54.392Z" },
     { url = "https://files.pythonhosted.org/packages/bc/1d/69cabf18bed7f4366da076735816abce0d4db3fae491ae338a6612128777/tiktoken-0.14.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:3de75343041a1c57333b1e707ac8a9769738241d7d6a55d39e12cf84548337c6", size = 1316085, upload-time = "2026-08-17T19:48:55.525Z" },
     { url = "https://files.pythonhosted.org/packages/bd/bd/a2e884fb1402cba5be08836590320012b2d8ada0e2eef9911a64df4bcd2d/tiktoken-0.14.0-cp312-cp312-win_amd64.whl", hash = "sha256:087538c080e5ff421abd3a0785ed63c5111d06af98e6cd0d374dbe5969147ca3", size = 941208, upload-time = "2026-08-17T19:48:56.938Z" },
+]
+
+[[package]]
+name = "time-machine"
+version = "3.5.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/d2/065a4d202d7ba093145e6f803fafd84bdcea41f3ce5f5ee6dacc77330719/time_machine-3.5.1.tar.gz", hash = "sha256:eb2c50404820fde8bfc6a0713b2a0b8eabececfecefde3a5847ae8006037829f", size = 28434, upload-time = "2026-09-08T22:19:49.989Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/d3/1469cc1d412328954e7cc0d009af3a57cbb47739e29ac26c3a61f1763abd/time_machine-3.5.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:a6415979fac70c7142cfb7d863a118ba2d8c45a96c8d6efa311c9751ec270486", size = 27665, upload-time = "2026-09-08T22:18:55.716Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/9e/ec6a281e6690cc2b8f64804a14c90c6e20397c05b05e1ee610d6810128a9/time_machine-3.5.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:8dc65728653643b742ae5ad859d4cc50fdc456533b23c942ea4011aa99b1e67f", size = 27791, upload-time = "2026-09-08T22:18:56.71Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/8b/3ef1298a79f6352c232dc1f665eb526e4537a9fd55853845a9ef9c23618e/time_machine-3.5.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:075cc8ff3bf229d96bc7adb8b26be6b1021ee0a5213efe4f57898cda3a3bd766", size = 59941, upload-time = "2026-09-08T22:18:57.726Z" },
+    { url = "https://files.pythonhosted.org/packages/10/11/45dfb8c4f12cc877a79e68d7d46817999f8d3765a23e4afe11040c9c9d35/time_machine-3.5.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:091bd22bf9dbf297dbff35b688b7667b37a30ab7c1f5831b0688e9ddd2321386", size = 60846, upload-time = "2026-09-08T22:18:59.01Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/6c/e4d839c9eff62ece3e8ed107288c06754513389ced43df2f97cfd09807ab/time_machine-3.5.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:e5dbc1ffa96ff9100c617024d9119a27046f531c71839eaebd7ad8bb3542d130", size = 59646, upload-time = "2026-09-08T22:19:00.056Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/e7/5453e31a307d42d1174f476d4556d65d37a2a7d54d2244260ea022d349db/time_machine-3.5.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:e9aeaee418b1696b01edc8015b33c2aa746619ca0ce6ebcbc941363ad73b8464", size = 59161, upload-time = "2026-09-08T22:19:01.355Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/b3/eac4fdcfeb225015e94ef5752e3f3fe2d1cc59ab4818935b2f6e00f5fae1/time_machine-3.5.1-cp312-cp312-win_amd64.whl", hash = "sha256:1b3575d91df2325270e0ae255253e7ecb5f3add4b83d3a01b8c74e02c26470a8", size = 29616, upload-time = "2026-09-08T22:19:02.596Z" },
+    { url = "https://files.pythonhosted.org/packages/0a/c6/1b82e057031d242dea0a592f5b341588bff158e1bac51f8a1d863c93a530/time_machine-3.5.1-cp312-cp312-win_arm64.whl", hash = "sha256:991c4bc4b4a20a96355672065bafb2e517209de09b83d4ac92efe223632a713a", size = 28961, upload-time = "2026-09-08T22:19:03.602Z" },
 ]
 
 [[package]]
