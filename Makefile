@@ -1,4 +1,4 @@
-.PHONY: sync fmt lint test test-slow test-integration evals migrate sync-smoke sync-reencrypt
+.PHONY: sync fmt lint test test-slow test-integration evals migrate sync-smoke sync-reencrypt telemetry-consent
 
 sync:
 	uv sync --all-packages --all-extras
@@ -39,3 +39,13 @@ sync-smoke:
 
 sync-reencrypt:
 	docker compose run --rm sync-service python -m sync.reencrypt
+
+telemetry-consent:
+	@test -n "$$USER_ID" || { echo "usage: make telemetry-consent USER_ID=<uuid> [OFF=1]"; exit 2; }
+	@if [ "$${OFF:-}" = 1 ]; then \
+		bash scripts/telemetry_consent.sh "$$USER_ID" off; \
+	else \
+		bash scripts/telemetry_consent.sh "$$USER_ID"; \
+	fi
+
+export USER_ID OFF

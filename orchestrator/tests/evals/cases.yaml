@@ -1,0 +1,27 @@
+# Plain routing without a lead agent.
+- {text: "как я спал этой ночью?", expect: [ask_sleep_agent]}
+- {text: "что у меня в холодильнике скоро испортится?", expect: [ask_kitchen_agent], forbid: [ask_nutrition_agent]}
+- {text: "съел овсянку с бананом на завтрак", expect: [ask_nutrition_agent], forbid: [ask_kitchen_agent]}
+- {text: "купил молоко и два десятка яиц", expect: [ask_kitchen_agent]}
+- {text: "готов ли я сегодня к тяжёлой тренировке?", expect: [ask_recovery_agent]}
+- {text: "пробежал 10 км за 52 минуты", expect: [ask_workout_agent]}
+- {text: "настроение сегодня 4 из 10, тревожно", expect: [ask_mood_agent]}
+- {text: "выпил витамин D", expect: [ask_medication_agent]}
+- {text: "/habit отметь чтение", expect: [ask_habits_agent]}
+- {text: "сколько я потратил на еду в этом месяце?", expect: [ask_finance_agent]}
+- {text: "на сколько месяцев мне хватит денег?", expect: [ask_finance_agent]}
+- {text: "что у меня в календаре завтра?", expect: [calendar_list]}
+- {text: "перенеси созвон с Анной на 15:00 завтра", expect: [calendar_list, calendar_propose]}
+- {text: "выключи свет в гостиной", expect: [ask_home_agent]}
+- {text: "какая температура дома?", expect: [ask_home_agent]}
+- {text: "мой вес 82 кг, рост 181", expect: [ask_nutrition_agent, ask_body_agent]}
+- {text: "синхронизируй мои данные с Garmin", expect: [sync_health_data]}
+# Own-topic follow-ups route to the lead agent.
+- {lead: nutrition, text: "а сколько там белка?", expect: [ask_nutrition_agent]}
+- {lead: sleep, text: "а вчера?", expect: [ask_sleep_agent]}
+- {lead: kitchen, text: "выбросил йогурт", expect: [ask_kitchen_agent]}
+- {lead: finance, text: "а в прошлом месяце?", expect: [ask_finance_agent]}
+# Clearly foreign topics route to the specialist.
+- {lead: nutrition, text: "что у меня в календаре завтра?", expect: [calendar_list], forbid: [ask_nutrition_agent]}
+- {lead: sleep, text: "выключи свет в спальне", expect: [ask_home_agent], forbid: [ask_sleep_agent]}
+- {lead: kitchen, text: "сколько я потратил в этом месяце?", expect: [ask_finance_agent], forbid: [ask_kitchen_agent]}

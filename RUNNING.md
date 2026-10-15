@@ -196,7 +196,13 @@ The stack includes self-hosted Langfuse v3 for OTEL tracing of every user reques
 - Traces not appearing: check `docker compose logs langfuse-worker` — worker drains queue; if it's crashed, traces pile up in Redis and never materialize.
 - If `ClickHouse unhealthy` on boot (ports 8123 refuse connection): IPv6 binding issue on docker-for-mac. The healthcheck uses `127.0.0.1` explicitly; if you see `localhost:8123` fall-through, re-pull the compose file.
 
-**Consent:** `TELEMETRY_CAPTURE_BODIES=consented` is the default. Use `make telemetry-consent USER_ID=<uuid>` to enable body capture for one user, or add `OFF=1` to disable it. Send a new task message and check its Langfuse trace; users without consent show redacted bodies.
+### Telemetry consent
+
+Body capture defaults to `consented`, so no user's prompt or completion body is exported until that user opts in. On the running stack, use `make telemetry-consent USER_ID=<uuid>` to grant consent or `make telemetry-consent USER_ID=<uuid> OFF=1` to revoke it. The orchestrator caches consent for up to five minutes. Send a new task message to check the Langfuse trace; users without consent have redacted bodies.
+
+### Orchestrator acceptance
+
+With an isolated `AUTH_MODE=dev` stack and a real model running, use `bash scripts/acceptance_orchestrator.sh`. The script checks cards, agent availability, task routing and transcript restoration, tenant isolation through HTTP and SQL, lead routing, and close cleanup. Set `HA_ENTITY`, `PAYONEER_PDF`, `VIHEALTH_PDF`, and Langfuse keys to enable the optional confirmation, import, and trace checks. It prints only codes, names, IDs, counts, and HTTP statuses; response bodies stay in temporary files removed on exit.
 
 ## Running the mobile app against the local backend
 

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
+from shared.adapters.chat_model.factory import LangChainChatModelFactory
 from shared.adapters.llm.build import build_llm_provider
 from shared.config import BaseServiceSettings
+from shared.ports.chat_model import ChatModelFactory
 from shared.ports.llm import LLMProvider, LLMTask
 
 KEYS = {
@@ -16,7 +18,7 @@ KEYS = {
 }
 
 
-def real_llm_or_skip(settings: BaseServiceSettings, task: LLMTask = LLMTask.FAST) -> LLMProvider:
+def _skip_without_real_model(settings: BaseServiceSettings, task: LLMTask) -> None:
     provider = settings.llm.route(task).provider
     if provider == "fake":
         pytest.skip("evals do not run against the fake provider")
@@ -26,4 +28,15 @@ def real_llm_or_skip(settings: BaseServiceSettings, task: LLMTask = LLMTask.FAST
         value = secret.get_secret_value().strip() if secret is not None else ""
         if not value or value == "test-placeholder":
             pytest.skip(f"{key.upper()} needs a real key; absent or test-placeholder")
+
+
+def real_llm_or_skip(settings: BaseServiceSettings, task: LLMTask = LLMTask.FAST) -> LLMProvider:
+    _skip_without_real_model(settings, task)
     return build_llm_provider(settings)
+
+
+def real_chat_models_or_skip(
+    settings: BaseServiceSettings, task: LLMTask = LLMTask.SMART
+) -> ChatModelFactory:
+    _skip_without_real_model(settings, task)
+    return LangChainChatModelFactory(settings)
