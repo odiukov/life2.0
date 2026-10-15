@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -173,7 +173,7 @@ class InvalidHistory(Exception):
 
 
 class GraphSession(Protocol):
-    def run(self, text: str) -> AsyncIterator[GraphEvent]: ...
+    def run(self, text: str) -> AsyncGenerator[GraphEvent, None]: ...
     async def append(self, user_text: str, assistant_text: str) -> None: ...
     async def reset(self) -> None: ...
 
@@ -234,3 +234,11 @@ class HealthSync(Protocol):
 
 class ProposalRecorder(Protocol):
     async def record(self, ctx: RunContext, agent: str, proposal: Proposal) -> PendingAction: ...
+
+
+class HouseholdLookup(Protocol):
+    async def current(self, user_id: UUID) -> UUID | None: ...
+
+
+class ConsentLookup(Protocol):
+    async def bodies_ok(self, user_id: UUID) -> bool: ...

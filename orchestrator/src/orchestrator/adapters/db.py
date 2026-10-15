@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import timedelta
+from time import monotonic
 from typing import Any, Literal
 from uuid import UUID
 
 from shared.schema.tables import chat_messages, chat_tasks, pending_actions
 from sqlalchemy import Row, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from orchestrator.application.ports import (
     ChatTask,
@@ -22,6 +23,7 @@ from orchestrator.application.ports import (
     TranscriptMessage,
     TranscriptRepository,
 )
+from orchestrator.domain.tasks import task_key
 
 T, M, P = chat_tasks.c, chat_messages.c, pending_actions.c
 
@@ -103,6 +105,14 @@ class SqlChatTasks:
         )
 
     async def delete(self, user_id: UUID, task_id: UUID) -> bool:
+        if await self.get(user_id, task_id) is None:
+            return False
+        # The caller holds the task advisory lock; deletion and cascades commit together.
+        for table in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):
+            await self._conn.execute(
+                text(f"DELETE FROM {table} WHERE thread_id = :key"),
+                {"key": task_key(user_id, task_id)},
+            )
         result = await self._conn.execute(
             chat_tasks.delete().where(T.id == task_id, T.user_id == user_id).returning(T.id)
         )
@@ -296,3 +306,49 @@ def chat_repositories() -> dict[type[Any], Callable[[AsyncConnection], Any]]:
         TranscriptRepository: SqlTranscript,
         PendingActionRepository: SqlPendingActions,
     }
+
+
+class SqlHouseholdLookup:
+    def __init__(self, engine: AsyncEngine) -> None:
+        self._engine = engine
+
+    async def current(self, user_id: UUID) -> UUID | None:
+        async with self._engine.begin() as conn:
+            await conn.execute(
+                text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)}
+            )
+            return (
+                await conn.execute(text("SELECT public.current_household_id()"))
+            ).scalar_one_or_none()
+
+
+class SqlConsentLookup:
+    def __init__(self, engine: AsyncEngine) -> None:
+        self._engine = engine
+        self._cache: dict[UUID, tuple[float, bool]] = {}
+
+    async def bodies_ok(self, user_id: UUID) -> bool:
+        now = monotonic()
+        if user_id in self._cache and self._cache[user_id][0] > now:
+            return self._cache[user_id][1]
+        try:
+            async with self._engine.begin() as conn:
+                await conn.execute(
+                    text("SELECT set_config('app.user_id', :uid, true)"), {"uid": str(user_id)}
+                )
+                value = bool(
+                    (
+                        await conn.execute(
+                            text("SELECT bodies_ok FROM telemetry_consent WHERE user_id = :uid"),
+                            {"uid": user_id},
+                        )
+                    ).scalar_one_or_none()
+                )
+        except Exception:
+            value = False
+        # Bound the cache and drop expired entries before admitting a new user.
+        self._cache = {key: item for key, item in self._cache.items() if item[0] > now}
+        if len(self._cache) >= 10000:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[user_id] = (now + 300, value)
+        return value

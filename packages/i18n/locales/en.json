@@ -328,5 +328,41 @@
       "fat": "fat: {value}%",
       "bmi": "BMI: {value}"
     }
+  },
+  "chat": {
+    "errors": {
+      "agent_unavailable": "One of the agents is unavailable right now. Try again in a minute.",
+      "timeout": "That took too long. Try again.",
+      "task_busy": "I'm still answering the previous message.",
+      "unsupported_attachment": "Photos are not supported on this server yet.",
+      "internal": "Something went wrong on the server. Try again."
+    },
+    "notices": {
+      "history_reset": "♻️ The previous conversation was interrupted, starting over.\n\n"
+    },
+    "files": {
+      "unsupported": "I can't tell what “{name}” is. Use /body for a ViHealth report or /finance for a Payoneer statement.",
+      "unreadable": "I couldn't read “{name}”.",
+      "failed": "Importing “{name}” failed."
+    }
+  },
+  "actions": {
+    "applied": "Done.",
+    "rejected": "Cancelled.",
+    "expired": "This confirmation expired; ask again if you still want it.",
+    "already_decided": "This was already decided.",
+    "failed": {
+      "generic": "That didn't work.",
+      "changed_since_proposal": "The event changed in the meantime; nothing was changed.",
+      "connection_changed": "The Home Assistant connection changed; ask again.",
+      "household_changed": "You're no longer in that family; nothing was changed.",
+      "home_unavailable": "Home Assistant is unreachable right now.",
+      "calendar_unavailable": "Google Calendar is unavailable right now.",
+      "not_connected": "The integration is not connected.",
+      "rejected_by_home": "Home Assistant refused the action.",
+      "rejected_by_google": "Google refused the change.",
+      "not_found": "That event no longer exists.",
+      "agent_unavailable": "The service is unavailable right now."
+    }
   }
 }

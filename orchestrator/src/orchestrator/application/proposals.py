@@ -6,7 +6,12 @@ from uuid import UUID
 from shared.a2a.proposals import Proposal
 from shared.ports.uow import UnitOfWorkFactory
 
-from orchestrator.application.ports import PendingAction, PendingActionRepository, RunContext
+from orchestrator.application.ports import (
+    PendingAction,
+    PendingActionRepository,
+    RunContext,
+    TranscriptRepository,
+)
 
 
 class RecordProposals:
@@ -23,7 +28,8 @@ class RecordProposals:
         raw = proposal.payload.get("household_id") if agent == "home" else None
         household = UUID(str(raw)) if raw else None
         async with self._uow.for_user(ctx.user_id) as tx:
-            return await tx.repo(PendingActionRepository).propose(
+            previous = await tx.repo(PendingActionRepository).pending(ctx.user_id, ctx.task_id)
+            action = await tx.repo(PendingActionRepository).propose(
                 ctx.user_id,
                 ctx.task_id,
                 agent=agent,
@@ -33,3 +39,8 @@ class RecordProposals:
                 household_id=household,
                 ttl=self._ttl,
             )
+            if previous is not None:
+                await tx.repo(TranscriptRepository).set_action_status(
+                    ctx.user_id, ctx.task_id, previous.id, "expired"
+                )
+            return action

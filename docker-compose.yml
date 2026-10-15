@@ -412,10 +412,8 @@ services:
       - .env
     environment:
       DATABASE__DSN: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      KITCHEN_AGENT_URL: http://agent-kitchen:8009/
       STT_URL: http://stt:8010
-      POSTGRES_DSN: postgresql://app_legacy:${APP_LEGACY_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AGENT_URLS: "http://agent-sleep:8001,http://agent-workout:8002,http://agent-nutrition:8003,http://agent-body:8004,http://agent-mood:8005,http://agent-habits:8006,http://agent-recovery:8007,http://agent-medication:8008,http://agent-kitchen:8009,http://agent-finance:8011"
+      SYNC_URL: http://sync-service:8080
     ports:
       - "8000:8000"
     depends_on:
@@ -440,6 +438,14 @@ services:
       agent-medication:
         condition: service_healthy
       agent-finance:
+        condition: service_healthy
+      agent-calendar:
+        condition: service_healthy
+      agent-home:
+        condition: service_healthy
+      sync-service:
+        condition: service_healthy
+      stt:
         condition: service_healthy
 
   sync-service:

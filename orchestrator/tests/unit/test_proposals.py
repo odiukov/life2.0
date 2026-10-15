@@ -57,3 +57,26 @@ async def test_recorder_rejects_agent_action_mismatch(agent, action):
         )
     async with uow.for_user(ctx.user_id) as tx:
         assert await tx.repo(PendingActionRepository).pending(ctx.user_id, ctx.task_id) is None
+
+
+async def test_replaced_card_status_is_updated_in_the_transcript():
+    from orchestrator.application.ports import NewMessage, TranscriptRepository
+
+    uow, ctx = await setup()
+    recorder = RecordProposals(uow, ttl=timedelta(minutes=5))
+    old = await recorder.record(ctx, "calendar", Proposal("calendar.delete", "Delete?", {}))
+    async with uow.for_user(ctx.user_id) as tx:
+        await tx.repo(TranscriptRepository).append(
+            ctx.user_id,
+            ctx.task_id,
+            NewMessage(
+                "assistant",
+                "Delete?",
+                action={"id": str(old.id), "summary": old.summary, "status": "pending"},
+            ),
+        )
+    await recorder.record(ctx, "calendar", Proposal("calendar.delete", "Delete another?", {}))
+    async with uow.for_user(ctx.user_id) as tx:
+        assert (await tx.repo(TranscriptRepository).list(ctx.user_id, ctx.task_id))[0].action[
+            "status"
+        ] == "expired"

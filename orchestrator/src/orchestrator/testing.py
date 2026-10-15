@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+import asyncio
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Literal
@@ -17,15 +19,19 @@ from orchestrator.application.ports import (
     ChatTask,
     ChatTaskRepository,
     Claim,
+    FinalText,
+    GraphEvent,
     NewMessage,
     PeerReply,
     PendingAction,
     PendingActionRepository,
     RunContext,
     SyncUnavailable,
+    TaskBusy,
     TranscriptMessage,
     TranscriptRepository,
 )
+from orchestrator.domain.attachments import Upload
 
 
 class InMemoryChatTasks:
@@ -279,3 +285,73 @@ class FakeHealthSync:
         if self.down:
             raise SyncUnavailable
         return list(self.results)
+
+
+class FakeSession:
+    """A graph session: each run() consumes one script — a list of events (numbers are sleeps) or an exception."""
+
+    def __init__(self, scripts: Sequence[object] = ()) -> None:
+        self.scripts: list[object] = list(scripts)
+        self.inputs: list[str] = []
+        self.appended: list[tuple[str, str]] = []
+        self.resets = 0
+
+    async def run(self, text: str) -> AsyncGenerator[GraphEvent, None]:
+        self.inputs.append(text)
+        script = self.scripts.pop(0) if self.scripts else [FinalText("ok")]
+        if isinstance(script, Exception):
+            raise script
+        for item in script:  # type: ignore[attr-defined]
+            if isinstance(item, (int, float)):
+                await asyncio.sleep(item)
+            else:
+                yield item
+
+    async def append(self, user_text: str, assistant_text: str) -> None:
+        self.appended.append((user_text, assistant_text))
+
+    async def reset(self) -> None:
+        self.resets += 1
+
+
+class FakeChatGraph:
+    def __init__(self, *, busy: bool = False) -> None:
+        self.busy = busy
+        self.current = FakeSession()
+        self.contexts: list[RunContext] = []
+
+    def script(self, *scripts: object) -> None:
+        self.current.scripts.extend(scripts)
+
+    @asynccontextmanager
+    async def session(self, ctx: RunContext, last_user_text: str) -> AsyncIterator[FakeSession]:
+        if self.busy:
+            raise TaskBusy
+        self.contexts.append(ctx)
+        self.busy = True
+        try:
+            yield self.current
+        finally:
+            self.busy = False
+
+
+class FakeImageDescriber:
+    def __init__(self, description: str | Exception = "Milk 3.2%") -> None:
+        self.description = description
+        self.calls: list[tuple[Upload, str, str]] = []
+
+    async def describe(self, image: Upload, question: str, locale: str) -> str:
+        self.calls.append((image, question, locale))
+        if isinstance(self.description, Exception):
+            raise self.description
+        return self.description
+
+
+class FakeDocumentReader:
+    def __init__(self, text: str | Exception) -> None:
+        self.result = text
+
+    def text(self, data: bytes) -> str:
+        if isinstance(self.result, Exception):
+            raise self.result
+        return self.result

@@ -335,5 +335,41 @@
       "fat": "жир: {value}%",
       "bmi": "ИМТ: {value}"
     }
+  },
+  "chat": {
+    "errors": {
+      "agent_unavailable": "Один из агентов сейчас недоступен. Попробуй через минуту.",
+      "timeout": "Слишком долго. Попробуй ещё раз.",
+      "task_busy": "Я ещё отвечаю на предыдущее сообщение.",
+      "unsupported_attachment": "Фото на этом сервере пока не поддерживаются.",
+      "internal": "Что-то пошло не так на сервере. Попробуй ещё раз."
+    },
+    "notices": {
+      "history_reset": "♻️ Предыдущий разговор был прерван, начинаю заново.\n\n"
+    },
+    "files": {
+      "unsupported": "Не понимаю, что за файл «{name}». Для отчёта ViHealth укажи /body, для выписки Payoneer — /finance.",
+      "unreadable": "Не смог прочитать «{name}».",
+      "failed": "Не получилось импортировать «{name}»."
+    }
+  },
+  "actions": {
+    "applied": "Готово.",
+    "rejected": "Отменено.",
+    "expired": "Подтверждение истекло; попроси ещё раз, если всё ещё нужно.",
+    "already_decided": "Это уже решено.",
+    "failed": {
+      "generic": "Не получилось.",
+      "changed_since_proposal": "Событие успели изменить; ничего не трогаю.",
+      "connection_changed": "Подключение Home Assistant изменилось; попроси ещё раз.",
+      "household_changed": "Ты больше не в этой семье; ничего не изменено.",
+      "home_unavailable": "Home Assistant сейчас недоступен.",
+      "calendar_unavailable": "Google Календарь сейчас недоступен.",
+      "not_connected": "Интеграция не подключена.",
+      "rejected_by_home": "Home Assistant отказался выполнять действие.",
+      "rejected_by_google": "Google отказался вносить изменение.",
+      "not_found": "Этого события больше нет.",
+      "agent_unavailable": "Сервис сейчас недоступен."
+    }
   }
 }

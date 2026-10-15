@@ -11,7 +11,7 @@ First line of each service's `main.py`:
 
 Env vars:
     TELEMETRY_ENABLED         true|false (default true; false = no-op)
-    TELEMETRY_CAPTURE_BODIES  full|metadata|consented (default full)
+    TELEMETRY_CAPTURE_BODIES  full|metadata|consented (default consented)
     LANGFUSE_DEFAULT_USER_ID  fallback for set_span_user(None)
     LANGFUSE_PUBLIC_KEY       builds OTLP auth header
     LANGFUSE_SECRET_KEY       builds OTLP auth header
@@ -73,7 +73,7 @@ def init_telemetry(
         # Mirror for Traceloop's header reader as well.
         os.environ.setdefault("TRACELOOP_HEADERS", os.environ["OTEL_EXPORTER_OTLP_HEADERS"])
 
-    capture = os.environ.get("TELEMETRY_CAPTURE_BODIES", "full").lower()
+    capture = os.environ.get("TELEMETRY_CAPTURE_BODIES", "consented").lower()
     # In `metadata` mode we disable content capture entirely (cheap, deterministic).
     # In `full` mode we capture everything.
     # In `consented` mode we MUST capture content — the ConsentSpanExporter then

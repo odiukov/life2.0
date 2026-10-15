@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import AsyncIterator, Callable
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import aclosing, asynccontextmanager
 from typing import Any
 from uuid import UUID
 
@@ -42,33 +42,36 @@ class LangGraphSession:
         self._graph, self._saver, self._ctx = graph, saver, ctx
         self._config = {"configurable": {"thread_id": ctx.key}, "recursion_limit": recursion_limit}
 
-    async def run(self, text: str) -> AsyncIterator[GraphEvent]:
+    async def run(self, text: str) -> AsyncGenerator[GraphEvent, None]:
         try:
-            async for update in self._graph.astream(
-                {"messages": [HumanMessage(text)]}, self._config, stream_mode="updates"
-            ):
-                for payload in update.values():
-                    for message in (
-                        (payload or {}).get("messages", []) if isinstance(payload, dict) else []
-                    ):
-                        if (
-                            isinstance(message, ToolMessage)
-                            and isinstance(message.artifact, dict)
-                            and message.artifact.get("agent")
+            async with aclosing(
+                self._graph.astream(
+                    {"messages": [HumanMessage(text)]}, self._config, stream_mode="updates"
+                )
+            ) as updates:
+                async for update in updates:
+                    for payload in update.values():
+                        for message in (
+                            (payload or {}).get("messages", []) if isinstance(payload, dict) else []
                         ):
-                            a = message.artifact
-                            yield ToolDone(
-                                str(a["agent"]),
-                                tuple(a.get("consulted") or ()),
-                                UUID(a["proposal_id"]) if a.get("proposal_id") else None,
-                                bool(a.get("failed")),
-                            )
-                        elif (
-                            isinstance(message, AIMessage)
-                            and not message.tool_calls
-                            and (content := _text(message.content).strip())
-                        ):
-                            yield FinalText(content)
+                            if (
+                                isinstance(message, ToolMessage)
+                                and isinstance(message.artifact, dict)
+                                and message.artifact.get("agent")
+                            ):
+                                a = message.artifact
+                                yield ToolDone(
+                                    str(a["agent"]),
+                                    tuple(a.get("consulted") or ()),
+                                    UUID(a["proposal_id"]) if a.get("proposal_id") else None,
+                                    bool(a.get("failed")),
+                                )
+                            elif (
+                                isinstance(message, AIMessage)
+                                and not message.tool_calls
+                                and (content := _text(message.content).strip())
+                            ):
+                                yield FinalText(content)
         except ValueError as exc:
             if "INVALID_CHAT_HISTORY" in str(exc):
                 raise InvalidHistory from None
