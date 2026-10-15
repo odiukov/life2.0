@@ -1,7 +1,19 @@
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Workout
+from shared.skill_ids import Dashboard, Workout
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Dashboard.CARD,
+        name="Dashboard Card",
+        description="Structured dashboard tile, featured block and rings.",
+        tags=["dashboard", "structured"],
+    ),
+    AgentSkill(
+        id=Dashboard.DETAIL,
+        name="Dashboard Detail",
+        description="Structured dashboard metrics and history.",
+        tags=["dashboard", "structured"],
+    ),
     AgentSkill(
         id=Workout.LOG,
         name="Log Workout",

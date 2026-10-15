@@ -8,24 +8,30 @@ from a2a.types import AgentCard
 from shared.a2a.executor import SkillExecutor, SkillHandler
 from shared.adapters.a2a.task_records import SqlTaskRecords
 from shared.adapters.a2a.task_store import SqlTaskStore
+from shared.adapters.agent_base import base_repositories
 from shared.adapters.clock import SystemClock
 from shared.adapters.db.engine import create_engine
+from shared.adapters.db.profile import SqlBodyProfiles
+from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.adapters.i18n import JsonTranslator
 from shared.adapters.llm.build import build_llm_provider
 from shared.adapters.peers import A2APeerClient
 from shared.adapters.vector import QdrantVectorMemory
+from shared.dashboard import DashboardSkill
 from shared.observability.logging import configure_logging
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
+from shared.ports.profile import BodyProfileRepository
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Nutrition
+from shared.skill_ids import Dashboard, Nutrition
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nutrition.adapters.a2a.card import build_agent_card
 from nutrition.adapters.db import nutrition_uow
 from nutrition.adapters.sync import HttpNutritionSync
 from nutrition.application.analyze import AnalyzeNutrition
+from nutrition.application.dashboard import card, detail
 from nutrition.application.log_meal import LogMeal
 from nutrition.application.peers import PEER_SKILLS
 from nutrition.application.ports import NutritionSync
@@ -92,9 +98,20 @@ def build_runtime(
             llm=llm, uow=uow, translator=translator, default_locale=locale
         ),
     }
+    dashboard_uow = SqlUnitOfWorkFactory(
+        engine, {**base_repositories(), BodyProfileRepository: SqlBodyProfiles}
+    )
+    routable = tuple(handlers)
+    handlers[Dashboard.CARD] = DashboardSkill(
+        uow=dashboard_uow, clock=clock, build=card, name=Dashboard.CARD
+    )
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=dashboard_uow, clock=clock, build=detail, name=Dashboard.DETAIL
+    )
     executor = SkillExecutor(
         agent=AGENT,
         handlers=handlers,
+        routable=routable,
         peers=list(PEER_SKILLS),
         llm=llm,
         task_records=SqlTaskRecords(engine),

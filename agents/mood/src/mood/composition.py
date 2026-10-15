@@ -10,15 +10,17 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.dashboard import DashboardSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Mood
+from shared.skill_ids import Dashboard, Mood
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from mood.adapters.a2a.card import PEER_SKILLS, build_agent_card
 from mood.application.coach_session import CoachSession
+from mood.application.dashboard import card, detail
 from mood.application.data import MoodData
 from mood.application.log_mood import LogMood
 from mood.settings import MoodSettings
@@ -96,10 +98,19 @@ def build_runtime(
             default_locale=base.default_locale,
         ),
     }
+    dashboard_uow = uow
+    routable = tuple(handlers)
+    handlers[Dashboard.CARD] = DashboardSkill(
+        uow=dashboard_uow, clock=base.clock, build=card, name=Dashboard.CARD
+    )
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=dashboard_uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
     return MoodRuntime(
         executor=SkillExecutor(
             agent=AGENT,
             handlers=handlers,
+            routable=routable,
             peers=list(PEER_SKILLS),
             llm=base.llm,
             task_records=base.task_records,

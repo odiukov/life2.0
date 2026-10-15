@@ -10,14 +10,16 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec, previous_day
+from shared.dashboard import DashboardSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Sleep
+from shared.skill_ids import Dashboard, Sleep
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sleep.adapters.a2a.card import PEER_SKILLS, build_agent_card
+from sleep.application.dashboard import card, detail
 from sleep.application.data import SleepData
 from sleep.application.log_sleep import LogSleep
 from sleep.settings import SleepSettings
@@ -89,10 +91,19 @@ def build_runtime(
         Sleep.ANALYZE: analysis(Sleep.ANALYZE),
         Sleep.RECOMMENDATIONS: analysis(Sleep.RECOMMENDATIONS),
     }
+    dashboard_uow = uow
+    routable = tuple(handlers)
+    handlers[Dashboard.CARD] = DashboardSkill(
+        uow=dashboard_uow, clock=base.clock, build=card, name=Dashboard.CARD
+    )
+    handlers[Dashboard.DETAIL] = DashboardSkill(
+        uow=dashboard_uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
     return SleepRuntime(
         executor=SkillExecutor(
             agent=AGENT,
             handlers=handlers,
+            routable=routable,
             peers=list(PEER_SKILLS),
             llm=base.llm,
             task_records=base.task_records,

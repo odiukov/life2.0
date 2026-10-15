@@ -435,3 +435,24 @@ def expected_card(agent: str) -> dict[str, object]:
 
 def expected_detail(agent: str) -> dict[str, object]:
     return dict(golden(f"detail_{agent}"))
+
+
+from shared.testing.fakes import InMemoryHealthLogs, InMemoryUserSettings
+
+
+def memory_logs() -> InMemoryHealthLogs:
+    logs = InMemoryHealthLogs()
+    for row in health_log_rows():
+        logs.seed(USER_ID, row)
+    return logs
+
+
+def memory_settings() -> InMemoryUserSettings:
+    settings = InMemoryUserSettings()
+    settings.seed(USER_ID, timezone=TIMEZONE)
+    return settings
+
+
+def as_json(value: Any) -> Any:
+    """What the gateway would send: the same normalization the goldens went through."""
+    return json.loads(json.dumps(value, sort_keys=True, ensure_ascii=False, default=str))

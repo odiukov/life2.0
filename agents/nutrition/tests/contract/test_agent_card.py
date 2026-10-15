@@ -10,7 +10,7 @@ from nutrition.composition import build_runtime
 from nutrition.settings import NutritionSettings
 from nutrition.testing import FakeSync
 from shared.a2a.executor import SkillExecutor, SkillResult
-from shared.skill_ids import Nutrition
+from shared.skill_ids import Dashboard, Nutrition
 from shared.testing.fakes import FakeLLM, FakePeerClient, FixedClock, InMemoryVectorMemory
 
 EXPECTED_IDS = {
@@ -19,7 +19,7 @@ EXPECTED_IDS = {
 
 
 def test_card_declares_exactly_the_shared_skill_ids() -> None:
-    assert {s.id for s in SKILLS} == EXPECTED_IDS
+    assert {s.id for s in SKILLS} == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL}
 
 
 def test_card_identity_is_unchanged() -> None:
@@ -46,7 +46,7 @@ def test_every_card_skill_has_a_handler() -> None:
         peers=FakePeerClient(),
         sync=FakeSync(),
     )
-    assert set(runtime.executor.skill_ids) == EXPECTED_IDS
+    assert set(runtime.executor.skill_ids) == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL}
 
 
 # Recorded from the legacy executor before its deletion. Only generated UUIDs
@@ -57,12 +57,17 @@ LEGACY = json.loads(
 
 
 def test_complete_card_and_peer_mapping_match_the_recorded_legacy_contract() -> None:
-    assert (
-        build_agent_card("http://agent-nutrition:8003/").model_dump(
-            mode="json", by_alias=True, exclude_none=True
-        )
-        == LEGACY["card"]
+    card = build_agent_card("http://agent-nutrition:8003/").model_dump(
+        mode="json", by_alias=True, exclude_none=True
     )
+    assert {s["id"] for s in card["skills"] if "structured" in s["tags"]} == {
+        Dashboard.CARD,
+        Dashboard.DETAIL,
+    }
+    card["skills"] = [
+        s for s in card["skills"] if s["id"] not in {Dashboard.CARD, Dashboard.DETAIL}
+    ]
+    assert card == LEGACY["card"]
     assert LEGACY["peers"] == PEER_SKILLS
 
 
