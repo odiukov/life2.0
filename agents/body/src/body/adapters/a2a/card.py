@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Body, Dashboard
+from shared.skill_ids import Body, Dashboard, Feed
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Feed.EVENTS,
+        name="Feed events",
+        description="Events and insights of a day for the app's feed.",
+        tags=["structured"],
+    ),
     AgentSkill(
         id=Dashboard.CARD,
         name="Dashboard Card",

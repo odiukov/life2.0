@@ -467,6 +467,25 @@
     "duration": {
       "hm": "{h} h {m} min",
       "m": "{m} min"
+    },
+    "sleep": {
+      "night": "Slept {duration}",
+      "deep": "{text} · deep {duration}"
+    },
+    "workout": {
+      "session": "{name} · {duration}",
+      "short": "{name}",
+      "distance": "{text} · {km} km",
+      "unnamed": "Workout"
+    },
+    "mood": {
+      "entry": "Mood {score}/10",
+      "energy": "{text} · energy {value}/10",
+      "note": "Mood noted"
+    },
+    "body": {
+      "weight": "Weight {kg} kg",
+      "fat": "{text} · fat {pct}%"
     }
   }
 }

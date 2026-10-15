@@ -480,6 +480,25 @@
     "duration": {
       "hm": "{h} ч {m} мин",
       "m": "{m} мин"
+    },
+    "sleep": {
+      "night": "Сон {duration}",
+      "deep": "{text} · глубокий {duration}"
+    },
+    "workout": {
+      "session": "{name} · {duration}",
+      "short": "{name}",
+      "distance": "{text} · {km} км",
+      "unnamed": "Тренировка"
+    },
+    "mood": {
+      "entry": "Настроение {score}/10",
+      "energy": "{text} · энергия {value}/10",
+      "note": "Настроение отмечено"
+    },
+    "body": {
+      "weight": "Вес {kg} кг",
+      "fat": "{text} · жир {pct}%"
     }
   }
 }

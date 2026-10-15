@@ -75,7 +75,7 @@ def insight(history: list[dict[str, object]]) -> str:
 
 async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     rows = await tx.repo(HealthLogRepository).recent(
-        ctx.user_id, types=[MOOD], since=ctx.now - timedelta(days=9)
+        ctx.user_id, types=[MOOD], since=ctx.now - timedelta(days=9), agent="mood"
     )
     by_day: dict[date, list[HealthLogRow]] = {}
     for r in rows:

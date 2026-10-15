@@ -1,10 +1,10 @@
 from body.adapters.a2a.card import PEER_SKILLS, SKILLS, build_agent_card
-from shared.skill_ids import Body, Dashboard
+from shared.skill_ids import Body, Dashboard, Feed
 
 
 def test_card_preserves_analysis_and_advertises_structured_import() -> None:
     card = build_agent_card("http://agent-body:8004/")
-    legacy = [s for s in SKILLS if s.id not in {Dashboard.CARD, Dashboard.DETAIL}]
+    legacy = [s for s in SKILLS if s.id not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}]
     assert card.name == "body-agent"
     assert card.url == "http://agent-body:8004/"
     assert [s.id for s in legacy] == [Body.GET_LATEST, Body.ANALYZE_TREND, Body.IMPORT_VIHEALTH]
@@ -16,7 +16,7 @@ def test_card_preserves_analysis_and_advertises_structured_import() -> None:
     }
 
     assert card.protocol_version == "0.3.0"
-    assert len(card.skills) == 4
+    assert len(card.skills) == 5
     assert card.version == "1.0.0"
     assert card.capabilities.streaming is True
     assert card.capabilities.push_notifications is False
@@ -43,3 +43,7 @@ def test_card_preserves_analysis_and_advertises_structured_import() -> None:
 
 def test_card_declares_dashboard_skills() -> None:
     assert {s.id for s in SKILLS if "dashboard" in s.tags} == {Dashboard.CARD}
+
+
+def test_card_declares_structured_feed() -> None:
+    assert next(s for s in SKILLS if s.id == Feed.EVENTS).tags == ["structured"]
