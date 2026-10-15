@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from medication.application.feed import collect
 from medication.application.ports import MedicationRepository
+from medication.domain.medication import Medication
 from medication.testing import InMemoryMedications
 from shared.a2a.request import SkillRequest
 from shared.adapters.i18n import JsonTranslator
@@ -28,15 +29,18 @@ DAY = date(2026, 10, 14)
 USER = uuid4()
 
 
-async def run(*rows: HealthLogRow, day: date = DAY, locale: str = "en", meals_input=()) -> dict:
+async def run(*rows: HealthLogRow, day: date = DAY, locale: str = "en", medications=()) -> dict:
     logs, settings = InMemoryHealthLogs(), InMemoryUserSettings()
     settings.seed(USER, timezone="Europe/Kyiv", locale=locale)
     for row in rows:
         logs.seed(USER, row)
+    meds = InMemoryMedications()
+    for med in medications:
+        await meds.add(med)
     repos = {
         HealthLogRepository: logs,
         UserSettingsRepository: settings,
-        MedicationRepository: InMemoryMedications(),
+        MedicationRepository: meds,
     }
     skill = FeedSkill(
         uow=InMemoryUnitOfWorkFactory(repos),
@@ -102,3 +106,24 @@ async def test_russian_nonempty_insight() -> None:
     assert [i["text"] for i in data["items"] if i["kind"] == "insight"] == [
         "Все приёмы за неделю отмечены. Так держать."
     ]
+
+
+async def test_empty_user_has_no_adherence_insight() -> None:
+    assert (await run())["items"] == []
+
+
+async def test_active_schedule_keeps_insight_without_intakes() -> None:
+    med = Medication(None, "Vitamin D", None, "daily", None, None)
+    items = (await run(medications=[med]))["items"]
+    assert len(items) == 1
+    assert items[0]["kind"] == "insight"
+    assert "Vitamin D" in items[0]["text"]
+
+
+async def test_historical_intake_keeps_insight_without_active_schedule() -> None:
+    row = HealthLogRow(
+        "medication_taken", NOW - timedelta(days=10), {"name": "retired"}, "chat", "medication"
+    )
+    items = (await run(row))["items"]
+    assert len(items) == 1
+    assert items[0]["kind"] == "insight"

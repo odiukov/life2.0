@@ -23,7 +23,11 @@ async def collect(tx: UnitOfWork, ctx: FeedContext) -> list[FeedItem]:
     rows = await day_rows(tx, ctx, types=["medication_taken"], agent="medication")
     items = [FeedItem(row_id("medication", r), r.recorded_at, "event", _text(ctx, r)) for r in rows]
     if ctx.is_today:
-        items += insight_items(
-            "medication", ctx, await detail(tx, ctx.dashboard, translator=ctx.tr, locale=ctx.locale)
-        )
+        summary = await detail(tx, ctx.dashboard, translator=ctx.tr, locale=ctx.locale)
+        metrics = summary["metrics"]
+        history = summary["history"]
+        has_schedule = isinstance(metrics, dict) and metrics.get("active_count", 0) > 0
+        has_intakes = isinstance(history, list) and any(point["value"] for point in history)
+        if has_schedule or has_intakes:
+            items += insight_items("medication", ctx, summary)
     return items

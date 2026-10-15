@@ -498,6 +498,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feed */
+        get: operations["feed_me_feed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/me/profile": {
         parameters: {
             query?: never;
@@ -863,6 +880,37 @@ export interface components {
             today: components["schemas"]["KitchenItem"][];
             /** Tomorrow */
             tomorrow: components["schemas"]["KitchenItem"][];
+        };
+        /** FeedItemOut */
+        FeedItemOut: {
+            /** Agent */
+            agent: string;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "event" | "insight";
+            /** Text */
+            text: string;
+        };
+        /** FeedOut */
+        FeedOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Items */
+            items: components["schemas"]["FeedItemOut"][];
+            /** Unavailable */
+            unavailable: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2267,6 +2315,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UndoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    feed_me_feed_get: {
+        parameters: {
+            query?: {
+                date?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-User-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedOut"];
                 };
             };
             /** @description Validation Error */

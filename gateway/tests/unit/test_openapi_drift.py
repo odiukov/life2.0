@@ -23,6 +23,7 @@ def test_committed_schema_matches_the_routes() -> None:
 def test_schema_has_every_gateway_route() -> None:
     paths = set(openapi_document()["paths"])
     assert {
+        "/me/feed",
         "/me/profile",
         "/me/profile/import-pdf",
         "/integrations/ha/connect",

@@ -43,5 +43,4 @@ async def test_card_and_detail_over_sql_match_the_goldens(clean_db: PostgresUrls
 
     assert_feed_contract(feed.data, date(2026, 10, 14), ZoneInfo("Europe/Kyiv"))
     assert feed.data["items"]
-    assert all(item["kind"] == "insight" for item in other.data["items"])
-    assert [item["text"] for item in other.data["items"]] == ["Соблюдение приёма за неделю: 0%."]
+    assert other.data["items"] == []
