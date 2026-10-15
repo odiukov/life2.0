@@ -489,3 +489,43 @@ test.each(['voice', 'hidden'] as const)(
     }
   },
 );
+
+// Reuses final-rereview-lifecycle-regression.test.tsx with explicit End confirmation.
+test.each(['typed', 'palette'] as const)(
+  '%s command tail stays behind the close barrier during delayed task creation',
+  async (path) => {
+    let resolveOpen!: (task: { id: string; leadAgent: 'nutrition' }) => void;
+    mockApi = fakeTasksApi({
+      open: jest.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveOpen = resolve;
+          }),
+      ),
+    });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    render(
+      <ThemeProvider>
+        <TaskSheet />
+      </ThemeProvider>,
+    );
+    await act(async () => openTask());
+    await screen.findByTestId('task-close');
+    fireEvent.changeText(screen.getByTestId('ask-input'), '/nutrition my meal');
+    fireEvent.press(
+      path === 'typed' ? screen.getByTestId('ask-send') : screen.getByText('/nutrition'),
+    );
+    await waitFor(() => expect(mockApi.open).toHaveBeenCalledWith('nutrition'));
+    expect(mockApi.post).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId('task-close'));
+    expect(alert).toHaveBeenCalledWith('End task?', expect.any(String), expect.any(Array));
+    expect(useTaskSheet.getState().visible).toBe(true);
+    const end = alert.mock.calls[0]?.[2]?.find((button) => button.style === 'destructive');
+    await act(async () => end?.onPress?.());
+    await act(async () => resolveOpen({ id: 'late', leadAgent: 'nutrition' }));
+    await waitFor(() => expect(mockApi.close).toHaveBeenCalledWith('late'));
+    await waitFor(() => expect(useTaskSheet.getState().visible).toBe(false));
+    expect(mockApi.post).not.toHaveBeenCalled();
+    expect(await SecureStore.getItemAsync('open_task_id')).toBeNull();
+  },
+);

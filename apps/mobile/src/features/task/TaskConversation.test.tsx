@@ -415,36 +415,62 @@ test('E2E completion marker requires the latest nonempty assistant reply after s
 });
 
 import { COMMANDS } from '../chat/commands';
+import { fakeTasksApi } from '../chat/fakeTasksApi';
+
+function CommandConversation({ api }: { api: TasksApi }) {
+  const c = useTask(api);
+  return <TaskConversation chat={c} />;
+}
+
 test.each(
-  COMMANDS.flatMap((c) => [
-    [c.name, c.agent, ''],
-    [`${c.name} typed tail`, c.agent, 'typed tail'],
+  COMMANDS.flatMap((command) => [
+    { draft: command.name, agent: command.agent, tail: '' },
+    { draft: `${command.name} typed tail`, agent: command.agent, tail: 'typed tail' },
   ]),
-)('typed command %s awaits lead before sending once', async (draft, agent, tail) => {
-  let resolveLead!: () => void;
-  const c = chat({
-    setLead: jest.fn(
-      () =>
-        new Promise<void>((r) => {
-          resolveLead = r;
-        }),
-    ),
+)(
+  'typed command $draft waits for real task creation before posting once',
+  async ({ draft, agent, tail }) => {
+    await SecureStore.deleteItemAsync('open_task_id');
+    let resolveOpen!: (task: { id: string; leadAgent: typeof agent }) => void;
+    const api = fakeTasksApi({
+      open: jest.fn(
+        () =>
+          new Promise((resolve) => {
+            resolveOpen = resolve;
+          }),
+      ),
+    });
+    render(<CommandConversation api={api} />);
+    fireEvent.changeText(screen.getByTestId('ask-input'), draft);
+    fireEvent.press(screen.getByTestId('ask-send'));
+    await waitFor(() => expect(api.open).toHaveBeenCalledWith(agent));
+    expect(api.post).not.toHaveBeenCalled();
+    if (tail) expect(screen.getByTestId('ask-input').props.editable).toBe(false);
+    await act(async () => resolveOpen({ id: 'command', leadAgent: agent }));
+    if (tail) {
+      expect(api.post).toHaveBeenCalledTimes(1);
+      expect(api.post).toHaveBeenCalledWith('command', { text: tail, attachments: [] });
+    } else expect(api.post).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue(draft)).toBeNull();
+  },
+);
+test.each([
+  ['submit', 'create'],
+  ['palette', 'create'],
+  ['submit', 'update'],
+  ['palette', 'update'],
+])('%s retains command tail if lead %s fails', async (path, operation) => {
+  await SecureStore.deleteItemAsync('open_task_id');
+  const api = fakeTasksApi({
+    ...(operation === 'create' ? { open: jest.fn().mockRejectedValue(new Error('offline')) } : {}),
+    setLead: jest.fn().mockRejectedValue(new Error('offline')),
   });
-  render(<TaskConversation chat={c} />);
-  fireEvent.changeText(screen.getByTestId('ask-input'), draft);
-  fireEvent.press(screen.getByTestId('ask-send'));
-  expect(c.setLead).toHaveBeenCalledWith(agent);
-  expect(c.send).not.toHaveBeenCalled();
-  await act(async () => resolveLead());
-  if (tail) {
-    expect(c.send).toHaveBeenCalledTimes(1);
-    expect(c.send).toHaveBeenCalledWith({ text: tail, tag: agent, attachments: [] });
-  } else expect(c.send).not.toHaveBeenCalled();
-  expect(screen.queryByDisplayValue(draft)).toBeNull();
-});
-test.each(['submit', 'palette'])('%s retains command tail if lead update fails', async (path) => {
-  const c = chat({ setLead: jest.fn().mockRejectedValue(new Error('offline')) });
-  render(<TaskConversation chat={c} />);
+  render(<CommandConversation api={api} />);
+  if (operation === 'update') {
+    fireEvent.changeText(screen.getByTestId('ask-input'), '/sleep');
+    await act(async () => fireEvent.press(screen.getByTestId('ask-send')));
+    expect(screen.queryByDisplayValue('/sleep')).toBeNull();
+  }
   fireEvent.changeText(screen.getByTestId('ask-input'), '/nutrition typed tail');
   await act(async () =>
     fireEvent.press(
@@ -452,26 +478,32 @@ test.each(['submit', 'palette'])('%s retains command tail if lead update fails',
     ),
   );
   expect(screen.getByDisplayValue('/nutrition typed tail')).toBeTruthy();
-  expect(c.send).not.toHaveBeenCalled();
-  expect(screen.getByText(/No connection/)).toBeTruthy();
+  expect(api.post).not.toHaveBeenCalled();
+  if (operation === 'update') expect(api.setLead).toHaveBeenCalledWith('t1', 'nutrition');
+  expect(screen.getAllByText(/No connection/).length).toBeGreaterThan(0);
 });
-test('palette preserves a typed tail and awaits the lead', async () => {
-  let resolveLead!: () => void;
-  const c = chat({
+test('palette preserves a typed tail through real delayed lead update', async () => {
+  await SecureStore.deleteItemAsync('open_task_id');
+  let resolveLead!: (task: { id: string; leadAgent: 'nutrition' }) => void;
+  const api = fakeTasksApi({
     setLead: jest.fn(
       () =>
-        new Promise<void>((r) => {
-          resolveLead = r;
+        new Promise((resolve) => {
+          resolveLead = resolve;
         }),
     ),
   });
-  render(<TaskConversation chat={c} />);
+  render(<CommandConversation api={api} />);
+  fireEvent.changeText(screen.getByTestId('ask-input'), '/sleep');
+  await act(async () => fireEvent.press(screen.getByTestId('ask-send')));
   fireEvent.changeText(screen.getByTestId('ask-input'), '/nut typed tail');
   fireEvent.press(screen.getByText('/nutrition'));
-  expect(c.send).not.toHaveBeenCalled();
-  await act(async () => resolveLead());
-  expect(c.send).toHaveBeenCalledTimes(1);
-  expect(c.send).toHaveBeenCalledWith({ text: 'typed tail', tag: 'nutrition', attachments: [] });
+  await waitFor(() => expect(api.setLead).toHaveBeenCalledWith('t1', 'nutrition'));
+  expect(api.post).not.toHaveBeenCalled();
+  expect(screen.getByTestId('ask-input').props.editable).toBe(false);
+  await act(async () => resolveLead({ id: 't1', leadAgent: 'nutrition' }));
+  expect(api.post).toHaveBeenCalledTimes(1);
+  expect(api.post).toHaveBeenCalledWith('t1', { text: 'typed tail', attachments: [] });
   expect(screen.queryByDisplayValue('/nut typed tail')).toBeNull();
 });
 

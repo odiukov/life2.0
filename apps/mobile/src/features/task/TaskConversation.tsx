@@ -202,19 +202,17 @@ export function TaskConversation({
     async (next: { tag?: AgentId; text: string }) => {
       cancelFocus();
       const parsed = next.tag ? next : splitLeadingTag(next.text);
-      if (parsed.tag) {
+      if (parsed.tag && !parsed.text.trim() && attachmentsRef.current.length === 0) {
         const draft = textRef.current;
         try {
           await chat.setLead(parsed.tag);
-          if (!parsed.text.trim() && attachmentsRef.current.length === 0) {
-            setText((current) => (current === draft ? '' : current));
-            return;
-          }
+          setText((current) => (current === draft ? '' : current));
         } catch {
           notify(t('chat.client.network'));
-          return;
         }
+        return;
       }
+      // send owns the busy/close barrier and awaits the tagged lead before posting.
       return submit(parsed.tag ? { text: parsed.text, tag: parsed.tag } : { text: parsed.text });
     },
     [chat, notify, submit, t, cancelFocus],
