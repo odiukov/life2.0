@@ -1,0 +1,10 @@
+- {description: "Client payment ACME Corp", category: income}
+- {description: "Payoneer fee - card maintenance", category: fee}
+- {description: "Transfer to own EUR balance", category: transfer}
+- {description: "NETFLIX.COM 866-579", category: subscriptions}
+- {description: "GitHub Copilot", category: software}
+- {description: "Uber *TRIP 4471", category: transport}
+- {description: "Pingo Doce Lisboa", category: food}
+- {description: "Booking.com Hotel Porto", category: travel}
+- {description: "Farmacia Central", category: health}
+- {description: "EDP Comercial electricity", category: utilities}

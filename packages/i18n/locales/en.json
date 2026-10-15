@@ -282,5 +282,15 @@
     "analyze": {
       "none": "No active medications to analyse."
     }
+  },
+  "finance": {
+    "import": {
+      "done": "✓ Statement imported ({inserted} new, {skipped} skipped)",
+      "income": "Income: {items}",
+      "spending": "Spending: {items}",
+      "top": "Top categories: {items}",
+      "empty": "The PDF has no transactions (skipped while reading: {skipped})."
+    },
+    "ask": { "empty": "No transactions yet — send a Payoneer statement PDF in the chat." }
   }
 }
