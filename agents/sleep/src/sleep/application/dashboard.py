@@ -9,6 +9,7 @@ from typing import Any
 
 from shared.dashboard import DashboardContext, empty_card, fmt_duration, history_points, pg_round
 from shared.ports.health_logs import HealthLogRepository, HealthLogRow
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 SESSION, HRV_STATUS = "sleep_session", "hrv_status"
@@ -147,7 +148,9 @@ def _hours_label(value: float) -> str:
     return f"{hours}h {minutes}m" if minutes else f"{hours}h"
 
 
-def insight(history: list[dict[str, object]]) -> str:
+def insight(
+    history: list[dict[str, object]], *, translator: Translator | None = None, locale: str = "en"
+) -> str:
     values = [float(h["value"]) for h in history if float(h["value"]) > 0]  # type: ignore[arg-type]
     if len(values) < 3:
         return ""
@@ -155,13 +158,27 @@ def insight(history: list[dict[str, object]]) -> str:
     last = values[-1]
     above = sum(1 for v in values[-3:] if v > average)
     if above >= 2:
+        if translator is not None:
+            return translator.t("feed.sleep.insight.above", locale, count=above)
         return f"Above weekly average {above} of last 3 nights."
     if last < average - 0.5:
+        if translator is not None:
+            return translator.t(
+                "feed.sleep.insight.below",
+                locale,
+                hours=translator.number(average - last, locale, digits=1),
+            )
         return f"Below weekly average by {average - last:.1f}h last night."
     return ""
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     logs = tx.repo(HealthLogRepository)
     rows = await logs.recent(
         ctx.user_id, types=[SESSION], since=ctx.now - timedelta(days=9), agent="sleep"
@@ -192,7 +209,7 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
         metrics["efficiency_pct"] = round(deep / duration * 100) if duration else None
     return {
         "agent": "sleep",
-        "insight": insight(history),
+        "insight": insight(history, translator=translator, locale=locale),
         "metrics": {k: v for k, v in metrics.items() if v is not None},
         "history": history,
     }

@@ -52,5 +52,7 @@ async def collect(tx: UnitOfWork, ctx: FeedContext) -> list[FeedItem]:
         for r in rows
     ]
     if ctx.is_today:
-        items += insight_items("workout", ctx, await detail(tx, ctx.dashboard))
+        items += insight_items(
+            "workout", ctx, await detail(tx, ctx.dashboard, translator=ctx.tr, locale=ctx.locale)
+        )
     return items

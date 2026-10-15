@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import pytest
 from shared.a2a.request import SkillRequest
 from shared.adapters.i18n import JsonTranslator
 from shared.feed import FeedSkill
@@ -111,3 +112,19 @@ async def test_long_workout_name_is_clipped_by_actual_skill() -> None:
     data = await run(activity("chat", datetime(2026, 10, 14, 5, 0, tzinfo=UTC), name="a" * 200))
     assert len(data["items"][0]["text"]) == 140
     assert data["items"][0]["text"].endswith("…")
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"),
+    [
+        (1, "1 тренировка за эту неделю."),
+        (2, "2 тренировки за эту неделю."),
+    ],
+)
+async def test_russian_feed_localizes_nonempty_insights(count: int, expected: str) -> None:
+    rows = [
+        activity("garmin", NOW - timedelta(days=index, hours=1), duration_seconds=3600)
+        for index in range(count)
+    ]
+    data = await run(*rows, locale="ru")
+    assert [item["text"] for item in data["items"]] == [expected, "Evening run · 1 ч 0 мин"]

@@ -470,18 +470,43 @@
     },
     "sleep": {
       "night": "Slept {duration}",
-      "deep": "{text} · deep {duration}"
+      "deep": "{text} · deep {duration}",
+      "insight": {
+        "above": "Above weekly average {count} of last 3 nights.",
+        "below": "Below weekly average by {hours}h last night."
+      }
     },
     "workout": {
       "session": "{name} · {duration}",
       "short": "{name}",
       "distance": "{text} · {km} km",
-      "unnamed": "Workout"
+      "unnamed": "Workout",
+      "insight": {
+        "one": "{count} workout this week.",
+        "few": "{count} workouts this week.",
+        "many": "{count} workouts this week.",
+        "other": "{count} workouts this week."
+      }
     },
     "mood": {
       "entry": "Mood {score}/10",
       "energy": "{text} · energy {value}/10",
-      "note": "Mood noted"
+      "note": "Mood noted",
+      "insight": {
+        "up": {
+          "one": "Score trending up +{difference} pts over the last {days} days.",
+          "few": "Score trending up +{difference} pts over the last {days} days.",
+          "many": "Score trending up +{difference} pts over the last {days} days.",
+          "other": "Score trending up +{difference} pts over the last {days} days."
+        },
+        "down": {
+          "one": "Score trending down {difference} pts over the last {days} days.",
+          "few": "Score trending down {difference} pts over the last {days} days.",
+          "many": "Score trending down {difference} pts over the last {days} days.",
+          "other": "Score trending down {difference} pts over the last {days} days."
+        },
+        "stable": "Mood stable over the last week."
+      }
     },
     "body": {
       "weight": "Weight {kg} kg",

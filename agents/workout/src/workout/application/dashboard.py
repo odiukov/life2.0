@@ -8,6 +8,7 @@ from typing import Any
 
 from shared.dashboard import DashboardContext, empty_card, history_points
 from shared.ports.health_logs import HealthLogRepository, HealthLogRow
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 ACTIVITY = "activity"
@@ -169,14 +170,24 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     return out
 
 
-def insight(history: list[dict[str, object]]) -> str:
+def insight(
+    history: list[dict[str, object]], *, translator: Translator | None = None, locale: str = "en"
+) -> str:
     active = [h for h in history if float(h["value"]) > 0]  # type: ignore[arg-type]
     if not active:
         return ""
+    if translator is not None:
+        return translator.t("feed.workout.insight", locale, count=len(active))
     return "1 workout this week." if len(active) == 1 else f"{len(active)} workouts this week."
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     logs = tx.repo(HealthLogRepository)
     rows = await logs.recent(
         ctx.user_id, types=[ACTIVITY], since=ctx.now - timedelta(days=9), agent="workout"
@@ -194,4 +205,9 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
         metrics["kcal"] = _int(_sum(day_rows, "calories")) or 0
         if kind := day_rows[0].data.get("activity_type"):
             metrics["workout_type"] = kind
-    return {"agent": "workout", "insight": insight(history), "metrics": metrics, "history": history}
+    return {
+        "agent": "workout",
+        "insight": insight(history, translator=translator, locale=locale),
+        "metrics": metrics,
+        "history": history,
+    }

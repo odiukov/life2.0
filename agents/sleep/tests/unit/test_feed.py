@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import pytest
 from shared.a2a.request import SkillRequest
 from shared.adapters.i18n import JsonTranslator
 from shared.feed import FeedSkill
@@ -134,3 +135,21 @@ async def test_chat_end_outside_day_keeps_recorded_time_in_day() -> None:
     row = night("chat", at - timedelta(days=1))
     data = await run(HealthLogRow(row.type, at, row.data, row.source, row.agent))
     assert data["items"][0]["at"] == at.isoformat()
+
+
+@pytest.mark.parametrize(
+    ("hours", "expected"),
+    [
+        ([6, 8, 8], "Выше среднего за неделю в 2 из последних 3 ночей."),
+        ([8, 8, 6], "Прошлой ночью сон короче среднего за неделю на 2,0 ч."),
+    ],
+)
+async def test_russian_feed_localizes_nonempty_insights(hours: list[int], expected: str) -> None:
+    rows = [
+        night(
+            "garmin", NOW - timedelta(days=2 - index, hours=1), duration_s=value * 3600, deep_s=None
+        )
+        for index, value in enumerate(hours)
+    ]
+    data = await run(*rows, locale="ru")
+    assert [item["text"] for item in data["items"]] == [expected, f"Сон {hours[-1]} ч 0 мин"]

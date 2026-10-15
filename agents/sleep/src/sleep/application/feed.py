@@ -46,5 +46,7 @@ async def collect(tx: UnitOfWork, ctx: FeedContext) -> list[FeedItem]:
         if text:
             items.append(FeedItem(row_id("sleep", row), row.recorded_at, "event", text))
     if ctx.is_today:
-        items += insight_items("sleep", ctx, await detail(tx, ctx.dashboard))
+        items += insight_items(
+            "sleep", ctx, await detail(tx, ctx.dashboard, translator=ctx.tr, locale=ctx.locale)
+        )
     return items

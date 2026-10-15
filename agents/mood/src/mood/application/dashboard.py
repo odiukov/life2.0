@@ -8,6 +8,7 @@ from typing import Any
 
 from shared.dashboard import DashboardContext, empty_card, history_points, pg_round
 from shared.ports.health_logs import HealthLogRepository, HealthLogRow
+from shared.ports.translator import Translator
 from shared.ports.uow import UnitOfWork
 
 MOOD = "mood"
@@ -60,20 +61,46 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     return out
 
 
-def insight(history: list[dict[str, object]]) -> str:
+def insight(
+    history: list[dict[str, object]], *, translator: Translator | None = None, locale: str = "en"
+) -> str:
     values = [float(h["value"]) for h in history if float(h["value"]) > 0]  # type: ignore[arg-type]
     if len(values) < 4:
         return ""
     mid = len(values) // 2
     diff = sum(values[mid:]) / len(values[mid:]) - sum(values[:mid]) / mid
     if diff > 0.5:
+        if translator is not None:
+            return translator.t(
+                "feed.mood.insight.up",
+                locale,
+                difference=translator.number(diff, locale, digits=1),
+                days=len(values),
+                count=len(values),
+            )
         return f"Score trending up +{diff:.1f} pts over the last {len(values)} days."
     if diff < -0.5:
+        if translator is not None:
+            return translator.t(
+                "feed.mood.insight.down",
+                locale,
+                difference=translator.number(diff, locale, digits=1),
+                days=len(values),
+                count=len(values),
+            )
         return f"Score trending down {diff:.1f} pts over the last {len(values)} days."
+    if translator is not None:
+        return translator.t("feed.mood.insight.stable", locale)
     return "Mood stable over the last week."
 
 
-async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
+async def detail(
+    tx: UnitOfWork,
+    ctx: DashboardContext,
+    *,
+    translator: Translator | None = None,
+    locale: str = "en",
+) -> dict[str, object]:
     rows = await tx.repo(HealthLogRepository).recent(
         ctx.user_id, types=[MOOD], since=ctx.now - timedelta(days=9), agent="mood"
     )
@@ -99,4 +126,9 @@ async def detail(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
         tags = yesterday[0].data.get("tags")
         if isinstance(tags, list) and tags:
             metrics["top_tag"] = tags[0]
-    return {"agent": "mood", "insight": insight(history), "metrics": metrics, "history": history}
+    return {
+        "agent": "mood",
+        "insight": insight(history, translator=translator, locale=locale),
+        "metrics": metrics,
+        "history": history,
+    }

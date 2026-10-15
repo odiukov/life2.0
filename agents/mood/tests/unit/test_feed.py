@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import pytest
 from mood.application.feed import collect
 from shared.a2a.request import SkillRequest
 from shared.adapters.i18n import JsonTranslator
@@ -96,3 +97,20 @@ async def test_unrelated_history_does_not_create_an_insight() -> None:
         for offset in range(1, 7)
     ]
     assert (await run(*rows))["items"] == []
+
+
+@pytest.mark.parametrize(
+    ("scores", "expected"),
+    [
+        ([5, 5, 8, 8], "Настроение улучшилось на +3,0 балла за последние 4 дня."),
+        ([8, 8, 5, 5], "Настроение снизилось на -3,0 балла за последние 4 дня."),
+        ([7, 7, 7, 7], "Настроение стабильно за последнюю неделю."),
+    ],
+)
+async def test_russian_feed_localizes_nonempty_insights(scores: list[int], expected: str) -> None:
+    rows = [
+        entry(NOW - timedelta(days=3 - index, hours=1), mood_score=value)
+        for index, value in enumerate(scores)
+    ]
+    data = await run(*rows, locale="ru")
+    assert [item["text"] for item in data["items"]] == [expected, f"Настроение {scores[-1]}/10"]
