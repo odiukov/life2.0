@@ -40,6 +40,9 @@ class KitchenAttentionSkill:
             return attention_result([])
         async with self._uow.for_user(request.user_id) as uow:
             locale = await uow.repo(UserLocales).locale(request.user_id) or self._default_locale
+        # Kitchen days (ids like kitchen:today:<date>, and the expiry buckets) follow the
+        # household zone; the gateway dates dismissals in the user's own zone. Members of one
+        # household share a zone in practice, so the two agree.
         today = context.today(self._clock.now())
         s = spoilage(active, today)
 

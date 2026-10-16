@@ -105,20 +105,31 @@ async def _ask(
     except (SkillUnavailable, SkillCallError, TimeoutError) as exc:
         logger.warning("attention_agent_unavailable", agent=agent, error_type=type(exc).__name__)
         return None
-    data = reply.data
-    raw = data.get("items") if isinstance(data, Mapping) else None
-    if not isinstance(raw, list) or len(raw) > MAX_ITEMS:
+    parsed = _items(agent, reply.data)
+    if isinstance(parsed, str):
+        # A reply that breaks the contract counts as unavailable; no payload is logged.
+        logger.warning("attention_agent_malformed", agent=agent, reason=parsed)
         return None
+    return parsed
+
+
+def _items(agent: str, data: object) -> list[AttentionItemOut] | str:
+    """The validated items, or a short reason code when the reply is malformed."""
+    raw = data.get("items") if isinstance(data, Mapping) else None
+    if not isinstance(raw, list):
+        return "not_a_list"
+    if len(raw) > MAX_ITEMS:
+        return "too_many"
     items: list[AttentionItemOut] = []
     for entry in raw:
         if not isinstance(entry, Mapping):
-            return None
+            return "not_an_object"
         try:
             item = AttentionItemOut.model_validate({**entry, "agent": agent})
         except ValidationError:
-            return None
+            return "invalid_item"
         if not item.id.startswith(f"{agent}:"):
-            return None
+            return "wrong_agent"
         items.append(item)
     return items
 
@@ -178,6 +189,10 @@ def build_router(
             raise HTTPException(status_code=404, detail="unknown_item")
         if found.level == "critical":
             raise HTTPException(status_code=409, detail="not_dismissable")
+        # Dismissals follow the user's zone, while kitchen ids and day buckets follow the
+        # household zone (kitchen.application.attention). Members of one household share a
+        # zone in practice, so the two agree; a member in another zone may see a hidden kitchen
+        # item come back (or stay hidden) a few hours off their local midnight.
         today = await today_for(user)
         async with uow.for_user(user) as tx:
             await tx.repo(AttentionDismissals).dismiss(user, item_id, today + dt.timedelta(days=1))

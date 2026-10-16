@@ -1,3 +1,4 @@
+import hashlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
@@ -20,7 +21,7 @@ from shared.testing import dashboard_golden as g
 from shared.testing.fakes import FakeLLM, FakeNotificationSender, FakeScheduler, FixedClock
 from shared.testing.pytest_plugin import PostgresUrls
 from sqlalchemy import insert, text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 
 from .agents_harness import KEY, HostRouter, build_apps
 
@@ -38,10 +39,20 @@ class StoppedPeers(HostRouter):
         return await super().handle_async_request(request)
 
 
-async def _seed(clean_db: PostgresUrls, user: UUID) -> None:
+async def _as(conn: AsyncConnection, user: UUID, sql: str, **params: object) -> None:
+    await conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user)})
+    await conn.execute(text(sql), params)
+
+
+async def _seed(clean_db: PostgresUrls, user: UUID, partner: UUID | None = None) -> None:
+    """`user` gets a household; `partner`, when given, joins that same household."""
     admin = create_async_engine(clean_db.admin)
     async with admin.begin() as conn:
         await conn.execute(insert(users).values(id=user, name="Attn", timezone=g.TIMEZONE))
+        if partner is not None:
+            await conn.execute(
+                insert(users).values(id=partner, name="Partner", timezone=g.TIMEZONE)
+            )
         await conn.execute(
             insert(health_logs),
             [
@@ -59,8 +70,22 @@ async def _seed(clean_db: PostgresUrls, user: UUID) -> None:
     await admin.dispose()
     rw = create_async_engine(clean_db.rw)
     async with rw.begin() as conn:
-        await conn.execute(text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user)})
-        await conn.execute(text("SELECT household_ensure('Аня', :tz)"), {"tz": g.TIMEZONE})
+        await _as(conn, user, "SELECT household_ensure('Аня', :tz)", tz=g.TIMEZONE)
+    if partner is not None:
+        digest = hashlib.sha256(b"ATTN-PARTNER").digest()
+        async with rw.begin() as conn:
+            await _as(conn, partner, "SELECT household_ensure('Партнёр', :tz)", tz=g.TIMEZONE)
+        async with rw.begin() as conn:
+            await _as(
+                conn,
+                user,
+                "INSERT INTO household_invites (code_hash, created_by, expires_at)"
+                " VALUES (:h, :u, now() + interval '1 day')",
+                h=digest,
+                u=user,
+            )
+        async with rw.begin() as conn:
+            await _as(conn, partner, "SELECT * FROM household_join(:h)", h=digest)
     await rw.dispose()
 
 
@@ -158,3 +183,26 @@ async def test_attention_from_real_agents_dismiss_and_tenant_isolation(
         count = await conn.scalar(text("SELECT count(*) FROM attention_dismissals"))
     await rw.dispose()
     assert count == 0
+
+
+async def test_household_member_shares_kitchen_items_but_not_dismissals(
+    clean_db: PostgresUrls,
+) -> None:
+    user, partner = uuid4(), uuid4()
+    await _seed(clean_db, user, partner)
+    async with _gateway(clean_db, user) as client:
+        h, hp = {"X-User-Id": str(user)}, {"X-User-Id": str(partner)}
+
+        def kitchen(body: dict) -> list[str]:  # type: ignore[type-arg]
+            return [i["id"] for i in body["items"] if i["agent"] == "kitchen"]
+
+        mine = kitchen((await client.get("/me/attention", headers=h)).json())
+        assert "kitchen:today:2026-10-14" in mine
+        assert kitchen((await client.get("/me/attention", headers=hp)).json()) == mine
+
+        today_id = "kitchen:today:2026-10-14"
+        assert (
+            await client.post(f"/me/attention/{today_id}/dismiss", headers=h)
+        ).status_code == 204
+        assert today_id not in kitchen((await client.get("/me/attention", headers=h)).json())
+        assert kitchen((await client.get("/me/attention", headers=hp)).json()) == mine

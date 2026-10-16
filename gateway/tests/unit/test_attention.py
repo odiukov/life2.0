@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
 import httpx
+import pytest
 from fastapi import FastAPI
 from gateway.attention import ATTENTION_AGENTS, AttentionDismissals, build_router
 from shared.ports.skills import SkillReply, SkillUnavailable
@@ -15,6 +16,8 @@ from shared.testing.fakes import (
     InMemoryUnitOfWorkFactory,
     InMemoryUserSettings,
 )
+
+from gateway import attention as attention_module
 
 USER = uuid4()
 NOW = datetime(2026, 10, 16, 22, 30, tzinfo=UTC)  # 01:30 on the 17th in Kyiv
@@ -139,6 +142,32 @@ async def test_malformed_agent_goes_unavailable_others_served() -> None:
     body = (await get(api)).json()
     assert [i["id"] for i in body["items"]] == ["workout:plan:x"]
     assert set(body["unavailable"]) == {"sleep", "mood", "body", "habits"}
+
+
+@pytest.mark.parametrize(
+    ("reply", "reason"),
+    [
+        ({"items": "nope"}, "not_a_list"),
+        ("nope", "not_a_list"),
+        ({"items": [entry(f"sleep:x:{n}") for n in range(11)]}, "too_many"),
+        ({"items": ["sleep:x:1"]}, "not_an_object"),
+        ({"items": [entry("sleep:x:1", "urgent")]}, "invalid_item"),
+        ({"items": [entry("mood:x:1")]}, "wrong_agent"),
+    ],
+)
+async def test_malformed_reply_is_logged_with_a_reason(
+    monkeypatch: pytest.MonkeyPatch, reply: object, reason: str
+) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    class Logger:
+        def warning(self, event: str, **fields: object) -> None:
+            events.append((event, fields))
+
+    monkeypatch.setattr(attention_module, "logger", Logger())
+    api, _ = app({"sleep": reply})
+    assert (await get(api)).json()["unavailable"] == ["sleep"]
+    assert events == [("attention_agent_malformed", {"agent": "sleep", "reason": reason})]
 
 
 async def test_dismiss_uses_user_local_date() -> None:
