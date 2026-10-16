@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GatewaySchemas } from '@life-agents/api-client';
 import { gateway } from '@/api/gateway';
+import { ATTENTION_KEY } from '../me/useAttention';
 
 export type KitchenItem = GatewaySchemas['KitchenItem'];
 export type Location = 'fridge' | 'freezer' | 'pantry';
@@ -23,7 +24,12 @@ export function useInventory(location: Location, householdId?: string) {
 
 export function useKitchenActions() {
   const client = useQueryClient();
-  const refresh = () => client.invalidateQueries({ queryKey: KITCHEN_KEY });
+  // Kitchen items feed the Me attention cards too, so acting on one must clear its card.
+  const refresh = () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: KITCHEN_KEY }),
+      client.invalidateQueries({ queryKey: ATTENTION_KEY }),
+    ]);
   return {
     act: useMutation({
       mutationFn: ({ id, body }: { id: string; body: ItemAction }) =>

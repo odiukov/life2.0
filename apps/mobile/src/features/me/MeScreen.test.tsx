@@ -1,12 +1,12 @@
 import React from 'react';
-import { Text, Pressable, ScrollView } from 'react-native';
+import { AppState, Text, Pressable, ScrollView } from 'react-native';
 import { ThemeProvider } from '@life-agents/ui';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { MeScreen } from './MeScreen';
 import { feedDay } from './useDayFeed';
 import { computeAgentStatus, type AgentRow } from '../agents/agentStatusRules';
 import { dispatchTilePress } from '../agents/agentTileDispatch';
-import { openTask } from '../task/sheetStore';
+import { openTask, useTaskSheet } from '../task/sheetStore';
 
 const mockSummaryRefetch = jest.fn();
 const mockFeedRefetch = jest.fn();
@@ -55,7 +55,10 @@ const attn = (id: string, agent: string, action: { type: string; prompt?: string
 jest.mock('../agents/agentTileDispatch', () => ({
   dispatchTilePress: jest.fn(jest.requireActual('../agents/agentTileDispatch').dispatchTilePress),
 }));
-jest.mock('../task/sheetStore', () => ({ openTask: jest.fn() }));
+jest.mock('../task/sheetStore', () => ({
+  ...jest.requireActual('../task/sheetStore'),
+  openTask: jest.fn(),
+}));
 const mockUseDayFeed = jest.fn();
 let mockParams: { agent?: string } = {};
 const mockSetParams = jest.fn();
@@ -125,13 +128,18 @@ jest.mock('./AgentPagerSheet', () => ({
   AgentPagerSheet: ({
     start,
     onPickOther,
+    onClose,
   }: {
     start: string | null;
     onPickOther: (id: string) => void;
+    onClose: () => void;
   }) =>
     start ? (
       <>
         <Text>{`detail:${start}`}</Text>
+        <Pressable onPress={onClose}>
+          <Text>close pager</Text>
+        </Pressable>
         {['sleep', 'mood', 'body', 'home'].map((id) => (
           <Pressable key={id} onPress={() => onPickOther(id)}>
             <Text>{`pick:${id}`}</Text>
@@ -363,4 +371,46 @@ test.each([
   fireEvent.press(screen.getByText('Hide until tomorrow'));
   expect(mockDismiss).toHaveBeenCalledWith('h1', expect.anything());
   expect(screen.queryByText("Couldn't hide it. Try again.") !== null).toBe(toasts);
+});
+
+test('closing the agent pager refetches attention', () => {
+  mount();
+  openPager();
+  mockAttentionRefetch.mockClear();
+  fireEvent.press(screen.getByText('close pager'));
+  expect(mockAttentionRefetch).toHaveBeenCalledTimes(1);
+});
+
+test('closing the task sheet refetches attention', () => {
+  mount();
+  mockAttentionRefetch.mockClear();
+  act(() => useTaskSheet.getState().show());
+  expect(mockAttentionRefetch).not.toHaveBeenCalled();
+  act(() => useTaskSheet.getState().hide());
+  expect(mockAttentionRefetch).toHaveBeenCalledTimes(1);
+});
+
+test('coming back to the foreground refetches attention', () => {
+  mount();
+  const calls = jest.mocked(AppState.addEventListener).mock.calls;
+  const handler = calls[calls.length - 1]?.[1] as (s: string) => void;
+  mockAttentionRefetch.mockClear();
+  act(() => handler('background'));
+  expect(mockAttentionRefetch).not.toHaveBeenCalled();
+  act(() => handler('active'));
+  expect(mockAttentionRefetch).toHaveBeenCalledTimes(1);
+});
+
+test('the local day changing refetches attention', () => {
+  jest.useFakeTimers({ now: new Date(2026, 9, 16, 23, 59, 30) });
+  try {
+    mount();
+    mockAttentionRefetch.mockClear();
+    act(() => jest.advanceTimersByTime(60_000));
+    expect(mockAttentionRefetch).toHaveBeenCalledTimes(1);
+    act(() => jest.advanceTimersByTime(60_000));
+    expect(mockAttentionRefetch).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
 });

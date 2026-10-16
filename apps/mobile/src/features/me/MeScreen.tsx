@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, RefreshControl, ScrollView, Text } from 'react-native';
 import { Screen, useTheme, type AgentId } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { errorCode } from '@/api/gateway';
 import { appLocale } from '@/lib/locale';
-import { openTask } from '../task/sheetStore';
+import { openTask, useTaskSheet } from '../task/sheetStore';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useHomeSummary } from '../home/useHomeSummary';
 import { useSession } from '../auth/useSession';
@@ -75,13 +75,31 @@ export function MeScreen() {
     const refreshNow = () => setNow(new Date());
     const timer = setInterval(refreshNow, 60_000);
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshNow();
+      if (state !== 'active') return;
+      refreshNow();
+      void refetchAttention();
     });
     return () => {
       clearInterval(timer);
       subscription.remove();
     };
-  }, []);
+  }, [refetchAttention]);
+  // Attention is "today" only: a new local day (e.g. past midnight) must drop yesterday's items.
+  const today = feedDay(now, 0);
+  const seenDay = useRef(today);
+  useEffect(() => {
+    if (seenDay.current === today) return;
+    seenDay.current = today;
+    void refetchAttention();
+  }, [today, refetchAttention]);
+  // Acting in the task sheet can resolve an item, so refresh when it closes.
+  useEffect(
+    () =>
+      useTaskSheet.subscribe((state, prev) => {
+        if (prev.visible && !state.visible) void refetchAttention();
+      }),
+    [refetchAttention],
+  );
 
   const rowsByAgent = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
   const showAgent = useCallback(
@@ -215,7 +233,10 @@ export function MeScreen() {
         summary={summary.data}
         rows={rowsByAgent}
         onPickOther={showAgent}
-        onClose={() => setPager(null)}
+        onClose={() => {
+          setPager(null);
+          void refetchAttention();
+        }}
       />
       <IntegrationSheet
         integration={activeIntegration}
