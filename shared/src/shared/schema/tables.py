@@ -270,6 +270,16 @@ oauth_state = Table(
 )
 Index("oauth_state_user_idx", oauth_state.c.user_id)
 
+attention_dismissals = Table(
+    "attention_dismissals",
+    metadata,
+    _user_fk(),
+    Column("item_id", Text, nullable=False),
+    Column("until_date", Date, nullable=False),
+    Column("created_at", TSTZ, nullable=False, server_default=NOW),
+    PrimaryKeyConstraint("user_id", "item_id", name="attention_dismissals_pkey"),
+)
+
 # Tables whose rows belong to one user. `users` itself is isolated by `id`.
 RLS_TABLES: tuple[str, ...] = (
     "health_logs",
@@ -280,6 +290,7 @@ RLS_TABLES: tuple[str, ...] = (
     "integrations_credentials",
     "integration_sync_state",
     "oauth_state",
+    "attention_dismissals",
     "telemetry_consent",
     "notifications",
     "push_tokens",

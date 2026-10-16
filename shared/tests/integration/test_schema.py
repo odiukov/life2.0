@@ -248,7 +248,8 @@ async def test_no_retired_role_and_no_create_on_public(postgres_urls) -> None:
 
 async def test_migrations_run_without_retired_role(fresh_database) -> None:
     assert (
-        await fresh_database.scalar(text("SELECT version_num FROM alembic_version")) == "c0010_chat"
+        await fresh_database.scalar(text("SELECT version_num FROM alembic_version"))
+        == "c0011_attention"
     )
 
 
@@ -266,3 +267,55 @@ async def test_retirement_preserves_old_owned_objects(fresh_database_with_legacy
     assert (
         await conn.scalar(text("SELECT has_table_privilege('app_rw', 'users', 'SELECT')")) is True
     )
+
+
+async def test_attention_dismissals_are_per_user(postgres_urls: PostgresUrls) -> None:
+    from uuid import uuid4
+
+    from sqlalchemy.exc import DBAPIError
+
+    user_a, user_b = uuid4(), uuid4()
+    insert = text(
+        "INSERT INTO attention_dismissals (user_id, item_id, until_date) "
+        "VALUES (:u, 'kitchen:today:2026-10-16', '2026-10-17')"
+    )
+    admin = create_async_engine(postgres_urls.admin)
+    rw = create_async_engine(postgres_urls.rw)
+
+    async def insert_as_b() -> None:
+        async with rw.begin() as conn:
+            await conn.execute(
+                text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user_b)}
+            )
+            await conn.execute(insert, {"u": user_a})
+
+    try:
+        async with admin.begin() as conn:
+            await conn.execute(
+                text("INSERT INTO users (id, name) VALUES (:a, 'a'), (:b, 'b')"),
+                {"a": user_a, "b": user_b},
+            )
+        async with rw.begin() as conn:
+            await conn.execute(
+                text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user_a)}
+            )
+            await conn.execute(insert, {"u": user_a})
+            assert (
+                await conn.execute(text("SELECT count(*) FROM attention_dismissals"))
+            ).scalar_one() == 1
+        async with rw.begin() as conn:
+            await conn.execute(
+                text("SELECT set_config('app.user_id', :u, true)"), {"u": str(user_b)}
+            )
+            assert (
+                await conn.execute(text("SELECT count(*) FROM attention_dismissals"))
+            ).scalar_one() == 0
+        with pytest.raises(DBAPIError, match="row-level security"):
+            await insert_as_b()
+    finally:
+        async with admin.begin() as conn:
+            await conn.execute(
+                text("DELETE FROM users WHERE id IN (:a, :b)"), {"a": user_a, "b": user_b}
+            )
+        for engine in (admin, rw):
+            await engine.dispose()
