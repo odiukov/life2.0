@@ -629,13 +629,6 @@
     "yesterday": "Yesterday",
     "prev_day": "Previous day",
     "next_day": "Next day",
-    "rings": {
-      "ready": "Ready",
-      "hrv": "HRV",
-      "steps": "Steps",
-      "mood": "Mood"
-    },
-    "all": "⋯ all",
     "all_agents": "All agents",
     "insight": "INSIGHT",
     "feed": {
@@ -647,8 +640,6 @@
         "other": "{agents} are unavailable right now."
       }
     },
-    "attention": "Needs attention",
-    "body_profile": "⚠︎ Set up body profile →",
     "mock_feed": {
       "meal": "Lunch: 640 kcal, protein 32 g",
       "insight": "Deep sleep 1 h 50 min — best this week",

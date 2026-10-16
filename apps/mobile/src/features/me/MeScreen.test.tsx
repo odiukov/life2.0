@@ -19,6 +19,28 @@ let mockFeedError = false;
 let mockNutrition = false;
 let mockBodyFeed = false;
 let mockRows: AgentRow[] = [];
+let mockAttention: unknown[] = [];
+const mockAttentionRefetch = jest.fn();
+const mockDismiss = jest.fn();
+jest.mock('./useAttention', () => ({
+  useAttention: () => ({
+    data: { items: mockAttention, unavailable: [] },
+    refetch: mockAttentionRefetch,
+  }),
+  useDismissAttention: () => ({ mutate: mockDismiss }),
+}));
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
+  __esModule: true,
+  default: ({ children }: { children: React.ReactNode }) => children,
+}));
+const attn = (id: string, agent: string, action: { type: string; prompt?: string }) => ({
+  agent,
+  id,
+  level: 'normal',
+  rank: 0,
+  text: `item ${id}`,
+  action,
+});
 jest.mock('../agents/agentTileDispatch', () => ({
   dispatchTilePress: jest.fn(jest.requireActual('../agents/agentTileDispatch').dispatchTilePress),
 }));
@@ -112,6 +134,7 @@ beforeEach(() => {
   mockNutrition = false;
   mockBodyFeed = false;
   mockRows = [];
+  mockAttention = [];
   mockParams = {};
 });
 function mount() {
@@ -147,11 +170,11 @@ test('refreshes summary and selected day on each navigation focus', () => {
   expect(mockFeedRefetch).toHaveBeenCalledTimes(3);
 });
 
-test('feed error leaves metric chips usable; summary error leaves feed usable', () => {
+test('feed error leaves the agent stack usable; summary error leaves feed usable', () => {
   mockFeedError = true;
   const { unmount } = mount();
-  fireEvent.press(screen.getByTestId('chip-sleep'));
-  expect(screen.getByText('detail:sleep')).toBeTruthy();
+  fireEvent.press(screen.getByTestId('agent-stack'));
+  expect(screen.getByText('detail:all')).toBeTruthy();
   fireEvent.press(screen.getByText('Retry'));
   expect(mockFeedRefetch).toHaveBeenCalledTimes(1);
   unmount();
@@ -162,52 +185,10 @@ test('feed error leaves metric chips usable; summary error leaves feed usable', 
   expect(screen.getByText('detail:sleep')).toBeTruthy();
 });
 
-test('nutrition without a profile preserves the alert, profile sheet, and saved refresh', () => {
-  mockNutrition = true;
-  mount();
-  fireEvent.press(screen.getByText('⚠︎ Set up body profile →'));
-  fireEvent.press(screen.getByText('profile sheet'));
-  expect(mockSummaryRefetch).toHaveBeenCalledTimes(1);
-});
-
-test('setup chips keep integration dispatch and task-prefill actions', () => {
-  mockRows = [
-    { id: 'sleep', status: 'needs_setup', cta: { kind: 'integrations', panel: 'garmin' } },
-    {
-      id: 'mood',
-      status: 'needs_setup',
-      cta: { kind: 'chat-prefill', tag: 'mood', text: 'Log mood' },
-    },
-  ] as AgentRow[];
-  mount();
-  fireEvent.press(screen.getByTestId('chip-sleep'));
-  expect(screen.getByText('integration:garmin')).toBeTruthy();
-  fireEvent.press(screen.getByTestId('chip-mood'));
-  expect(openTask).toHaveBeenCalledWith({ lead: 'mood', prefill: 'Log mood' });
-});
-
 test('header settings control has a localized label and opens settings', () => {
   mount();
   fireEvent.press(screen.getByLabelText('Open Settings'));
   expect(screen.getByText('settings')).toBeTruthy();
-});
-
-test('all chip opens the grid', () => {
-  mount();
-  fireEvent.press(screen.getByTestId('chip-all'));
-  expect(screen.getByText('detail:all')).toBeTruthy();
-});
-
-test('body row goes through tile dispatch', () => {
-  mockRows = [
-    { id: 'body', status: 'needs_setup', cta: { kind: 'integrations', panel: 'apple-health' } },
-  ] as AgentRow[];
-  mount();
-  fireEvent.press(screen.getByTestId('chip-body'));
-  expect(dispatchTilePress).toHaveBeenCalledWith(
-    mockRows[0],
-    expect.objectContaining({ openDetail: expect.any(Function) }),
-  );
 });
 
 jest.mock('../home/AgentDetailContent', () => ({
@@ -223,37 +204,6 @@ jest.mock('../home/AgentDetailContent', () => ({
     </Pressable>
   ),
 }));
-test.each(['body', 'home'] as const)(
-  'real ready %s status dispatch opens usable separate details',
-  (id) => {
-    const status = computeAgentStatus(id, {
-      integrations: new Set(['ha']),
-      peerOnline: new Map(),
-      meProfile: null,
-      summary: {
-        agents: [
-          {
-            agent: 'body',
-            label: 'Body',
-            metric: '70 kg',
-            detail: null,
-            tint: 'neutral',
-            progress: null,
-          },
-        ],
-        unavailable: [],
-      },
-    });
-    expect(status).toEqual({ status: 'ready', hint: null, cta: null });
-    mockRows = [{ id, description: '', ...status }];
-    mount();
-    fireEvent.press(screen.getByTestId(`chip-${id}`));
-    expect(screen.getByText(`standalone:${id}`)).toBeTruthy();
-    expect(screen.queryByText(`detail:${id}`)).toBeNull();
-    fireEvent.press(screen.getByText(`standalone:${id}`));
-    expect(openTask).toHaveBeenCalledWith({ lead: id, send: 'existing action' });
-  },
-);
 test('a Body feed entry opens the separate usable Body destination', () => {
   mockBodyFeed = true;
   mockRows = [
@@ -291,4 +241,41 @@ test('?agent=kitchen opens the agent sheet on the kitchen page', () => {
   mount();
   expect(screen.getByText('detail:kitchen')).toBeTruthy();
   expect(mockSetParams).toHaveBeenCalledWith({ agent: undefined });
+});
+
+test('the now block shows on today and hides on a previous day', () => {
+  mockAttention = [attn('a1', 'sleep', { type: 'agent' })];
+  mount();
+  expect(screen.getByText('item a1')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('Previous day'));
+  expect(screen.queryByText('item a1')).toBeNull();
+});
+
+test('a task item opens the task sheet with the prompt prefilled', () => {
+  mockAttention = [attn('t1', 'workout', { type: 'task', prompt: 'Help me plan a workout' })];
+  mount();
+  fireEvent.press(screen.getByText('item t1'));
+  expect(openTask).toHaveBeenCalledWith({ lead: 'workout', prefill: 'Help me plan a workout' });
+});
+
+test('a profile item opens the body profile sheet and saving refetches attention', () => {
+  mockAttention = [attn('p1', 'nutrition', { type: 'profile' })];
+  mount();
+  fireEvent.press(screen.getByText('item p1'));
+  fireEvent.press(screen.getByText('profile sheet'));
+  expect(mockAttentionRefetch).toHaveBeenCalled();
+});
+
+test('an agent item opens the pager', () => {
+  mockAttention = [attn('k1', 'kitchen', { type: 'agent' })];
+  mockRows = [{ id: 'kitchen', status: 'ready', cta: null }] as unknown as AgentRow[];
+  mount();
+  fireEvent.press(screen.getByText('item k1'));
+  expect(screen.getByText('detail:kitchen')).toBeTruthy();
+});
+
+test('the agent stack opens the grid', () => {
+  mount();
+  fireEvent.press(screen.getByTestId('agent-stack'));
+  expect(screen.getByText('detail:all')).toBeTruthy();
 });

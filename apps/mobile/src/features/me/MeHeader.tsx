@@ -3,18 +3,21 @@ import { Pressable, Text, View, StyleSheet } from 'react-native';
 import { Icon, useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
+import { AgentStack } from './AgentStack';
 export function MeHeader({
   now,
   firstName,
   unreadBadge,
   onInbox,
   onSettings,
+  onAgents,
 }: {
   now: Date;
   firstName: string;
   unreadBadge: string | null;
   onInbox: () => void;
   onSettings: () => void;
+  onAgents: () => void;
 }) {
   const { colors, typography } = useTheme();
   const t = useT(appLocale());
@@ -53,6 +56,7 @@ export function MeHeader({
           {t(`me.greeting.${part}`, { name: firstName || '👋' })}
         </Text>
       </View>
+      <AgentStack onPress={onAgents} />
       <Pressable
         testID="inbox-bell"
         accessibilityRole="button"

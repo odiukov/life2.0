@@ -12,9 +12,10 @@ type Props = {
   error: boolean;
   onRetry: () => void;
   onOpenAgent: (agent: AgentId) => void;
+  extraUnavailable?: string[];
 };
 
-export function DayFeed({ feed, loading, error, onRetry, onOpenAgent }: Props) {
+export function DayFeed({ feed, loading, error, onRetry, onOpenAgent, extraUnavailable }: Props) {
   const { colors, radius } = useTheme();
   const locale = appLocale();
   const t = useT(locale);
@@ -29,7 +30,9 @@ export function DayFeed({ feed, loading, error, onRetry, onOpenAgent }: Props) {
       </View>
     );
   }
-  const unavailable = feed.unavailable.filter(isAgentId);
+  const unavailable = [...new Set([...feed.unavailable, ...(extraUnavailable ?? [])])].filter(
+    isAgentId,
+  );
   return (
     <View
       style={{

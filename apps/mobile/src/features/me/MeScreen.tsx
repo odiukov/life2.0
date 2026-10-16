@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, RefreshControl, ScrollView } from 'react-native';
+import { AppState, RefreshControl, ScrollView, Text } from 'react-native';
 import { Screen, useTheme, type AgentId } from '@life-agents/ui';
+import { useT } from '@life-agents/i18n';
+import { errorCode } from '@/api/gateway';
+import { appLocale } from '@/lib/locale';
+import { openTask } from '../task/sheetStore';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useHomeSummary } from '../home/useHomeSummary';
 import { useSession } from '../auth/useSession';
@@ -14,13 +18,12 @@ import { StandaloneAgentSheet } from './StandaloneAgentSheet';
 import { DETAIL_AGENTS } from './agentOrder';
 import { IntegrationSheet } from '../integrations/IntegrationSheet';
 import type { IntegrationId } from '../integrations/store';
-import { BodyProfileAlert } from '../home/BodyProfileAlert';
 import { BodyProfileSheet } from '../home/BodyProfileSheet';
 import { DayFeed } from './DayFeed';
 import { DaySwitcher } from './DaySwitcher';
-import { MetricChips } from './MetricChips';
+import { AttentionList } from './AttentionList';
+import { useAttention, useDismissAttention, type AttentionItem } from './useAttention';
 import { MeHeader } from './MeHeader';
-import { NeedsAttention } from './NeedsAttention';
 import { feedDay, useDayFeed } from './useDayFeed';
 export function MeScreen() {
   const { colors } = useTheme();
@@ -33,10 +36,19 @@ export function MeScreen() {
   const [offset, setOffset] = useState(0);
   const day = feedDay(now, offset);
   const feed = useDayFeed(day);
+  const t = useT(appLocale());
+  const isToday = offset === 0;
+  const attention = useAttention(isToday);
+  const dismiss = useDismissAttention();
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsPanel, setSettingsPanel] = useState<'integrations' | null>(null);
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId | null>(null);
-  const [alertsOpen, setAlertsOpen] = useState(false);
   const [pager, setPager] = useState<PagerStart | null>(null);
   const params = useLocalSearchParams<{ agent?: string }>();
   useEffect(() => {
@@ -51,11 +63,13 @@ export function MeScreen() {
   const [profileOpen, setProfileOpen] = useState(false);
   const { refetch: refetchSummary } = summary;
   const { refetch: refetchFeed } = feed;
+  const { refetch: refetchAttention } = attention;
   useFocusEffect(
     useCallback(() => {
       void refetchSummary();
       void refetchFeed();
-    }, [refetchSummary, refetchFeed]),
+      void refetchAttention();
+    }, [refetchSummary, refetchFeed, refetchAttention]),
   );
   useEffect(() => {
     const refreshNow = () => setNow(new Date());
@@ -91,11 +105,34 @@ export function MeScreen() {
     [rowsByAgent, router],
   );
 
+  const openAttention = useCallback(
+    (item: AttentionItem) => {
+      const agent = item.agent as AgentId;
+      if (item.action.type === 'profile') setProfileOpen(true);
+      else if (item.action.type === 'task')
+        openTask({ lead: agent, prefill: item.action.prompt ?? '' });
+      else showAgent(agent);
+    },
+    [showAgent],
+  );
+  const { mutate: dismissMutate } = dismiss;
+  const hide = useCallback(
+    (id: string) =>
+      dismissMutate(id, {
+        onError: (error) => {
+          if (errorCode(error) !== 'not_dismissable') setNotice(t('attention.hide_failed'));
+        },
+      }),
+    [dismissMutate, t],
+  );
+  const attentionUnavailable = isToday ? attention.data?.unavailable : undefined;
+
   const refreshing = summary.isRefreshing || feed.isRefetching;
   const onRefresh = useCallback(() => {
     void summary.onRefresh();
     void feed.refetch();
-  }, [summary, feed]);
+    void attention.refetch();
+  }, [summary, feed, attention]);
   const firstName =
     (session?.user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? '';
 
@@ -118,25 +155,18 @@ export function MeScreen() {
           unreadBadge={badgeText(inbox.data?.unread_count ?? 0)}
           onInbox={() => router.push('/inbox')}
           onSettings={() => setSettingsOpen(true)}
+          onAgents={() => setPager('all')}
         />
-        {summary.data && (
-          <MetricChips
-            summary={summary.data}
-            rows={rowsByAgent}
-            onAgent={showAgent}
-            onAll={() => setPager('all')}
+        <DaySwitcher offset={offset} today={now} onChange={setOffset} />
+        {isToday && (
+          <AttentionList
+            items={attention.data?.items ?? []}
+            onOpen={openAttention}
+            onDismiss={hide}
           />
         )}
-        <NeedsAttention
-          alerts={summary.data?.alerts ?? []}
-          open={alertsOpen}
-          onToggle={() => setAlertsOpen((v) => !v)}
-        />
-        {summary.data?.agents.some((a) => a.agent === 'nutrition' && a.progress === null) && (
-          <BodyProfileAlert onPress={() => setProfileOpen(true)} />
-        )}
-        <DaySwitcher offset={offset} today={now} onChange={setOffset} />
         <DayFeed
+          extraUnavailable={attentionUnavailable}
           feed={feed.data}
           loading={feed.isLoading}
           error={feed.isError}
@@ -144,11 +174,29 @@ export function MeScreen() {
           onOpenAgent={showAgent}
         />
       </ScrollView>
+      {notice && (
+        <Text
+          style={{
+            position: 'absolute',
+            bottom: 100,
+            alignSelf: 'center',
+            backgroundColor: colors.bg3,
+            color: colors.fg1,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 16,
+            overflow: 'hidden',
+          }}
+        >
+          {notice}
+        </Text>
+      )}
       <BodyProfileSheet
         visible={profileOpen}
         onClose={() => setProfileOpen(false)}
         onSaved={() => {
           void summary.refetch();
+          void attention.refetch();
         }}
       />
       <SettingsSheet

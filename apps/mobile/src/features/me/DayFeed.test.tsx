@@ -65,3 +65,17 @@ test('an empty day and an error', () => {
 function render(ui: React.ReactElement) {
   return baseRender(ui, { wrapper: ThemeProvider });
 }
+
+test('merges extra unavailable agents without duplicates', () => {
+  render(
+    <DayFeed
+      feed={{ ...feed, items: [], unavailable: ['sleep'] }}
+      loading={false}
+      error={false}
+      onRetry={jest.fn()}
+      onOpenAgent={jest.fn()}
+      extraUnavailable={['sleep', 'kitchen']}
+    />,
+  );
+  expect(screen.getByText(/Sleep, Kitchen are unavailable/)).toBeTruthy();
+});
