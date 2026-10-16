@@ -10,18 +10,20 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.attention import AttentionSkill
 from shared.dashboard import DashboardSkill
 from shared.feed import FeedSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Dashboard, Feed, Habits
+from shared.skill_ids import Attention, Dashboard, Feed, Habits
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from habits.adapters.a2a.card import PEER_SKILLS, build_agent_card
 from habits.adapters.db import habits_repositories
 from habits.application.archive import ArchiveHabit
+from habits.application.attention import collect as attention_collect
 from habits.application.check import CheckHabit
 from habits.application.dashboard import card, detail
 from habits.application.data import HabitData
@@ -121,6 +123,13 @@ def build_runtime(
     )
     handlers[Dashboard.DETAIL] = DashboardSkill(
         uow=uow, clock=base.clock, build=detail, name=Dashboard.DETAIL
+    )
+    handlers[Attention.ITEMS] = AttentionSkill(
+        uow=uow,
+        clock=base.clock,
+        translator=base.translator,
+        default_locale=base.default_locale,
+        collect=attention_collect,
     )
     return HabitsRuntime(
         executor=SkillExecutor(

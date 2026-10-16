@@ -699,6 +699,17 @@
     "recovery": {
       "depleted": "Take it easy today",
       "depleted_detail": "Recovery is below your baseline"
+    },
+    "medication": {
+      "missed": "Did you take {name}?",
+      "missed_detail": "No intake logged today",
+      "prompt": "I took {name}"
+    },
+    "habits": {
+      "due": {
+        "one": "{count} habit left for today",
+        "other": "{count} habits left for today"
+      }
     }
   }
 }
