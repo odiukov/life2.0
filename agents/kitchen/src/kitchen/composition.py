@@ -21,12 +21,13 @@ from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.notifications import NotificationSender
 from shared.ports.scheduler import Scheduler
-from shared.skill_ids import Kitchen
+from shared.skill_ids import Attention, Kitchen
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from kitchen.adapters.a2a.card import build_agent_card
 from kitchen.adapters.db import digest_repositories, kitchen_uow
 from kitchen.adapters.matching import RapidfuzzMatcher
+from kitchen.application.attention import KitchenAttentionSkill
 from kitchen.application.digest_job import SendDueDigests
 from kitchen.application.ports import TextMatcher
 from kitchen.application.query_inventory import QueryInventory
@@ -106,6 +107,9 @@ def build_runtime(
         Kitchen.DIGEST: DigestSkill(service, clock),
         Kitchen.ITEM_ACTION: ItemActionSkill(service),
         Kitchen.UNDO: UndoSkill(service),
+        Attention.ITEMS: KitchenAttentionSkill(
+            service, uow, translator, clock, default_locale=settings.default_locale
+        ),
     }
     executor = SkillExecutor(
         agent=AGENT,

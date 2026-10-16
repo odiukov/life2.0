@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Kitchen
+from shared.skill_ids import Attention, Kitchen
 
 SKILLS: list[AgentSkill] = [
     AgentSkill(
@@ -46,6 +46,12 @@ SKILLS: list[AgentSkill] = [
         name="Undo (structured)",
         description="Undo one operation group.",
         tags=["kitchen", "structured"],
+    ),
+    AgentSkill(
+        id=Attention.ITEMS,
+        name="Attention items",
+        description="Things in the kitchen that need doing today, for the app's Me screen.",
+        tags=["structured"],
     ),
 ]
 

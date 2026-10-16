@@ -662,5 +662,27 @@
     "log": "log",
     "upload": "upload",
     "close_details": "Close details"
+  },
+  "attention": {
+    "now": "Now",
+    "earlier": "Earlier",
+    "urgent": "URGENT",
+    "hide": "Hide until tomorrow",
+    "hide_failed": "Couldn't hide it. Try again.",
+    "kitchen": {
+      "expired": "Throw out {name}",
+      "expired_detail": {
+        "one": "Expired {count} day ago",
+        "other": "Expired {count} days ago"
+      },
+      "today": {
+        "one": "{count} item spoils today",
+        "other": "{count} items spoil today"
+      },
+      "tomorrow": {
+        "one": "{count} item spoils tomorrow",
+        "other": "{count} items spoil tomorrow"
+      }
+    }
   }
 }

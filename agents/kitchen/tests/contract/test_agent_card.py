@@ -1,5 +1,5 @@
 from kitchen.adapters.a2a.card import build_agent_card
-from shared.skill_ids import Kitchen
+from shared.skill_ids import Attention, Kitchen
 
 
 def test_card_lists_all_skills_and_is_discoverable_as_kitchen() -> None:
@@ -12,6 +12,7 @@ def test_card_lists_all_skills_and_is_discoverable_as_kitchen() -> None:
         Kitchen.DIGEST,
         Kitchen.ITEM_ACTION,
         Kitchen.UNDO,
+        Attention.ITEMS,
     }
     conversational = [s for s in card.skills if "conversational" in (s.tags or [])]
     assert {s.id for s in conversational} == {Kitchen.UPDATE_INVENTORY, Kitchen.QUERY}
