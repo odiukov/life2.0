@@ -32,6 +32,8 @@ from shared.ports.users import UserSettingsRepository
 
 from gateway.agents import AgentDirectory, SqlTaskCounts, TaskCounts, build_agents_router
 from gateway.agents_client import AgentClients
+from gateway.attention import AttentionDismissals, SqlAttentionDismissals
+from gateway.attention import build_router as build_attention_router
 from gateway.auth.authenticate import Authenticator
 from gateway.auth.routes import build_router as build_auth_router
 from gateway.auth.settings import AuthSettings
@@ -101,6 +103,7 @@ def build_gateway(
     data_uow = SqlUnitOfWorkFactory(
         engine,
         {
+            AttentionDismissals: SqlAttentionDismissals,
             BodyProfileRepository: SqlBodyProfiles,
             HealthLogRepository: SqlHealthLogs,
             UserSettingsRepository: SqlUserSettings,
@@ -124,6 +127,7 @@ def build_gateway(
     routers = [
         build_dashboard_router(clients.client, directory, data_uow, authenticate),
         build_feed_router(clients.client, data_uow, clock, authenticate),
+        build_attention_router(clients.client, data_uow, clock, authenticate),
         build_agents_router(directory, data_uow, clock, authenticate),
         build_auth_router(auth, auth_uow, http),
         build_router(households, authenticate),

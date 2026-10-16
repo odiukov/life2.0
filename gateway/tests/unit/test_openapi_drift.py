@@ -24,6 +24,8 @@ def test_schema_has_every_gateway_route() -> None:
     paths = set(openapi_document()["paths"])
     assert {
         "/me/feed",
+        "/me/attention",
+        "/me/attention/{item_id}/dismiss",
         "/me/profile",
         "/me/profile/import-pdf",
         "/integrations/ha/connect",
