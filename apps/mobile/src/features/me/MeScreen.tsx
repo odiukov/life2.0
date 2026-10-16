@@ -120,7 +120,9 @@ export function MeScreen() {
     (id: string) =>
       dismissMutate(id, {
         onError: (error) => {
-          if (errorCode(error) !== 'not_dismissable') setNotice(t('attention.hide_failed'));
+          const code = errorCode(error);
+          if (code !== 'not_dismissable' && code !== 'unknown_item')
+            setNotice(t('attention.hide_failed'));
         },
       }),
     [dismissMutate, t],

@@ -53,3 +53,13 @@ test('rolls back on error and exposes the error code', async () => {
   expect(errorCode(result.current.error)).toBe('agent_unavailable');
   expect(client.getQueryData<AttentionData>(ATTENTION_KEY)?.items).toHaveLength(2);
 });
+
+test('unknown_item keeps the item removed', async () => {
+  jest.mocked(gateway.POST).mockResolvedValue({ error: { detail: 'unknown_item' } } as never);
+  const { client, result } = setup();
+  act(() => result.current.mutate('a:x:1'));
+  await waitFor(() => expect(result.current.isError).toBe(true));
+  expect(client.getQueryData<AttentionData>(ATTENTION_KEY)?.items.map((i) => i.id)).toEqual([
+    'b:y:2',
+  ]);
+});

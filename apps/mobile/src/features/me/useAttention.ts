@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { GatewaySchemas } from '@life-agents/api-client';
-import { gateway } from '@/api/gateway';
+import { errorCode, gateway } from '@/api/gateway';
 
 export type AttentionItem = GatewaySchemas['AttentionItemOut'];
 export type AttentionData = GatewaySchemas['AttentionOut'];
@@ -38,7 +38,9 @@ export function useDismissAttention() {
       }
       return { previous };
     },
-    onError: (_error, _id, context) => {
+    onError: (error, _id, context) => {
+      // The item vanished meanwhile (404): keep it removed; settle refetches.
+      if (errorCode(error) === 'unknown_item') return;
       if (context?.previous) client.setQueryData(ATTENTION_KEY, context.previous);
     },
     onSettled: () => client.invalidateQueries({ queryKey: ATTENTION_KEY }),

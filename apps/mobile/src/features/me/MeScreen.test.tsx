@@ -31,7 +31,18 @@ jest.mock('./useAttention', () => ({
 }));
 jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => children,
+  default: ({
+    children,
+    renderRightActions,
+  }: {
+    children: React.ReactNode;
+    renderRightActions: () => React.ReactNode;
+  }) => (
+    <>
+      {children}
+      {renderRightActions()}
+    </>
+  ),
 }));
 const attn = (id: string, agent: string, action: { type: string; prompt?: string }) => ({
   agent,
@@ -111,8 +122,23 @@ jest.mock('../more/SettingsSheet', () => ({
 }));
 jest.mock('./AgentPagerSheet', () => ({
   PAGES: ['all', 'sleep', 'kitchen'],
-  AgentPagerSheet: ({ start }: { start: string | null }) =>
-    start ? <Text>{`detail:${start}`}</Text> : null,
+  AgentPagerSheet: ({
+    start,
+    onPickOther,
+  }: {
+    start: string | null;
+    onPickOther: (id: string) => void;
+  }) =>
+    start ? (
+      <>
+        <Text>{`detail:${start}`}</Text>
+        {['sleep', 'mood', 'body', 'home'].map((id) => (
+          <Pressable key={id} onPress={() => onPickOther(id)}>
+            <Text>{`pick:${id}`}</Text>
+          </Pressable>
+        ))}
+      </>
+    ) : null,
 }));
 jest.mock('../integrations/IntegrationSheet', () => ({
   IntegrationSheet: ({ integration }: { integration: string | null }) =>
@@ -278,4 +304,63 @@ test('the agent stack opens the grid', () => {
   mount();
   fireEvent.press(screen.getByTestId('agent-stack'));
   expect(screen.getByText('detail:all')).toBeTruthy();
+});
+
+function openPager() {
+  fireEvent.press(screen.getByTestId('agent-stack'));
+}
+
+test('picking a needs_setup agent keeps integration dispatch and chat-prefill', () => {
+  mockRows = [
+    { id: 'sleep', status: 'needs_setup', cta: { kind: 'integrations', panel: 'garmin' } },
+    {
+      id: 'mood',
+      status: 'needs_setup',
+      cta: { kind: 'chat-prefill', tag: 'mood', text: 'Log mood' },
+    },
+  ] as AgentRow[];
+  mount();
+  openPager();
+  fireEvent.press(screen.getByText('pick:sleep'));
+  expect(screen.getByText('integration:garmin')).toBeTruthy();
+  fireEvent.press(screen.getByText('pick:mood'));
+  expect(openTask).toHaveBeenCalledWith({ lead: 'mood', prefill: 'Log mood' });
+});
+
+test('body needs_setup goes through tile dispatch', () => {
+  mockRows = [
+    { id: 'body', status: 'needs_setup', cta: { kind: 'integrations', panel: 'apple-health' } },
+  ] as AgentRow[];
+  mount();
+  openPager();
+  fireEvent.press(screen.getByText('pick:body'));
+  expect(dispatchTilePress).toHaveBeenCalledWith(
+    mockRows[0],
+    expect.objectContaining({ openDetail: expect.any(Function) }),
+  );
+});
+
+test.each(['body', 'home'] as const)('ready %s opens the standalone sheet', (id) => {
+  mockRows = [{ id, description: '', status: 'ready', hint: null, cta: null }] as AgentRow[];
+  mount();
+  openPager();
+  fireEvent.press(screen.getByText(`pick:${id}`));
+  expect(screen.getByText(`standalone:${id}`)).toBeTruthy();
+  fireEvent.press(screen.getByText(`standalone:${id}`));
+  expect(openTask).toHaveBeenCalledWith({ lead: id, send: 'existing action' });
+});
+
+test.each([
+  ['agent_unavailable', true],
+  ['not_dismissable', false],
+  ['unknown_item', false],
+])('dismiss error %s shows the toast: %s', (detail, toasts) => {
+  mockAttention = [attn('h1', 'sleep', { type: 'agent' })];
+  mockDismiss.mockImplementation((_id: string, opts: { onError: (e: unknown) => void }) =>
+    opts.onError({ detail }),
+  );
+  mount();
+  fireEvent.press(screen.getByText('Hide until tomorrow'));
+  expect(mockDismiss).toHaveBeenCalledWith('h1', expect.anything());
+  expect(screen.queryByText("Couldn't hide it. Try again.") !== null).toBe(toasts);
 });
