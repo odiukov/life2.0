@@ -172,3 +172,9 @@ class Feed:
     """Structured skill each personal agent serves for the app's day feed (no LLM)."""
 
     EVENTS: Final = "feed.events"
+
+
+class Attention:
+    """Structured skill each participating agent serves for the app's "now" block (no LLM)."""
+
+    ITEMS: Final = "attention.items"
