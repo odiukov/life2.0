@@ -1,10 +1,14 @@
 from recovery.adapters.a2a.card import PEER_SKILLS, SKILLS, build_agent_card
-from shared.skill_ids import Dashboard, Feed, Recovery
+from shared.skill_ids import Attention, Dashboard, Feed, Recovery
 
 
 def test_card_is_unchanged() -> None:
     card = build_agent_card("http://agent-recovery:8007/")
-    legacy = [s for s in SKILLS if s.id not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}]
+    legacy = [
+        s
+        for s in SKILLS
+        if s.id not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS, Attention.ITEMS}
+    ]
     assert card.name == "recovery-agent"
     assert card.protocol_version == "0.3.0"
     assert card.skills == SKILLS
@@ -35,3 +39,7 @@ def test_card_declares_dashboard_skills() -> None:
 
 def test_card_declares_feed_skill() -> None:
     assert Feed.EVENTS in {s.id for s in SKILLS}
+
+
+def test_card_declares_attention_skill() -> None:
+    assert Attention.ITEMS in {s.id for s in SKILLS if "structured" in s.tags}

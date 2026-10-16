@@ -10,16 +10,18 @@ from shared.adapters.a2a.task_store import SqlTaskStore
 from shared.adapters.agent_base import base_repositories, build_agent_base
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec, previous_day
+from shared.attention import AttentionSkill
 from shared.dashboard import DashboardSkill
 from shared.feed import FeedSkill
 from shared.ports.clock import Clock
 from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Dashboard, Feed, Sleep
+from shared.skill_ids import Attention, Dashboard, Feed, Sleep
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sleep.adapters.a2a.card import PEER_SKILLS, build_agent_card
+from sleep.application.attention import collect as attention_collect
 from sleep.application.dashboard import card, detail
 from sleep.application.data import SleepData
 from sleep.application.feed import collect as feed_collect
@@ -107,6 +109,13 @@ def build_runtime(
         translator=base.translator,
         default_locale=base.default_locale,
         collect=feed_collect,
+    )
+    handlers[Attention.ITEMS] = AttentionSkill(
+        uow=dashboard_uow,
+        clock=base.clock,
+        translator=base.translator,
+        default_locale=base.default_locale,
+        collect=attention_collect,
     )
     return SleepRuntime(
         executor=SkillExecutor(

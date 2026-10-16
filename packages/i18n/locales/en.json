@@ -691,6 +691,14 @@
         "other": "{count} days without training"
       },
       "prompt": "Help me plan a workout for the next few days"
+    },
+    "sleep": {
+      "short": "Two short nights in a row",
+      "short_detail": "Under 6 h both nights. Plan an early night"
+    },
+    "recovery": {
+      "depleted": "Take it easy today",
+      "depleted_detail": "Recovery is below your baseline"
     }
   }
 }
