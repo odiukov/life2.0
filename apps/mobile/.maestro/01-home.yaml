@@ -1,5 +1,5 @@
 appId: app.lifeagents.mobile
-name: Me shows metrics and current navigation
+name: Me shows task, inbox and agent entry points
 ---
 - launchApp
 - runFlow: shared/dismiss-dev-overlays.yaml
@@ -7,4 +7,6 @@ name: Me shows metrics and current navigation
     id: 'task-button'
 - assertVisible:
     id: 'inbox-bell'
+- assertVisible:
+    id: 'agent-stack'
 - takeScreenshot: screenshots/me

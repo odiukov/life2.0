@@ -4,7 +4,8 @@ name: Me opens the agent pager
 - launchApp
 - runFlow: shared/dismiss-dev-overlays.yaml
 - tapOn:
-    id: 'ring-hrv'
+    id: 'agent-stack'
+- tapOn: 'Sleep'
 - assertVisible:
     id: 'agent-pager'
 - assertVisible: '.*Sleep.*2/.*'
