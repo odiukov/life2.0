@@ -17,6 +17,7 @@ from shared.adapters.i18n import JsonTranslator
 from shared.adapters.llm.build import build_llm_provider
 from shared.adapters.peers import A2APeerClient
 from shared.adapters.vector import QdrantVectorMemory
+from shared.attention import AttentionSkill
 from shared.dashboard import DashboardSkill
 from shared.feed import FeedSkill
 from shared.observability.logging import configure_logging
@@ -25,13 +26,14 @@ from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.profile import BodyProfileRepository
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Dashboard, Feed, Nutrition
+from shared.skill_ids import Attention, Dashboard, Feed, Nutrition
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nutrition.adapters.a2a.card import build_agent_card
 from nutrition.adapters.db import SqlMealRepository, nutrition_uow
 from nutrition.adapters.sync import HttpNutritionSync
 from nutrition.application.analyze import AnalyzeNutrition
+from nutrition.application.attention import collect as attention_collect
 from nutrition.application.dashboard import card, detail
 from nutrition.application.feed import collect as feed_collect
 from nutrition.application.log_meal import LogMeal
@@ -118,6 +120,13 @@ def build_runtime(
         translator=translator,
         default_locale=locale,
         collect=feed_collect,
+    )
+    handlers[Attention.ITEMS] = AttentionSkill(
+        uow=feed_uow,
+        clock=clock,
+        translator=translator,
+        default_locale=locale,
+        collect=attention_collect,
     )
     handlers[Dashboard.CARD] = DashboardSkill(
         uow=dashboard_uow, clock=clock, build=card, name=Dashboard.CARD

@@ -10,7 +10,7 @@ from nutrition.composition import build_runtime
 from nutrition.settings import NutritionSettings
 from nutrition.testing import FakeSync
 from shared.a2a.executor import SkillExecutor, SkillResult
-from shared.skill_ids import Dashboard, Feed, Nutrition
+from shared.skill_ids import Attention, Dashboard, Feed, Nutrition
 from shared.testing.fakes import FakeLLM, FakePeerClient, FixedClock, InMemoryVectorMemory
 
 EXPECTED_IDS = {
@@ -19,7 +19,12 @@ EXPECTED_IDS = {
 
 
 def test_card_declares_exactly_the_shared_skill_ids() -> None:
-    assert {s.id for s in SKILLS} == EXPECTED_IDS | {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}
+    assert {s.id for s in SKILLS} == EXPECTED_IDS | {
+        Dashboard.CARD,
+        Dashboard.DETAIL,
+        Feed.EVENTS,
+        Attention.ITEMS,
+    }
 
 
 def test_card_identity_is_unchanged() -> None:
@@ -50,6 +55,7 @@ def test_every_card_skill_has_a_handler() -> None:
         Dashboard.CARD,
         Dashboard.DETAIL,
         Feed.EVENTS,
+        Attention.ITEMS,
     }
 
 
@@ -68,9 +74,12 @@ def test_complete_card_and_peer_mapping_match_the_recorded_legacy_contract() -> 
         Dashboard.CARD,
         Dashboard.DETAIL,
         Feed.EVENTS,
+        Attention.ITEMS,
     }
     card["skills"] = [
-        s for s in card["skills"] if s["id"] not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS}
+        s
+        for s in card["skills"]
+        if s["id"] not in {Dashboard.CARD, Dashboard.DETAIL, Feed.EVENTS, Attention.ITEMS}
     ]
     assert card == LEGACY["card"]
     assert LEGACY["peers"] == PEER_SKILLS

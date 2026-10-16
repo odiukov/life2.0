@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from shared.skill_ids import Dashboard, Feed, Nutrition
+from shared.skill_ids import Attention, Dashboard, Feed, Nutrition
 
 from nutrition.application.peers import PEER_SKILLS
 
 __all__ = ["PEER_SKILLS", "SKILLS", "build_agent_card"]
 
 SKILLS: list[AgentSkill] = [
+    AgentSkill(
+        id=Attention.ITEMS,
+        name="Attention items",
+        description="Things that need doing today, for the app's Me screen.",
+        tags=["structured"],
+    ),
     AgentSkill(
         id=Feed.EVENTS,
         name="Day Feed",

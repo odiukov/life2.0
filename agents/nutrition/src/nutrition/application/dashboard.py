@@ -35,7 +35,7 @@ def compute_tdee(weight: float, height: float, age: int, sex: str, activity: str
     return tdee(bmr, ActivityLevel.parse(activity))
 
 
-def _goal(profile: Mapping[str, Any], weight: object) -> int | None:
+def calorie_goal(profile: Mapping[str, Any], weight: object) -> int | None:
     if override := profile.get("calorie_goal_override"):
         return int(override)
     if all(
@@ -113,7 +113,7 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
                 ctx.user_id, types=["body_composition"], limit=1
             )
             weight = latest[0].data.get("weight_kg") if latest else None
-        goal = _goal(profile, weight)
+        goal = calorie_goal(profile, weight)
     except (TypeError, ValueError):
         goal = None
     if goal:
@@ -128,7 +128,7 @@ async def card(tx: UnitOfWork, ctx: DashboardContext) -> dict[str, object]:
     }
     macros_weight = profile.get("weight_kg") or 75.0  # the legacy featured block ignores body logs
     try:
-        kcal_goal = _goal(profile, macros_weight) or 0
+        kcal_goal = calorie_goal(profile, macros_weight) or 0
     except (TypeError, ValueError):
         kcal_goal = 0
     out["featured"] = {

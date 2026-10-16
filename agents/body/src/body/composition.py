@@ -12,6 +12,7 @@ from shared.adapters.chat_model.factory import LangChainChatModelFactory
 from shared.adapters.db.profile import SqlBodyProfiles
 from shared.adapters.db.uow import SqlUnitOfWorkFactory
 from shared.analysis.skill import AnalysisSkill, AnalysisSpec
+from shared.attention import AttentionSkill
 from shared.dashboard import DashboardSkill
 from shared.feed import FeedSkill
 from shared.ports.clock import Clock
@@ -19,12 +20,13 @@ from shared.ports.llm import LLMProvider
 from shared.ports.peers import PeerClient
 from shared.ports.profile import BodyProfileRepository
 from shared.ports.vector_memory import VectorMemory
-from shared.skill_ids import Body, Dashboard, Feed
+from shared.skill_ids import Attention, Body, Dashboard, Feed
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from body.adapters.a2a.card import PEER_SKILLS, build_agent_card
 from body.adapters.pdf import PdfplumberReader
 from body.adapters.vision import ChatModelVision
+from body.application.attention import collect as attention_collect
 from body.application.dashboard import card
 from body.application.data import BodyData
 from body.application.feed import collect as feed_collect
@@ -111,6 +113,13 @@ def build_runtime(
         translator=base.translator,
         default_locale=base.default_locale,
         collect=feed_collect,
+    )
+    handlers[Attention.ITEMS] = AttentionSkill(
+        uow=uow,
+        clock=base.clock,
+        translator=base.translator,
+        default_locale=base.default_locale,
+        collect=attention_collect,
     )
     return BodyRuntime(
         executor=SkillExecutor(

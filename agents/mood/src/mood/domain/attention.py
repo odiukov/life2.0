@@ -1,0 +1,1 @@
+MOOD_DAYS = 3

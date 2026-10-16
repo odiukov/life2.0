@@ -9,6 +9,7 @@ from shared.attention import (
     AttentionSkill,
     attention_result,
     days_since,
+    stale,
 )
 from shared.ports.translator import DateStyle
 from shared.ports.uow import UnitOfWork
@@ -85,3 +86,10 @@ async def test_skill_builds_context_in_user_zone_and_locale() -> None:
     assert ctx.now_local.hour == 0
     assert result.data["items"][0]["text"] == "ru:k"  # type: ignore[index]
     assert days_since(ctx, datetime(2026, 10, 13, 20, 0, tzinfo=UTC)) == 4
+
+
+def test_stale_needs_an_earlier_entry_at_least_threshold_old() -> None:
+    assert stale(None, 7) is False
+    assert stale(6, 7) is False
+    assert stale(7, 7) is True
+    assert stale(30, 7) is True

@@ -102,6 +102,11 @@ def days_since(ctx: AttentionContext, ts: datetime) -> int:
     return (ctx.today - ts.astimezone(ctx.zone).date()).days
 
 
+def stale(gap_days: int | None, threshold: int) -> bool:
+    """True when there was an earlier entry and it is at least `threshold` local days old."""
+    return gap_days is not None and gap_days >= threshold
+
+
 def attention_result(items: Iterable[AttentionItem]) -> SkillResult:
     ordered = sorted(items, key=lambda i: (LEVEL_ORDER[i.level], i.rank, i.id))[:MAX_ITEMS]
     return SkillResult(output=Attention.ITEMS, data={"items": [i.to_data() for i in ordered]})

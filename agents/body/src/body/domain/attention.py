@@ -1,0 +1,1 @@
+WEIGH_DAYS = 7

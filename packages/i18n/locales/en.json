@@ -710,6 +710,29 @@
         "one": "{count} habit left for today",
         "other": "{count} habits left for today"
       }
+    },
+    "nutrition": {
+      "profile": "Set up your body profile",
+      "profile_detail": "Needed for your calorie goal",
+      "meals": "Log what you've eaten today",
+      "meals_detail": "No meals logged yet",
+      "prompt": "Log my meal: "
+    },
+    "body": {
+      "weigh": "Log your weight",
+      "weigh_detail": {
+        "one": "{count} day since the last weigh-in",
+        "other": "{count} days since the last weigh-in"
+      },
+      "prompt": "My weight today: "
+    },
+    "mood": {
+      "checkin": "How are you feeling?",
+      "checkin_detail": {
+        "one": "{count} day since the last check-in",
+        "other": "{count} days since the last check-in"
+      },
+      "prompt": "My mood today: "
     }
   }
 }
