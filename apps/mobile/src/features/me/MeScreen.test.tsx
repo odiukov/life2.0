@@ -12,7 +12,7 @@ const mockSummaryRefetch = jest.fn();
 const mockFeedRefetch = jest.fn();
 const mockRefresh = jest.fn();
 const mockPush = jest.fn();
-const mockRouter = { push: mockPush };
+const mockRouter = { push: mockPush, setParams: (p: unknown) => mockSetParams(p) };
 let mockFocus: (() => void) | undefined;
 let mockSummaryError = false;
 let mockFeedError = false;
@@ -24,8 +24,11 @@ jest.mock('../agents/agentTileDispatch', () => ({
 }));
 jest.mock('../task/sheetStore', () => ({ openTask: jest.fn() }));
 const mockUseDayFeed = jest.fn();
+let mockParams: { agent?: string } = {};
+const mockSetParams = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => mockRouter,
+  useLocalSearchParams: () => mockParams,
   useFocusEffect: (callback: () => void) => {
     mockFocus = callback;
   },
@@ -85,6 +88,7 @@ jest.mock('../more/SettingsSheet', () => ({
   SettingsSheet: ({ visible }: { visible: boolean }) => (visible ? <Text>settings</Text> : null),
 }));
 jest.mock('./AgentPagerSheet', () => ({
+  PAGES: ['all', 'sleep', 'kitchen'],
   AgentPagerSheet: ({ start }: { start: string | null }) =>
     start ? <Text>{`detail:${start}`}</Text> : null,
 }));
@@ -108,6 +112,7 @@ beforeEach(() => {
   mockNutrition = false;
   mockBodyFeed = false;
   mockRows = [];
+  mockParams = {};
 });
 function mount() {
   return render(
@@ -279,4 +284,11 @@ test('a Body feed entry opens the separate usable Body destination', () => {
   fireEvent.press(screen.getByText('Slept well'));
   expect(screen.getByText('standalone:body')).toBeTruthy();
   expect(screen.queryByText('detail:all')).toBeNull();
+});
+
+test('?agent=kitchen opens the agent sheet on the kitchen page', () => {
+  mockParams = { agent: 'kitchen' };
+  mount();
+  expect(screen.getByText('detail:kitchen')).toBeTruthy();
+  expect(mockSetParams).toHaveBeenCalledWith({ agent: undefined });
 });

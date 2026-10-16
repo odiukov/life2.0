@@ -223,6 +223,12 @@ const NAV_ROWS = [
     hintKey: 'household.settings_hint',
     icon: 'HouseLine',
   },
+  {
+    key: 'integration-ha',
+    labelKey: 'house.smart_home.title',
+    hintKey: 'house.smart_home.hint',
+    icon: 'House',
+  },
   { key: 'integrations', label: 'Integrations', hint: 'Connected sources', icon: 'Plugs' },
   { key: 'privacy', label: 'Privacy & data', hint: 'On-device by default', icon: 'ShieldCheck' },
   {

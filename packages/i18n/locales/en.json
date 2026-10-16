@@ -27,8 +27,7 @@
     "today": "Today",
     "dash": "Dash",
     "more": "More",
-    "me": "Me",
-    "house": "House"
+    "me": "Me"
   },
   "more": {
     "integrations": "Integrations",
@@ -612,10 +611,9 @@
     }
   },
   "house": {
-    "title": "Home",
-    "invite": "Invite",
     "smart_home": {
       "title": "Smart home",
+      "hint": "Home Assistant for the whole family",
       "connected": "One connection for the family · {name}",
       "connect": "Connect Home Assistant"
     }

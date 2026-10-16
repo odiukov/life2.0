@@ -40,7 +40,7 @@ jest.mock('@/features/chat/tasksApi', () => ({
   defaultTasksApi: () => mockApi,
 }));
 jest.mock('@/features/inbox/InboxScreen', () => ({
-  NOTIFICATION_ROUTES: { '/kitchen': '/(tabs)/house' },
+  NOTIFICATION_ROUTES: { '/kitchen': '/(tabs)?agent=kitchen' },
 }));
 jest.mock('@/features/inbox/registerPush', () => ({ usePushRegistration: jest.fn() }));
 jest.mock('@/features/healthkit/background', () => ({ registerBackgroundSync: jest.fn() }));

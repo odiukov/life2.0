@@ -1,9 +1,8 @@
-import React, { useCallback, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 // eslint-disable-next-line react-native/split-platform-components
-import { ActionSheetIOS, Alert, FlatList, Modal, PanResponder, Platform, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect } from 'expo-router';
-import { Screen, useTheme } from '@life-agents/ui';
+import { useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { errorCode } from '@/api/gateway';
 import { useHousehold } from '@/features/household/useHousehold';
@@ -18,7 +17,7 @@ const ACTIONS: ItemAction['action'][] = ['consumed', 'discarded', 'opened', 'mov
 const pad = (n: number) => String(n).padStart(2, '0');
 const localIso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-export function KitchenScreen({ header }: { header?: ReactNode }) {
+export function KitchenPanel() {
   const { colors, spacing, typography } = useTheme();
   const t = useT(appLocale());
 
@@ -31,10 +30,15 @@ export function KitchenScreen({ header }: { header?: ReactNode }) {
   const [editingQuantity, setEditingQuantity] = useState<KitchenItem | null>(null);
   const [quantityText, setQuantityText] = useState('');
 
-  useFocusEffect(useCallback(() => {
-    void household.refetch();
-    if (household.data?.id) void inventory.refetch();
-  }, [household.data?.id, household.refetch, inventory.refetch]));
+  const { refetch: refetchHousehold } = household;
+  const { refetch: refetchInventory } = inventory;
+  useEffect(() => {
+    void refetchHousehold();
+  }, [refetchHousehold]);
+  const householdId = household.data?.id;
+  useEffect(() => {
+    if (householdId) void refetchInventory();
+  }, [householdId, refetchInventory]);
 
   const run = async (item: KitchenItem, body: ItemAction) => {
     try {
@@ -77,12 +81,12 @@ export function KitchenScreen({ header }: { header?: ReactNode }) {
   const timezone = household.data?.timezone;
   const errored = inventory.isError || household.isError;
   const loading = inventory.isLoading || household.isLoading || !timezone;
+  const items = [...(inventory.data?.items ?? [])].sort((a, b) => a.expires_on.localeCompare(b.expires_on));
   const hideSnack = useCallback(() => setSnack(null), []);
 
   return (
-    <Screen edges={['top']}>
-      {header}
-      <Text style={[typography.display, { color: colors.fg1, padding: spacing.s4 }]}>{t('kitchen.screen.title')}</Text>
+    <View>
+      <Text style={[typography.title2, { color: colors.fg1, padding: spacing.s4 }]}>{t('kitchen.screen.title')}</Text>
       <View style={{ flexDirection: 'row', gap: spacing.s2, paddingHorizontal: spacing.s4 }}>
         {LOCATIONS.map((l) => (
           <Pressable key={l} onPress={() => setLocation(l)} accessibilityRole="tab" accessibilityLabel={t(`kitchen.screen.${l}`)} accessibilityState={{ selected: l === location }} style={{ paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999, backgroundColor: l === location ? colors.bg3 : undefined }}>
@@ -96,28 +100,17 @@ export function KitchenScreen({ header }: { header?: ReactNode }) {
           <Pressable onPress={() => { void household.refetch(); void inventory.refetch(); }} accessibilityRole="button" accessibilityLabel={t('kitchen.screen.retry')}><Text style={{ color: colors.accentHi }}>{t('kitchen.screen.retry')}</Text></Pressable>
         </View>
       ) : (
-        <FlatList
-          data={loading ? [] : [...(inventory.data?.items ?? [])].sort((a, b) => a.expires_on.localeCompare(b.expires_on))}
-          keyExtractor={(item) => item.id}
-          refreshControl={<RefreshControl refreshing={inventory.isFetching || household.isFetching} onRefresh={() => { void household.refetch(); void inventory.refetch(); }} />}
-          contentContainerStyle={{ padding: spacing.s4, gap: spacing.s2, paddingBottom: 96 }}
-          ListEmptyComponent={loading ? null : (
+        <View style={{ padding: spacing.s4, gap: spacing.s2 }}>
+          {loading ? null : items.length === 0 ? (
             <View style={{ gap: spacing.s3 }}>
               <Text style={{ color: colors.fg3 }}>{t('kitchen.screen.empty')}</Text>
               <Pressable onPress={() => openTask({ lead: 'kitchen' })} accessibilityRole="button" accessibilityLabel={t('kitchen.screen.open_chat')}><Text style={{ color: colors.accentHi }}>{t('kitchen.screen.open_chat')}</Text></Pressable>
             </View>
-          )}
-          renderItem={({ item }) => {
+          ) : items.map((item) => {
             const days = daysLeft(item.expires_on, new Date(), timezone);
             const mark = item.expiry_source === 'estimated' ? `${t('kitchen.screen.estimated')} ` : '';
-            const swipe = PanResponder.create({
-              onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 15 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.5,
-              onPanResponderRelease: (_, gesture) => {
-                if (Math.abs(gesture.dx) >= 50) openActions(item);
-              },
-            });
             return (
-              <View {...swipe.panHandlers} testID={`kitchen-item-${item.id}`}>
+              <View key={item.id} testID={`kitchen-item-${item.id}`}>
                 <Pressable onPress={() => openActions(item)} onLongPress={() => openActions(item)} accessibilityRole="button" accessibilityLabel={item.display_name} accessibilityHint={t('kitchen.screen.actions_hint')}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: spacing.s3, backgroundColor: colors.bg2, borderRadius: 12 }}>
                     <Text style={[typography.bodyEm, { color: colors.fg1, flex: 1 }]}>{item.display_name}</Text>
@@ -126,8 +119,8 @@ export function KitchenScreen({ header }: { header?: ReactNode }) {
                 </Pressable>
               </View>
             );
-          }}
-        />
+          })}
+        </View>
       )}
       {dating && <DateTimePicker value={new Date(`${dating.expires_on}T12:00:00`)} mode="date" onChange={(_, date) => {
         const item = dating;
@@ -157,6 +150,6 @@ export function KitchenScreen({ header }: { header?: ReactNode }) {
         if (snack) void undo.mutateAsync(snack.groupId).catch((error: unknown) => Alert.alert(errorCode(error) === 'conflict' ? t('kitchen.undo_conflict') : t('kitchen.screen.unavailable')));
         setSnack(null);
       }} onHide={hideSnack} actionId={snack?.groupId} />
-    </Screen>
+    </View>
   );
 }

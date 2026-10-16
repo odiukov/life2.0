@@ -19,7 +19,6 @@ export default function TabsLayout() {
         screenOptions={{ sceneStyle: { backgroundColor: colors.bg0 }, headerShown: false }}
       >
         <Tabs.Screen name="index" options={{ title: t('tabs.me') }} />
-        <Tabs.Screen name="house" options={{ title: t('tabs.house') }} />
       </Tabs>
       <TaskSheet />
       <View

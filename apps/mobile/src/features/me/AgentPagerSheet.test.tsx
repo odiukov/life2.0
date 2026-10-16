@@ -25,6 +25,9 @@ jest.mock('../home/AgentDetailContent', () => ({
     );
   },
 }));
+jest.mock('../kitchen/KitchenScreen', () => ({
+  KitchenPanel: () => <Text>kitchen-panel</Text>,
+}));
 jest.mock('./AllAgentsGrid', () => ({
   AllAgentsGrid: ({ onPick }: { onPick: (id: string) => void }) => {
     return (
@@ -126,3 +129,10 @@ test.each(['arrow', 'swipe'] as const)(
     }
   },
 );
+
+test('kitchen is a page of the pager and renders the kitchen panel', () => {
+  expect(PAGES[PAGES.length - 1]).toBe('kitchen');
+  render(wrap('kitchen'));
+  expect(screen.getByText('kitchen-panel')).toBeTruthy();
+  expect(screen.getByText(/Kitchen/)).toBeTruthy();
+});

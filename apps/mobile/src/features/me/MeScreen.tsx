@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, RefreshControl, ScrollView } from 'react-native';
 import { Screen, useTheme, type AgentId } from '@life-agents/ui';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useHomeSummary } from '../home/useHomeSummary';
 import { useSession } from '../auth/useSession';
 import { useInbox } from '../inbox/useInbox';
@@ -9,7 +9,7 @@ import { badgeText } from '../inbox/badge';
 import { useAgentStatusRows } from '../agents/useAgentStatusRows';
 import { dispatchTilePress } from '../agents/agentTileDispatch';
 import { SettingsSheet } from '../more/SettingsSheet';
-import { AgentPagerSheet, type PagerStart } from './AgentPagerSheet';
+import { AgentPagerSheet, PAGES, type PagerStart } from './AgentPagerSheet';
 import { StandaloneAgentSheet } from './StandaloneAgentSheet';
 import { DETAIL_AGENTS } from './agentOrder';
 import { IntegrationSheet } from '../integrations/IntegrationSheet';
@@ -38,6 +38,14 @@ export function MeScreen() {
   const [activeIntegration, setActiveIntegration] = useState<IntegrationId | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [pager, setPager] = useState<PagerStart | null>(null);
+  const params = useLocalSearchParams<{ agent?: string }>();
+  useEffect(() => {
+    const id = params.agent;
+    if (id && PAGES.includes(id as PagerStart)) {
+      setPager(id as PagerStart);
+      router.setParams({ agent: undefined });
+    }
+  }, [params.agent, router]);
 
   const [standalone, setStandalone] = useState<'body' | 'home' | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);

@@ -15,6 +15,7 @@ import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
 import { useSheetAnimation } from '@/lib/sheetAnimation';
 import { useSwipeToDismiss } from '@/lib/useSwipeToDismiss';
+import { KitchenPanel } from '../kitchen/KitchenScreen';
 import { AgentDetailContent } from '../home/AgentDetailContent';
 import type { HomeSummary } from '../home/useHomeSummary';
 import type { AgentRow } from '../agents/agentStatusRules';
@@ -177,6 +178,8 @@ export function AgentPagerSheet({ start, onClose, onPickOther, summary, rows }: 
                   >
                     {item === 'all' ? (
                       <AllAgentsGrid summary={summary} rows={rows} onPick={pick} />
+                    ) : item === 'kitchen' ? (
+                      <KitchenPanel />
                     ) : (
                       <AgentDetailContent
                         agentId={item}

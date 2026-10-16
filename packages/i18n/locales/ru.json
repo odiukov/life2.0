@@ -27,8 +27,7 @@
     "today": "Сегодня",
     "dash": "Панель",
     "more": "Ещё",
-    "me": "Я",
-    "house": "Дом"
+    "me": "Я"
   },
   "more": {
     "integrations": "Интеграции",
@@ -625,10 +624,9 @@
     }
   },
   "house": {
-    "title": "Дом",
-    "invite": "Пригласить",
     "smart_home": {
       "title": "Умный дом",
+      "hint": "Home Assistant для всей семьи",
       "connected": "Одно подключение на семью · {name}",
       "connect": "Подключить Home Assistant"
     }

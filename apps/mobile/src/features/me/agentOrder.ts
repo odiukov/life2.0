@@ -11,6 +11,7 @@ export const AGENT_ORDER: AgentId[] = [
   'calendar',
   'finance',
   'home',
+  'kitchen',
 ];
 export const DETAIL_AGENTS: ReadonlySet<AgentId> = new Set([
   'sleep',
@@ -22,4 +23,5 @@ export const DETAIL_AGENTS: ReadonlySet<AgentId> = new Set([
   'medication',
   'finance',
   'calendar',
+  'kitchen',
 ]);

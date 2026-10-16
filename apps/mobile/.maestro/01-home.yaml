@@ -4,11 +4,7 @@ name: Me shows metrics and current navigation
 - launchApp
 - runFlow: shared/dismiss-dev-overlays.yaml
 - assertVisible:
-    id: 'tab-index'
-- assertVisible:
-    id: 'tab-house'
-- assertVisible:
     id: 'task-button'
 - assertVisible:
-    id: 'ring-hrv'
+    id: 'inbox-bell'
 - takeScreenshot: screenshots/me

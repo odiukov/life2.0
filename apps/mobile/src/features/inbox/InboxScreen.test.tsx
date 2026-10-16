@@ -40,7 +40,7 @@ it('marks an item read and opens its app route', async () => {
   renderScreen();
   fireEvent.press(await screen.findByText(item.title));
   await waitFor(() => expect(POST).toHaveBeenCalledWith('/notifications/{notification_id}/read', { params: { path: { notification_id: 'n1' } } }));
-  await waitFor(() => expect(router.push).toHaveBeenCalledWith('/(tabs)/house'));
+  await waitFor(() => expect(router.push).toHaveBeenCalledWith('/(tabs)?agent=kitchen'));
 });
 
 it('surfaces a mark-read error and does not navigate', async () => {

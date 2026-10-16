@@ -91,6 +91,7 @@ module.exports = {
   useHandler: () => ({ context: {}, doDependenciesDiffer: false, useWeb: false }),
   useReducedMotion: () => false,
   interpolate: ID,
+  Extrapolation: { CLAMP: 'clamp', EXTEND: 'extend', IDENTITY: 'identity' },
   useAnimatedStyle,
   useAnimatedProps: (fn: () => object) => fn(),
   withTiming,

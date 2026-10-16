@@ -6,7 +6,7 @@ import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
 import { useInbox, useInboxActions } from './useInbox';
 
-export const NOTIFICATION_ROUTES: Record<string, string> = { '/kitchen': '/(tabs)/house' };
+export const NOTIFICATION_ROUTES: Record<string, string> = { '/kitchen': '/(tabs)?agent=kitchen' };
 
 export function InboxScreen() {
   const { colors, spacing, typography } = useTheme();
