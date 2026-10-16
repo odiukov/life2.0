@@ -683,6 +683,14 @@
         "one": "{count} item spoils tomorrow",
         "other": "{count} items spoil tomorrow"
       }
+    },
+    "workout": {
+      "plan": "Plan a workout",
+      "plan_detail": {
+        "one": "{count} day without training",
+        "other": "{count} days without training"
+      },
+      "prompt": "Help me plan a workout for the next few days"
     }
   }
 }
