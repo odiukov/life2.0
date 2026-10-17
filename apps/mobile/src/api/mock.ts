@@ -99,6 +99,52 @@ export function mockFetch(today: Date = new Date()): Fetch {
   ];
   const undo = new Map<string, { before: MockItem | null; after: MockItem | null }>();
   let sequence = 0;
+  const dismissed = new Set<string>();
+  const attention = () => {
+    const ruText = appLocale() === 'ru';
+    const day = iso(0);
+    return [
+      {
+        agent: 'kitchen',
+        id: `kitchen:expired:${day}`,
+        level: 'critical' as const,
+        rank: 0,
+        text: ruText ? 'Выбрось курицу' : 'Throw out the chicken',
+        detail: ruText ? 'Срок истёк вчера · холодильник' : 'Expired yesterday · fridge',
+        action: { type: 'agent' as const },
+      },
+      {
+        agent: 'workout',
+        id: `workout:plan:${day}`,
+        level: 'high' as const,
+        rank: 0,
+        text: ruText ? 'Запланируй тренировку' : 'Plan a workout',
+        detail: ruText ? '4 дня без нагрузки' : '4 days without training',
+        action: {
+          type: 'task' as const,
+          prompt: ruText ? 'Запланируй тренировку на сегодня' : 'Plan a workout for today',
+        },
+      },
+      {
+        agent: 'kitchen',
+        id: `kitchen:today:${day}`,
+        level: 'high' as const,
+        rank: 1,
+        text: ruText ? 'Молоко портится сегодня' : 'Milk spoils today',
+        detail: ruText ? 'Холодильник' : 'Fridge',
+        action: { type: 'agent' as const },
+      },
+      {
+        agent: 'mood',
+        id: `mood:checkin:${day}`,
+        level: 'normal' as const,
+        rank: 0,
+        text: ruText ? 'Как настроение?' : 'How are you feeling?',
+        detail: ruText ? '3 дня без отметки' : 'No check-in for 3 days',
+        action: { type: 'agent' as const },
+      },
+    ].filter((item) => !dismissed.has(item.id));
+  };
 
   return async (input, init) => {
     const url =
@@ -121,6 +167,17 @@ export function mockFetch(today: Date = new Date()): Fetch {
       } catch {
         /* Multipart and text uploads have no JSON body. */
       }
+    }
+
+    if (key === 'GET /me/attention') return json({ items: attention(), unavailable: [] });
+    const dismissMatch = method === 'POST' && pathname.match(/^\/me\/attention\/([^/]+)\/dismiss$/);
+    if (dismissMatch) {
+      const id = decodeURIComponent(dismissMatch[1] ?? '');
+      const item = attention().find((candidate) => candidate.id === id);
+      if (!item) return json({ detail: 'unknown_item' }, 404);
+      if (item.level === 'critical') return json({ detail: 'not_dismissable' }, 409);
+      dismissed.add(id);
+      return noContent();
     }
 
     // Preserve the original app's mock endpoints.

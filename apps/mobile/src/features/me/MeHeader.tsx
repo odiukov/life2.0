@@ -6,23 +6,21 @@ import { appLocale } from '@/lib/locale';
 import { AgentStack } from './AgentStack';
 export function MeHeader({
   now,
-  firstName,
   unreadBadge,
   onInbox,
   onSettings,
+  agentsOnline,
   onAgents,
 }: {
   now: Date;
-  firstName: string;
   unreadBadge: string | null;
   onInbox: () => void;
   onSettings: () => void;
+  agentsOnline: number | null;
   onAgents: () => void;
 }) {
-  const { colors, typography } = useTheme();
+  const { colors } = useTheme();
   const t = useT(appLocale());
-  const hour = now.getHours();
-  const part = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
   const dateLabel = now.toLocaleDateString(appLocale(), {
     weekday: 'long',
     month: 'short',
@@ -42,21 +40,8 @@ export function MeHeader({
         >
           {dateLabel}
         </Text>
-        <Text
-          numberOfLines={2}
-          style={{
-            fontFamily: typography.title1.fontFamily,
-            fontSize: 26,
-            color: colors.fg1,
-            fontWeight: '600',
-            letterSpacing: -0.7,
-            marginTop: 2,
-          }}
-        >
-          {t(`me.greeting.${part}`, { name: firstName || '👋' })}
-        </Text>
       </View>
-      <AgentStack onPress={onAgents} />
+      <AgentStack online={agentsOnline} onPress={onAgents} />
       <Pressable
         testID="inbox-bell"
         accessibilityRole="button"
@@ -102,7 +87,7 @@ export function MeHeader({
   );
 }
 const styles = StyleSheet.create({
-  header: { alignItems: 'flex-end', flexDirection: 'row', paddingHorizontal: 2, paddingTop: 8 },
+  header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 2, paddingTop: 8 },
   settingsBtn: {
     alignItems: 'center',
     borderRadius: 19,

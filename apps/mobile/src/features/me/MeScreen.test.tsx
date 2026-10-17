@@ -179,9 +179,9 @@ function mount() {
   );
 }
 
-test('greets by first name, opens feed agents, changes day and refreshes both queries', () => {
+test('shows no greeting, opens feed agents, changes day and refreshes both queries', () => {
   const result = mount();
-  expect(screen.getByText(/Alex$/)).toBeTruthy();
+  expect(screen.queryByText(/Alex/)).toBeNull();
   fireEvent.press(screen.getByText('Slept well'));
   expect(screen.getByText('detail:sleep')).toBeTruthy();
   fireEvent.press(screen.getByLabelText('Previous day'));

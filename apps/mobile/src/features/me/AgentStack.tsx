@@ -1,37 +1,71 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { agentSolid, useTheme, type AgentId } from '@life-agents/ui';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Icon, useTheme } from '@life-agents/ui';
 import { useT } from '@life-agents/i18n';
 import { appLocale } from '@/lib/locale';
 
-const HEADS: AgentId[] = ['sleep', 'workout', 'nutrition', 'mood'];
+// Mirrors gateway ATTENTION_AGENTS: every agent the attention fan-out asks.
+export const AGENT_TOTAL = 9;
 
-export function AgentStack({ onPress }: { onPress: () => void }) {
+export function AgentStack({ online, onPress }: { online: number | null; onPress: () => void }) {
   const { colors } = useTheme();
   const t = useT(appLocale());
+  const tint = online === null ? colors.fg3 : online === AGENT_TOTAL ? colors.success : colors.warn;
+  const label =
+    online === null
+      ? t('me.all_agents')
+      : `${t('me.all_agents')}, ${t('me.agents_online', { online, total: AGENT_TOTAL })}`;
   return (
     <Pressable
       testID="agent-stack"
       accessibilityRole="button"
-      accessibilityLabel={t('me.all_agents')}
+      accessibilityLabel={label}
       onPress={onPress}
-      hitSlop={8}
-      style={styles.row}
+      style={[styles.pill, { backgroundColor: colors.bg2, borderColor: colors.border }]}
     >
-      {HEADS.map((id, i) => (
-        <View
-          key={id}
-          style={[
-            styles.dot,
-            { backgroundColor: agentSolid(id), borderColor: colors.bg0, marginLeft: i ? -7 : 0 },
-          ]}
-        />
-      ))}
+      <Icon name="SquaresFour" size={17} color={colors.fg2} />
+      {online !== null &&
+        (online === AGENT_TOTAL ? (
+          <View style={[styles.dot, { backgroundColor: tint, borderColor: colors.bg0 }]} />
+        ) : (
+          <View style={[styles.badge, { backgroundColor: tint }]}>
+            <Text style={[styles.text, { color: colors.accentInk }]}>
+              {online}/{AGENT_TOTAL}
+            </Text>
+          </View>
+        ))}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  dot: { borderRadius: 11, borderWidth: 2, height: 22, width: 22 },
-  row: { alignItems: 'center', flexDirection: 'row', marginRight: 10 },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 8,
+    height: 16,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    position: 'absolute',
+    right: -6,
+    top: -4,
+  },
+  dot: {
+    borderRadius: 6,
+    borderWidth: 2,
+    height: 12,
+    position: 'absolute',
+    right: -1,
+    top: -1,
+    width: 12,
+  },
+  pill: {
+    alignItems: 'center',
+    borderRadius: 19,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: 'center',
+    marginRight: 8,
+    width: 38,
+  },
+  text: { fontSize: 10, fontVariant: ['tabular-nums'], fontWeight: '700' },
 });

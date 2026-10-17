@@ -630,6 +630,7 @@
     "prev_day": "Previous day",
     "next_day": "Next day",
     "all_agents": "All agents",
+    "agents_online": "{online} of {total} online",
     "insight": "INSIGHT",
     "feed": {
       "empty": "Quiet so far — tap the button below to log something.",

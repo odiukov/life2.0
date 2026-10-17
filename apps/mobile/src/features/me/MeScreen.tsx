@@ -24,6 +24,7 @@ import { DaySwitcher } from './DaySwitcher';
 import { AttentionList } from './AttentionList';
 import { useAttention, useDismissAttention, type AttentionItem } from './useAttention';
 import { MeHeader } from './MeHeader';
+import { AGENT_TOTAL } from './AgentStack';
 import { feedDay, useDayFeed } from './useDayFeed';
 export function MeScreen() {
   const { colors } = useTheme();
@@ -153,8 +154,6 @@ export function MeScreen() {
     void feed.refetch();
     void attention.refetch();
   }, [summary, feed, attention]);
-  const firstName =
-    (session?.user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ?? '';
 
   return (
     <Screen edges={['top']}>
@@ -171,10 +170,10 @@ export function MeScreen() {
       >
         <MeHeader
           now={now}
-          firstName={firstName}
           unreadBadge={badgeText(inbox.data?.unread_count ?? 0)}
           onInbox={() => router.push('/inbox')}
           onSettings={() => setSettingsOpen(true)}
+          agentsOnline={attention.data ? AGENT_TOTAL - attention.data.unavailable.length : null}
           onAgents={() => setPager('all')}
         />
         <DaySwitcher offset={offset} today={now} onChange={setOffset} />
